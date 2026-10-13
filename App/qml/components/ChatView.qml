@@ -59,7 +59,7 @@ ColumnLayout {
                     text: bubble.modelData.text
                     wrapMode: Text.Wrap
                     textFormat: Text.PlainText
-                    font.pixelSize: 13
+                    font.pixelSize: Theme.bodyFont
                     color: bubble.modelData.incoming ? Theme.text : Theme.accentText
                 }
             }
@@ -79,7 +79,7 @@ ColumnLayout {
             anchors.centerIn: parent
             visible: list.count === 0
             text: root.placeholder
-            font.pixelSize: 13
+            font.pixelSize: Theme.bodyFont
             color: Theme.textMuted
         }
     }
@@ -91,7 +91,7 @@ ColumnLayout {
         visible: root.error.length > 0
         text: qsTr("没有发出去：%1").arg(root.error)
         wrapMode: Text.Wrap
-        font.pixelSize: 12
+        font.pixelSize: Theme.captionFont
         color: Theme.danger
     }
 
@@ -102,7 +102,7 @@ ColumnLayout {
         visible: root.notice.length > 0
         text: root.notice
         wrapMode: Text.Wrap
-        font.pixelSize: 12
+        font.pixelSize: Theme.captionFont
         color: Theme.textSecondary
     }
 

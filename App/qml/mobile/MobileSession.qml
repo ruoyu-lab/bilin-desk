@@ -4,8 +4,9 @@ import QtQuick
 import QtQuick.Layouts
 
 // 手机上连着一台电脑：远程画面铺满（RemoteCanvas，和电脑版的会话一样：连接中、输临时密码、出错都在里面），
-// 上面浮着几个按钮：左上角返回（断开）、名字和延迟，右上角键盘和手指操作方式；放大了时中间是倍数，点一下复原。
-// 打字时键盘上面多一排电脑上的键（Esc、Tab、Ctrl……），修饰键点一下按住、打下一个键时一起按
+// 上面浮着几个按钮：左上角返回（断开）、名字和延迟，右上角键盘、手指操作方式、"…"；放大了时中间是倍数，点一下复原。
+// 打字时键盘上面多一排电脑上的键（Esc、Tab、Ctrl……），修饰键点一下按住、打下一个键时一起按。
+// "…"拉出电脑版会话的侧边面板（SidePanel：对话、文件、设置）：竖着从下面拉出来，横着在右边
 Item {
     id: root
 
@@ -15,6 +16,10 @@ Item {
     // 手指怎么操作：touchpad | direct（MobileMain 按设置和手机、平板定）
     property string fingerMode: "touchpad"
     property ViewerSession session: null
+    // 侧边面板（SidePanel）要的：开着没有、名字、是不是原始大小（手机上用手指缩放，一直是适应）
+    property bool panelOpen: false
+    readonly property string name: device.name
+    property bool nativeSize: false
 
     signal closed()
 
@@ -138,6 +143,7 @@ Item {
 
     // ---- 右上角：键盘、手指操作方式（控制着的时候才有） ----
     Pill {
+        id: toolsPill
         visible: root.controlling
         anchors.right: parent.right
         anchors.rightMargin: root.SafeArea.margins.right + 10
@@ -183,6 +189,36 @@ Item {
                 TapHandler {
                     onTapped: AppSettings.fingerMode = root.fingerMode === "touchpad" ? "direct" : "touchpad"
                 }
+            }
+        }
+    }
+
+    // 右上角最后一个："…"（连上以后，只看时也有），拉出面板；有没看的消息时带个红点
+    Pill {
+        visible: root.session !== null
+        anchors.right: parent.right
+        anchors.rightMargin: root.SafeArea.margins.right + 10 + (root.controlling ? toolsPill.width + 8 : 0)
+        y: root.SafeArea.margins.top + 10
+        width: 44
+        Icon {
+            anchors.centerIn: parent
+            name: "panel-right"
+            size: 20
+            color: "white"
+        }
+        Rectangle {
+            x: parent.width - 14
+            y: 8
+            width: 8
+            height: 8
+            radius: 4
+            color: Theme.danger
+            visible: root.session !== null && root.session.chat.conversation.unread > 0
+        }
+        TapHandler {
+            onTapped: {
+                catcher.focus = false
+                root.panelOpen = true
             }
         }
     }
@@ -303,5 +339,51 @@ Item {
         }
         Keys.onReturnPressed: root.pressKey("Enter")
         Keys.onEnterPressed: root.pressKey("Enter")
+    }
+
+    // ---- 面板：竖着从下面拉出来，横着在右边；点外面关掉 ----
+    Rectangle {
+        anchors.fill: parent
+        visible: root.panelOpen
+        color: Theme.scrim
+        TapHandler {
+            onTapped: root.panelOpen = false
+        }
+    }
+
+    Rectangle {
+        id: sheet
+        readonly property bool side: root.width > root.height
+        visible: root.panelOpen
+        width: side ? Math.min(400, root.width * 0.5) + root.SafeArea.margins.right : root.width
+        height: side ? root.height : Math.round(root.height * 0.62)
+        x: root.width - width
+        y: root.height - height
+        radius: side ? 0 : 16
+        color: Theme.surface
+
+        // 竖着时上面的小横条（看得出能拉、点一下关上）
+        Rectangle {
+            visible: !sheet.side
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: 8
+            width: 36
+            height: 5
+            radius: 2.5
+            color: Theme.fillHover
+            TapHandler {
+                margin: 16
+                onTapped: root.panelOpen = false
+            }
+        }
+
+        SidePanel {
+            anchors.fill: parent
+            anchors.topMargin: sheet.side ? root.SafeArea.margins.top + 8 : 20
+            anchors.bottomMargin: root.SafeArea.margins.bottom
+            anchors.rightMargin: sheet.side ? root.SafeArea.margins.right : 0
+            view: root
+            color: "transparent"
+        }
     }
 }

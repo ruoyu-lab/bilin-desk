@@ -72,7 +72,9 @@ void LanDiscovery::stop()
     if (!running_)
         return;
     running_ = false;
-    broadcast(rc::lan::leave(announced_.deviceId));
+    // 说过本机在的，走之前也说一声
+    if (!announced_.deviceId.isEmpty())
+        broadcast(rc::lan::leave(announced_.deviceId));
     announced_ = {};
     timer_.stop();
     socket_.close();
@@ -85,6 +87,8 @@ void LanDiscovery::stop()
 
 void LanDiscovery::announce()
 {
+    if (!options_.announce)
+        return;
     const auto device = store_.state();
     announced_ = {device.deviceId, device.deviceName, rc::server::platformName()};
     broadcast(rc::lan::announce(announced_));

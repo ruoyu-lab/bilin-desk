@@ -5,6 +5,7 @@
 
 #include <rc/device_id.h>
 #include <rc/json_file.h>
+#include <rc/server_protocol.h>
 
 #include <QDateTime>
 #include <QHostAddress>
@@ -79,9 +80,11 @@ void DeviceDirectory::nearbyChanged()
     emit changed();
 }
 
+// 账号下的手机不列：连不了（rc::server::acceptsConnections），账号页里能看到、能移除
 void DeviceDirectory::accountChanged()
 {
-    const QList<protocol::AccountDevice> devices = account_.otherDevices();
+    QList<protocol::AccountDevice> devices = account_.otherDevices();
+    devices.removeIf([](const protocol::AccountDevice &device) { return !rc::server::acceptsConnections(device.platform); });
     if (devices == mine_)
         return;
     mine_ = devices;

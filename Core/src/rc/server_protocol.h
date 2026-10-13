@@ -63,6 +63,9 @@ bool isDeviceToken(QStringView text);
 // 本机的系统，服务器上记着给对方看：macOS、Windows……
 QString platformName();
 
+// 这个系统的设备能不能被连：手机（Android、iOS）只去连别人，不被连，电脑上的设备列表里不列它们
+bool acceptsConnections(QStringView platform);
+
 // publicKey：设备密钥的公钥（65 字节）；machine：rc::machineHash()
 QJsonObject hello(const QString &deviceId, const QString &token, const QByteArray &publicKey, const QString &name,
                   const QString &version, const QString &machine);

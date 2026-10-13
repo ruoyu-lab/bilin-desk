@@ -23,6 +23,8 @@ public:
         quint16 port = rc::lan::DiscoveryPort;
         int announceMs = rc::lan::AnnounceMs;
         int forgetMs = rc::lan::ForgetMs;
+        // 告诉附近的设备本机在；手机只听不说：它不被别人连，电脑的"附近"里不该有它
+        bool announce = true;
     };
 
     LanDiscovery(DeviceStore &store, Options options, QObject *parent = nullptr);

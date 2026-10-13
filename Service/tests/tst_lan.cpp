@@ -84,6 +84,19 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(discovery.state().devices.size(), 0, 3000);
     }
 
+    // 手机：只听不说，附近的电脑照样听得到
+    void listeningOnlyStillHears()
+    {
+        QTemporaryDir directory;
+        DeviceStore store(directory.path(), testDeviceKey);
+        const quint16 port = freeUdpPort();
+        LanDiscovery discovery(store, {.port = port, .announceMs = 60000, .forgetMs = 300, .announce = false});
+        QUdpSocket peer;
+        peer.writeDatagram(rc::lan::announce({QStringLiteral("482915307"), QStringLiteral("客厅电脑"), {}}),
+                           QHostAddress::LocalHost, port);
+        QTRY_COMPARE(discovery.state().devices.size(), 1);
+    }
+
     void discoveryOffMeansNothing()
     {
         QTemporaryDir directory;

@@ -15,7 +15,7 @@ Flickable {
 
     component GroupTitle: Text {
         Layout.topMargin: 6
-        font.pixelSize: 12
+        font.pixelSize: Theme.captionFont
         font.weight: Font.Medium
         color: Theme.textMuted
     }
@@ -30,7 +30,7 @@ Flickable {
         Text {
             id: name
             Layout.fillWidth: true
-            font.pixelSize: 13
+            font.pixelSize: Theme.bodyFont
             color: Theme.text
         }
         AppSwitch { id: toggle; onToggled: switchRow.toggled() }
@@ -42,7 +42,7 @@ Flickable {
         Layout.bottomMargin: 4
         visible: text.length > 0
         wrapMode: Text.Wrap
-        font.pixelSize: 12
+        font.pixelSize: Theme.captionFont
         color: Theme.textSecondary
     }
 
@@ -54,12 +54,12 @@ Flickable {
         Text {
             id: name
             Layout.fillWidth: true
-            font.pixelSize: 13
+            font.pixelSize: Theme.bodyFont
             color: Theme.textSecondary
         }
         Text {
             id: data
-            font.pixelSize: 13
+            font.pixelSize: Theme.bodyFont
             color: Theme.text
         }
     }
@@ -77,7 +77,7 @@ Flickable {
         Text {
             id: name
             Layout.preferredWidth: 48
-            font.pixelSize: 13
+            font.pixelSize: Theme.bodyFont
             color: Theme.text
         }
         AppComboBox {
@@ -186,8 +186,10 @@ Flickable {
             text: root.session && root.session.status === "connected" && !root.session.mainViewer
                   ? qsTr("对方同时被别人连着，画面由先连上的人定") : ""
         }
-        Text { Layout.topMargin: 4; text: qsTr("缩放"); font.pixelSize: 13; color: Theme.text }
+        // 手机上用两个手指放大缩小（RemoteView），没有这一项
+        Text { visible: !Theme.touch; Layout.topMargin: 4; text: qsTr("缩放"); font.pixelSize: Theme.bodyFont; color: Theme.text }
         SegmentedControl {
+            visible: !Theme.touch
             Layout.fillWidth: true
             model: [qsTr("适应窗口"), qsTr("原始大小")]
             currentIndex: root.view.nativeSize ? 1 : 0
@@ -219,7 +221,9 @@ Flickable {
             text: root.session && root.session.status === "connected" && root.session.audio
                   ? root.session.audioNote : ""
         }
+        // 手机上没有本机的指针，对方的指针一直画着
         SwitchRow {
+            visible: !Theme.touch
             label: qsTr("显示远程光标")
             checked: AppSettings.remoteCursor
             onToggled: AppSettings.remoteCursor = checked

@@ -33,7 +33,7 @@ RowLayout {
             Layout.fillWidth: true
             text: root.transfer.name
             elide: Text.ElideMiddle
-            font.pixelSize: 13
+            font.pixelSize: Theme.bodyFont
             color: Theme.text
         }
 
@@ -57,7 +57,7 @@ RowLayout {
         Text {
             Layout.fillWidth: true
             elide: Text.ElideRight
-            font.pixelSize: 12
+            font.pixelSize: Theme.captionFont
             color: root.failed ? Theme.danger : Theme.textSecondary
             text: {
                 const t = root.transfer

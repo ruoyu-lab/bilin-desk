@@ -7,10 +7,10 @@ ComboBox {
     id: root
 
     textRole: "label"
-    implicitHeight: 30
+    implicitHeight: Theme.touch ? 40 : 30
     leftPadding: 10
     rightPadding: 30
-    font.pixelSize: 13
+    font.pixelSize: Theme.bodyFont
     opacity: enabled ? 1 : 0.5
 
     background: Rectangle {
@@ -40,7 +40,7 @@ ComboBox {
         required property int index
 
         width: ListView.view.width
-        implicitHeight: 30
+        implicitHeight: Theme.touch ? 44 : 30
         leftPadding: 32
         rightPadding: 12
         highlighted: root.highlightedIndex === index
@@ -58,7 +58,7 @@ ComboBox {
             text: item.modelData[root.textRole]
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
-            font.pixelSize: 13
+            font.pixelSize: Theme.bodyFont
             color: Theme.text
         }
         Icon {

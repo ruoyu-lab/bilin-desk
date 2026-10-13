@@ -58,7 +58,7 @@ Rectangle {
                 Text {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
-                    font.pixelSize: 13
+                    font.pixelSize: Theme.bodyFont
                     font.weight: Font.Medium
                     color: Theme.text
                     text: root.offer.resumed
@@ -73,7 +73,7 @@ Rectangle {
                     Layout.fillWidth: true
                     text: root.offer.name
                     elide: Text.ElideMiddle
-                    font.pixelSize: 12
+                    font.pixelSize: Theme.captionFont
                     color: Theme.textSecondary
                 }
             }
@@ -84,7 +84,7 @@ Rectangle {
             visible: root.error.length > 0
             text: root.error
             wrapMode: Text.Wrap
-            font.pixelSize: 12
+            font.pixelSize: Theme.captionFont
             color: Theme.danger
         }
 

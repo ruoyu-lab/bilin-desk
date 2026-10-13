@@ -73,7 +73,7 @@ ColumnLayout {
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.connected ? qsTr("拖拽文件或文件夹到这里发送") : qsTr("连接后可以发送文件")
-                    font.pixelSize: 12
+                    font.pixelSize: Theme.captionFont
                     color: Theme.textSecondary
                 }
             }
@@ -87,7 +87,7 @@ ColumnLayout {
         visible: root.error.length > 0
         text: qsTr("没有发出去：%1").arg(root.error)
         wrapMode: Text.Wrap
-        font.pixelSize: 12
+        font.pixelSize: Theme.captionFont
         color: Theme.danger
     }
 
@@ -99,14 +99,14 @@ ColumnLayout {
         Text {
             Layout.fillWidth: true
             text: qsTr("传输列表")
-            font.pixelSize: 12
+            font.pixelSize: Theme.captionFont
             font.weight: Font.Medium
             color: Theme.textMuted
         }
         Text {
             visible: root.hasCompleted
             text: qsTr("清除已完成")
-            font.pixelSize: 12
+            font.pixelSize: Theme.captionFont
             color: clearArea.containsMouse ? Theme.text : Theme.textSecondary
 
             MouseArea {
@@ -135,7 +135,7 @@ ColumnLayout {
             anchors.centerIn: parent
             visible: list.count === 0
             text: qsTr("暂无传输")
-            font.pixelSize: 12
+            font.pixelSize: Theme.captionFont
             color: Theme.textMuted
         }
 

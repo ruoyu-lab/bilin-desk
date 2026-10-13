@@ -93,6 +93,10 @@ set(app_qml
     qml/main/LegalPage.qml
     qml/main/LicensesPage.qml
     qml/session/RemoteCanvas.qml
+    qml/session/ChatTab.qml
+    qml/session/FilesTab.qml
+    qml/session/SettingsTab.qml
+    qml/session/SidePanel.qml
     qml/auth/LoginForm.qml
     qml/main/device_query.js
     qml/main/DeviceMenu.qml
@@ -154,19 +158,15 @@ set(desktop_qml
     qml/setup/SetupWindow.qml
     qml/share/IncomingWindow.qml
     qml/share/ShareChatWindow.qml
-    qml/session/ChatTab.qml
     qml/session/CompactChrome.qml
     qml/session/PowerConfirm.qml
     qml/session/PowerMenu.qml
     qml/session/DisplayPicker.qml
     qml/session/DisplayThumbnails.qml
-    qml/session/FilesTab.qml
     qml/session/SessionTabs.qml
     qml/session/SessionTools.qml
     qml/session/SessionView.qml
     qml/session/SessionWindow.qml
-    qml/session/SettingsTab.qml
-    qml/session/SidePanel.qml
 )
 # 手机版（BILIN_MOBILE）：一个窗口、底部标签栏（宽的时候侧栏），后台服务在本进程里
 set(mobile_sources

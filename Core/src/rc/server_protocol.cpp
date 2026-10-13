@@ -47,6 +47,11 @@ QString platformName()
     return type;
 }
 
+bool acceptsConnections(QStringView platform)
+{
+    return platform != u"Android" && platform != u"iOS";
+}
+
 QJsonObject hello(const QString &deviceId, const QString &token, const QByteArray &publicKey, const QString &name,
                   const QString &version, const QString &machine)
 {

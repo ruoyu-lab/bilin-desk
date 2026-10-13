@@ -32,7 +32,7 @@ LocalService::LocalService(const QString &directory, QObject *parent)
     // 服务器的地址在编译时定（CMake 的 RC_SERVER_URL）
     , link_(store_, QUrl(QStringLiteral(RC_SERVER_URL)), {})
     , server_(store_, serviceInfo())
-    , discovery_(store_, {})
+    , discovery_(store_, {.announce = false})
     , lan_(store_, {})
     , signaling_([this](const QString &deviceId) { return discovery_.addressOf(deviceId); })
 {

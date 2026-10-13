@@ -8,7 +8,7 @@ AbstractButton {
     property string iconName
     property bool current: false
 
-    implicitHeight: 40
+    implicitHeight: Theme.touch ? 48 : 40
     implicitWidth: row.implicitWidth + 4
     hoverEnabled: true
 
@@ -33,7 +33,7 @@ AbstractButton {
         }
         Text {
             text: root.text
-            font.pixelSize: 13
+            font.pixelSize: Theme.bodyFont
             font.weight: root.current ? Font.Medium : Font.Normal
             color: root.current || root.hovered ? Theme.text : Theme.textSecondary
         }
