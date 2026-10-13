@@ -44,7 +44,9 @@
 
 ## 编译、装到手机
 
-要 Qt 的 Android 版（`~/Qt/6.11.2/android_arm64_v8a`）、Android SDK 和 NDK、JDK 17 起。连正式的服务器：
+要 Qt 的 Android 版（`~/Qt/6.11.2/android_arm64_v8a`）、Android SDK 和 NDK、JDK 17 起，还有 Android SDK 目录下的
+`android_openssl`（KDAB，Qt Creator 装 Android 开发环境时一起下好）：Qt 在 Android 上的加密连接靠 OpenSSL，Qt 不带，
+打包时放进 APK（开源声明里有它）。连正式的服务器：
 
 ```sh
 scripts/build-android.sh            # build/android/Bilin.apk，用调试密钥签名

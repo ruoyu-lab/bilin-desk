@@ -26,8 +26,9 @@ Item {
                 .arg("https://doc.qt.io/qt-6/licenses-used-in-qt.html") },
         { name: "QWindowKit", purpose: qsTr("Windows 的窗口外框"), license: "Apache-2.0", files: ["QWindowKit.txt"],
           windowsOnly: true },
-        { name: "Lucide", purpose: qsTr("图标"), license: "ISC", files: ["Lucide.txt"] }
-    ].filter(e => !e.windowsOnly || Qt.platform.os === "windows")
+        { name: "Lucide", purpose: qsTr("图标"), license: "ISC", files: ["Lucide.txt"] },
+        { name: "OpenSSL", purpose: qsTr("加密连接"), license: "Apache-2.0", files: ["OpenSSL.txt"], androidOnly: true }
+    ].filter(e => (!e.windowsOnly || Qt.platform.os === "windows") && (!e.androidOnly || Qt.platform.os === "android"))
 
     function back() {
         if (current)
