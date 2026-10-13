@@ -82,7 +82,7 @@ flowchart LR
 需要 CMake 3.25+、Ninja、Qt 6.10+；macOS 用 Xcode 的命令行工具，Windows 用 Visual Studio 2022 或更新版本。
 
 ```sh
-git clone --recursive https://github.com/ruoyu-lab/bilindesk.git
+git clone --recursive https://github.com/ruoyu-lab/bilin-desk.git
 cd bilindesk
 cmake -S . -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$HOME/Qt/6.11.2/macos
 cmake --build build/debug

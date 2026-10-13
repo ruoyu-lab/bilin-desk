@@ -92,7 +92,7 @@ flowchart LR
 You need CMake 3.25+, Ninja and Qt 6.10+; Xcode command line tools on macOS, Visual Studio 2022 or later on Windows.
 
 ```sh
-git clone --recursive https://github.com/ruoyu-lab/bilindesk.git
+git clone --recursive https://github.com/ruoyu-lab/bilin-desk.git
 cd bilindesk
 cmake -S . -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$HOME/Qt/6.11.2/macos
 cmake --build build/debug
