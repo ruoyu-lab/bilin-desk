@@ -26,6 +26,13 @@ Settings {
     // macOS 第一次打开时的授权引导走完了（完成、以后再说），之后不再出现
     property bool permissionGuideDone: false
 
+    // 手机：第一次打开时选了"以后再说"，不再先进登录页
+    property bool mobileLoginSkipped: false
+    // 手机：手指怎么操作电脑。touchpad（手指移光标，点一下是点击）| direct（点哪就是哪）；空的时候手机触摸板、平板直接点
+    property string fingerMode
+    // 手机：连着电脑时屏幕不自己熄灭
+    property bool keepScreenOn: true
+
     // 被控时连接请求卡片上次拖到的位置（窗口左上角，逻辑像素）；-1 表示还没拖过
     property int requestX: -1
     property int requestY: -1

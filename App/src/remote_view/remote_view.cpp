@@ -1,7 +1,9 @@
 #include "remote_view.h"
 
 #include "frame_mailbox.h"
+#ifdef RC_GPU_FRAMES
 #include "frame_node.h"
+#endif
 #include "viewer_session.h"
 
 #include <QCoreApplication>
@@ -209,6 +211,7 @@ QSGNode *RemoteView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
     const qreal ratio = window()->effectiveDevicePixelRatio();
     QSGNode *node = old;
     if (kind == NodeKind::Frame) {
+#ifdef RC_GPU_FRAMES
         const rcs_gpu_frame_info info = frame.info();
         frameWidth_ = info.width;
         frameHeight_ = info.height;
@@ -219,6 +222,7 @@ QSGNode *RemoteView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
         auto *frameNode = old ? static_cast<FrameNode *>(old) : new FrameNode(window());
         frameNode->update(frame, QRectF(g.x / ratio, g.y / ratio, g.width / ratio, g.height / ratio), source, frames_);
         node = frameNode;
+#endif
     } else {
         frameWidth_ = uint32_t(image.width());
         frameHeight_ = uint32_t(image.height());

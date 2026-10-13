@@ -370,8 +370,11 @@ void ViewerSession::open(bool relay)
     const bool gpuFrames = decodeDevice_ != nullptr;
     if (gpuFrames)
         config.use(rcsdk::gpuDevice(decodeDevice_));
-#else
+#elif defined(RC_GPU_FRAMES)
     const bool gpuFrames = true;
+#else
+    // 手机：SDK 从显卡读回来的 CPU 上的图像
+    const bool gpuFrames = false;
 #endif
     // 我的设备：只认它的公钥，它也只认本机的；别人：临时密码
     if (byDevice()) {

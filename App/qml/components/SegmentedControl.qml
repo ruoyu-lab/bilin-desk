@@ -12,7 +12,7 @@ Rectangle {
     readonly property real segmentWidth: root.model.length > 0
                                          ? (width - inset * 2 - inset * (model.length - 1)) / model.length : 0
 
-    implicitHeight: 30
+    implicitHeight: Theme.segmentHeight
     radius: Theme.radius
     color: Theme.fill
 
@@ -51,7 +51,7 @@ Rectangle {
                     text: segment.modelData
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
-                    font.pixelSize: 12
+                    font.pixelSize: Theme.touch ? 14 : 12
                     color: segment.current ? Theme.text : Theme.textSecondary
 
                     Behavior on color { ColorAnimation { duration: 150 } }

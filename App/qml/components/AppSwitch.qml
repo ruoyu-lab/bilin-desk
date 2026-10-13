@@ -4,24 +4,24 @@ import QtQuick.Controls
 Switch {
     id: root
 
-    implicitWidth: 34
-    implicitHeight: 20
+    implicitWidth: Theme.switchWidth
+    implicitHeight: Theme.switchHeight
     padding: 0
 
     indicator: Rectangle {
-        width: 34
-        height: 20
-        radius: 10
+        width: Theme.switchWidth
+        height: Theme.switchHeight
+        radius: height / 2
         color: root.checked ? Theme.accent : Theme.switchOff
 
         Behavior on color { ColorAnimation { duration: 120 } }
 
         Rectangle {
-            x: root.checked ? 16 : 2
+            x: root.checked ? parent.width - width - 2 : 2
             y: 2
-            width: 16
-            height: 16
-            radius: 8
+            width: parent.height - 4
+            height: width
+            radius: width / 2
             color: "white"
             Behavior on x { NumberAnimation { duration: 120 } }
         }

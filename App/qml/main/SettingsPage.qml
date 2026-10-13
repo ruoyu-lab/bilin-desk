@@ -231,6 +231,8 @@ Item {
     AboutSettings {
         anchors.fill: parent
         visible: root.subpage === "about"
+        // 只有 macOS 上装好的那一份有（开发版本没有）
+        uninstallable: Qt.platform.os === "osx" && Setup.installed
         overTitleBar: root.overTitleBar
         leftInset: root.leftInset
         onBackRequested: root.subpage = ""

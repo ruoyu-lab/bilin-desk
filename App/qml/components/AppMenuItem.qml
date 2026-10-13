@@ -11,7 +11,7 @@ MenuItem {
     // 右边浅色的一小段：快捷键这样的
     property string hint
 
-    implicitHeight: 30
+    implicitHeight: Theme.touch ? 44 : 30
     leftPadding: 12
     rightPadding: 12
 
@@ -42,7 +42,7 @@ MenuItem {
             leftPadding: root.markable ? 20 : 0
             text: root.text
             verticalAlignment: Text.AlignVCenter
-            font.pixelSize: 13
+            font.pixelSize: Theme.bodyFont
             color: root.destructive ? Theme.danger : root.enabled ? Theme.text : Theme.textMuted
         }
         Text {

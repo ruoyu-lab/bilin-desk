@@ -9,6 +9,9 @@ SettingsScroll {
     title: qsTr("关于比邻")
     backTo: qsTr("设置")
 
+    // 最下面有"卸载比邻"（macOS 装好的程序：系统没有卸载入口，程序自己给）
+    property bool uninstallable: false
+
     // terms | privacy | licenses
     signal documentRequested(string kind)
     signal uninstallRequested()
@@ -76,9 +79,8 @@ SettingsScroll {
         }
     }
 
-    // 只有装好的那一份有（开发版本没有）
     SettingsSection {
-        visible: Qt.platform.os === "osx" && Setup.installed
+        visible: root.uninstallable
         SettingsRow {
             label: qsTr("卸载比邻")
             danger: true

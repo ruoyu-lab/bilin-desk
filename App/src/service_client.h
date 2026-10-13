@@ -4,16 +4,18 @@
 #include <QJsonObject>
 #include <QLatin1StringView>
 #include <QObject>
+#include <QString>
 #include <QTimer>
 
 namespace rc {
 class LineChannel;
 }
 
-// 和后台服务之间的本机连接（消息见 rc/protocol.h）。
-// 开发版：连当前用户的后台服务，连不上时把它启动起来（它和界面程序放在一起），断了就重新连；连上的不是旁边这一份
-// 程序（重新编译过、别处的一份）时让它退出，换成旁边这一份。
-// 装好的（rc/system_service.h）：连整台电脑那一个，它由系统启动、管着，这边只管连，断了就重新连
+// 和后台服务之间的本机连接（消息见 rc/protocol.h）。后台服务由谁运行（Runner）：
+// - Beside（电脑上的开发版）：连当前用户的后台服务，连不上时把它启动起来（它和界面程序放在一起），断了就重新连；
+//   连上的不是旁边这一份程序（重新编译过、别处的一份）时让它退出，换成旁边这一份
+// - System（电脑上装好的，rc/system_service.h）：连整台电脑那一个，它由系统启动、管着，这边只管连，断了就重新连
+// - InProcess（手机）：在本程序的进程里（App/src/mobile/local_service.h），连上它之前已经在听
 class ServiceClient : public QObject
 {
     Q_OBJECT
@@ -22,10 +24,13 @@ public:
     // Connecting：正在连（需要时先启动它）| Ready | Unavailable：启动了也连不上
     enum class State { Connecting, Ready, Unavailable };
 
-    explicit ServiceClient(QObject *parent = nullptr);
+    enum class Runner { Beside, System, InProcess };
+
+    // endpoint：后台服务的本机连接（rc/ipc/endpoint.h、rc/system_service.h）
+    ServiceClient(Runner runner, const QString &endpoint, QObject *parent = nullptr);
 
     // 后台服务是装好的系统服务
-    bool systemService() const { return system_; }
+    bool systemService() const { return runner_ == Runner::System; }
 
     void start();
     // 后台服务起不来时再试一次
@@ -54,7 +59,8 @@ private:
     void setState(State state);
     void launch();
 
-    const bool system_;
+    const Runner runner_;
+    const QString endpoint_;
     rc::LineChannel *channel_ = nullptr;
     QHash<QString, QJsonObject> topics_;
     State state_ = State::Connecting;

@@ -5,6 +5,7 @@
 #include "lan_discovery.h"
 #include "lan_signaling.h"
 #include "server_link.h"
+#include "service_wiring.h"
 #include "share_chat.h"
 #include "sharing.h"
 #include "signaling.h"
@@ -17,7 +18,6 @@
 #include <rc/peer_protocol.h>
 #include <rc/programs.h>
 #include <rc/release.h>
-#include <rc/server_protocol.h>
 #include <rc/system_service.h>
 
 #include <rcsdk/clipboard.h>
@@ -163,12 +163,8 @@ int main(int argc, char *argv[])
                                                     {QStringLiteral("reason"), reason}});
     });
 
-    // P2P 和中继用的服务器（服务器发来的）：分享会话用，界面里去连别人的会话也用（ice 主题）
-    server.publish(rc::protocol::IceTopic, serverLink.ice().toJson());
-    QObject::connect(&serverLink, &ServerLink::iceChanged, &host, [&] {
-        host.setIceServers(serverLink.ice());
-        server.publish(rc::protocol::IceTopic, serverLink.ice().toJson());
-    });
+    // P2P 和中继用的服务器（服务器发来的）：分享会话用，界面里去连别人的会话也用（ice 主题，publishNetwork）
+    QObject::connect(&serverLink, &ServerLink::iceChanged, &host, [&] { host.setIceServers(serverLink.ice()); });
 
     // 和连着本机的人互传文件：对方发来的由界面上的人决定收不收、存到哪里
     server.publish(rc::protocol::FilesTopic, rc::transfersToJson(host.transfers()));
@@ -201,108 +197,24 @@ int main(int argc, char *argv[])
     });
     QObject::connect(&server, &ControlServer::clearHistoryRequested, &history, &ConnectionHistory::clear);
 
-    // 账号：发验证码、注册、登录、找回密码、退出、移出设备、改昵称、改密码、注销经服务器；结果（账号和账号下的设备）给界面
-    server.publish(rc::protocol::AccountTopic, serverLink.account().toJson());
-    QObject::connect(&serverLink, &ServerLink::accountChanged, &server,
-                     [&] { server.publish(rc::protocol::AccountTopic, serverLink.account().toJson()); });
-    const auto accountFailed = [&server](const QString &reason) {
-        server.sendEvent(rc::protocol::AccountFailed, {{QStringLiteral("reason"), reason}});
-    };
-    QObject::connect(&serverLink, &ServerLink::accountFailed, &server, accountFailed);
-    const auto noServer = [accountFailed](bool sent) {
-        if (!sent)
-            accountFailed(rc::protocol::NoServer);
-    };
-    QObject::connect(&server, &ControlServer::sendCodeRequested, &serverLink,
-                     [&, noServer](const QString &email, const QString &purpose) {
-                         noServer(serverLink.sendCode(email, purpose));
-                     });
-    QObject::connect(&serverLink, &ServerLink::codeSent, &server, [&server](const QString &purpose) {
-        server.sendEvent(rc::protocol::CodeSent, {{QStringLiteral("purpose"), purpose}});
-    });
-    QObject::connect(&server, &ControlServer::registerRequested, &serverLink,
-                     [&, noServer](const QString &email, const QString &password, const QString &nickname,
-                                   const QString &code) {
-                         noServer(serverLink.registerAccount(email, password, nickname, code));
-                     });
-    QObject::connect(&server, &ControlServer::signInRequested, &serverLink,
-                     [&, noServer](const QString &email, const QString &password) {
-                         noServer(serverLink.signIn(email, password));
-                     });
-    QObject::connect(&server, &ControlServer::resetPasswordRequested, &serverLink,
-                     [&, noServer](const QString &email, const QString &code, const QString &password) {
-                         noServer(serverLink.resetPassword(email, code, password));
-                     });
-    QObject::connect(&server, &ControlServer::signOutRequested, &serverLink,
-                     [&, noServer] { noServer(serverLink.signOut()); });
-    QObject::connect(&server, &ControlServer::removeDeviceRequested, &serverLink,
-                     [&, noServer](const QString &deviceId) { noServer(serverLink.removeDevice(deviceId)); });
-    QObject::connect(&server, &ControlServer::nicknameRequested, &serverLink,
-                     [&, noServer](const QString &nickname) { noServer(serverLink.setNickname(nickname)); });
-    QObject::connect(&server, &ControlServer::changePasswordRequested, &serverLink,
-                     [&, noServer](const QString &oldPassword, const QString &newPassword) {
-                         noServer(serverLink.changePassword(oldPassword, newPassword));
-                     });
-    QObject::connect(&server, &ControlServer::deleteAccountRequested, &serverLink,
-                     [&, noServer](const QString &password) { noServer(serverLink.deleteAccount(password)); });
-    QObject::connect(&serverLink, &ServerLink::passwordChanged, &server,
-                     [&server] { server.sendEvent(rc::protocol::PasswordChanged, {}); });
+    // 账号：经服务器，结果给界面
+    service_wiring::connectAccount(server, serverLink);
 
     // 局域网：附近的设备（发现），不经服务器的信令
     LanDiscovery discovery(store, {});
-    server.publish(rc::protocol::NearbyTopic, discovery.state().toJson());
-    QObject::connect(&discovery, &LanDiscovery::changed, &server,
-                     [&] { server.publish(rc::protocol::NearbyTopic, discovery.state().toJson()); });
     LanSignaling lan(store, {});
+    service_wiring::publishNetwork(server, serverLink, discovery);
 
     // 信令：界面去连别人的会话 ↔ 服务器或局域网 ↔ 本机的分享会话（谁的交给谁、走哪条路见 Signaling）
     Signaling signaling([&discovery](const QString &deviceId) { return discovery.addressOf(deviceId); });
-    QObject::connect(&server, &ControlServer::signalRequested, &signaling, &Signaling::fromViewer);
-    QObject::connect(&server, &ControlServer::signalEnded, &signaling, &Signaling::endViewer);
-    QObject::connect(&serverLink, &ServerLink::signalReceived, &signaling, &Signaling::fromServer);
-    QObject::connect(&serverLink, &ServerLink::declined, &signaling, &Signaling::declinedByPeer);
-    QObject::connect(&serverLink, &ServerLink::undeliverable, &signaling,
-                     [&](const QString &to, const QString &session, const QString &reason) {
-        signaling.undeliverable(to, session, reason == rc::server::TooMany ? rc::protocol::TooMany : rc::protocol::Offline);
-    });
-    QObject::connect(&lan, &LanSignaling::received, &signaling, &Signaling::fromLan);
-    QObject::connect(&lan, &LanSignaling::declined, &signaling, &Signaling::declinedByPeer);
-    QObject::connect(&lan, &LanSignaling::unreachable, &signaling, &Signaling::lanUnreachable);
+    service_wiring::connectViewerSignaling(server, serverLink, lan, signaling);
     QObject::connect(&host, &Sharing::answer, &signaling, &Signaling::fromSharer);
     QObject::connect(&host, &Sharing::declined, &signaling, &Signaling::declineFromSharer);
     QObject::connect(&host, &Sharing::viewerConnected, &signaling,
                      [&](const rc::protocol::SharePeer &, const QString &session) { signaling.keepSharer(session); });
     QObject::connect(&host, &Sharing::viewerGone, &signaling,
                      [&](const QString &, const QString &session) { signaling.releaseSharer(session); });
-    QObject::connect(&signaling, &Signaling::forgotten, &lan, &LanSignaling::close);
     QObject::connect(&signaling, &Signaling::toSharer, &host, &Sharing::receiveSignal);
-    QObject::connect(&signaling, &Signaling::toServer, &serverLink,
-                     [&](const QString &to, const QString &session, const QString &text, const rc::ConnectionMode &mode) {
-                         if (!serverLink.sendSignal(to, session, text, mode))
-                             signaling.undeliverable(to, session, rc::protocol::NoServer);
-                     });
-    QObject::connect(&signaling, &Signaling::declineToServer, &serverLink, &ServerLink::sendDecline);
-    QObject::connect(&signaling, &Signaling::toLan, &lan, &LanSignaling::send);
-    QObject::connect(&signaling, &Signaling::answerToLan, &lan, &LanSignaling::answer);
-    QObject::connect(&signaling, &Signaling::declineToLan, &lan, &LanSignaling::decline);
-    QObject::connect(&signaling, &Signaling::toViewer, &server,
-                     [&](const QString &from, const QString &session, const QString &text) {
-                         server.sendEvent(rc::protocol::Signal, {{QStringLiteral("from"), from},
-                                                                 {QStringLiteral("session"), session},
-                                                                 {QStringLiteral("text"), text}});
-                     });
-    QObject::connect(&signaling, &Signaling::viewerDeclined, &server,
-                     [&](const QString &from, const QString &session, const QString &reason) {
-                         server.sendEvent(rc::protocol::Declined, {{QStringLiteral("from"), from},
-                                                                   {QStringLiteral("session"), session},
-                                                                   {QStringLiteral("reason"), reason}});
-                     });
-    QObject::connect(&signaling, &Signaling::viewerUndeliverable, &server,
-                     [&](const QString &to, const QString &session, const QString &reason) {
-                         server.sendEvent(rc::protocol::Undeliverable, {{QStringLiteral("to"), to},
-                                                                        {QStringLiteral("session"), session},
-                                                                        {QStringLiteral("reason"), reason}});
-                     });
     if (!server.listen(installed ? rc::system_service::endpoint() : rc::ipc::serviceEndpoint()))
         return 1;
     // 装好时系统要它结束（注销、换用户、服务停了）：连着的人等它回来

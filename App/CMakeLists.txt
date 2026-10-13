@@ -3,168 +3,209 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     message(FATAL_ERROR "请打开仓库根目录的 CMakeLists.txt，而不是 App/CMakeLists.txt")
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Network LabsPlatform ShaderTools GuiPrivate Svg)
+find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Network ShaderTools GuiPrivate Svg)
 
-qt_add_executable(Bilin
-    main.cpp
+# 电脑版、手机版共用的
+set(app_sources
+    src/account/account.h
+    src/account/account.cpp
+    src/appearance.h
+    src/appearance.cpp
+    src/chat/conversation.h
+    src/chat/conversation.cpp
+    src/chat/conversations.h
+    src/chat/conversations.cpp
+    src/clipboard.h
+    src/clipboard.cpp
+    src/devices/device_directory.h
+    src/devices/device_directory.cpp
+    src/devices/device_wake.h
+    src/devices/device_wake.cpp
+    src/documents.h
+    src/documents.cpp
+    src/files/file_transfer_list.h
+    src/files/file_transfer_list.cpp
+    src/remote_view/remote_input.h
+    src/remote_view/remote_input.cpp
+    src/remote_view/remote_view.h
+    src/remote_view/remote_view.cpp
+    src/remote_view/view_graphics.h
+    src/remote_view/view_graphics.cpp
+    src/service_client.h
+    src/service_client.cpp
+    src/session/frame_mailbox.h
+    src/session/frame_mailbox.cpp
+    src/session/remote_displays.h
+    src/session/remote_displays.cpp
+    src/session/view_quality.h
+    src/session/view_quality.cpp
+    src/session/viewer_audio.h
+    src/session/viewer_audio.cpp
+    src/session/viewer_chat.h
+    src/session/viewer_chat.cpp
+    src/session/viewer_clipboard.h
+    src/session/viewer_clipboard.cpp
+    src/session/viewer_power.h
+    src/session/viewer_power.cpp
+    src/session/viewer_files.h
+    src/session/viewer_files.cpp
+    src/session/viewer_session.h
+    src/session/viewer_session.cpp
+    src/session/viewer_sessions.h
+    src/session/viewer_sessions.cpp
+    src/this_device.h
+    src/this_device.cpp
 )
+set(app_qml
+    qml/AppSettings.qml
+    qml/Theme.qml
+    qml/components/AdaptiveGrid.qml
+    qml/components/AppButton.qml
+    qml/components/AppComboBox.qml
+    qml/components/AppMenu.qml
+    qml/components/AppMenuItem.qml
+    qml/components/AppMenuLabel.qml
+    qml/components/AppMenuSeparator.qml
+    qml/components/AppSwitch.qml
+    qml/components/AppTextField.qml
+    qml/components/Avatar.qml
+    qml/components/ChatView.qml
+    qml/components/DeviceIcon.qml
+    qml/components/FileOfferCard.qml
+    qml/components/Icon.qml
+    qml/components/Logo.qml
+    qml/components/IconButton.qml
+    qml/components/LegalText.qml
+    qml/components/NavItem.qml
+    qml/components/PopupSurface.qml
+    qml/components/SearchBox.qml
+    qml/components/SegmentedControl.qml
+    qml/components/SettingsRow.qml
+    qml/components/SettingsScroll.qml
+    qml/components/SettingsSection.qml
+    qml/components/StatusDot.qml
+    qml/components/ToolGroup.qml
+    qml/components/TransferRow.qml
+    qml/components/UnderlineTab.qml
+    qml/main/AboutSettings.qml
+    qml/main/AccountDialog.qml
+    qml/main/AccountSettings.qml
+    qml/main/LegalPage.qml
+    qml/main/LicensesPage.qml
+    qml/session/RemoteCanvas.qml
+    qml/auth/LoginForm.qml
+    qml/main/device_query.js
+    qml/main/DeviceMenu.qml
+)
+# 电脑版才有的：安装、托盘、开机启动、单实例、窗口外框、被别人连（share）
+set(desktop_sources
+    src/app_lifecycle.h
+    src/app_lifecycle.cpp
+    src/autostart.h
+    src/autostart.cpp
+    src/cursor_position.h
+    src/cursor_position.cpp
+    src/dock.h
+    src/login_item.h
+    src/quit_reason.h
+    src/setup/setup.h
+    src/setup/setup.cpp
+    src/setup/setup_platform.h
+    src/setup/setup_steps.h
+    src/setup/setup_steps.cpp
+    src/share/incoming_chat.h
+    src/share/incoming_chat.cpp
+    src/share/incoming_connections.h
+    src/share/incoming_connections.cpp
+    src/share/incoming_files.h
+    src/share/incoming_files.cpp
+    src/share/incoming_history.h
+    src/share/incoming_history.cpp
+    src/single_instance.h
+    src/single_instance.cpp
+    src/windowchrome.h
+)
+# 解出的 GPU 画面直接画（Mac 的 Metal、Windows 的 D3D11 纹理）；手机上先用 CPU 上的图像（RemoteView）
+set(gpu_frame_sources
+    src/remote_view/frame_node.h
+    src/remote_view/frame_node.cpp
+    src/remote_view/frame_textures.h
+)
+set(desktop_qml
+    qml/BrowseState.qml
+    qml/Main.qml
+    qml/auth/LoginArt.qml
+    qml/auth/LoginWindow.qml
+    qml/components/WindowButtons.qml
+    qml/components/WindowDragArea.qml
+    qml/components/WindowMemory.qml
+    qml/main/AccountPopup.qml
+    qml/main/AddDeviceDialog.qml
+    qml/main/DeviceDetail.qml
+    qml/main/DeviceRow.qml
+    qml/main/DeviceTile.qml
+    qml/main/DevicesPage.qml
+    qml/main/MainToolbar.qml
+    qml/main/MainWindow.qml
+    qml/main/OverviewPage.qml
+    qml/main/SettingsPage.qml
+    qml/main/Sidebar.qml
+    qml/setup/PermissionWindow.qml
+    qml/setup/SetupWindow.qml
+    qml/share/IncomingWindow.qml
+    qml/share/ShareChatWindow.qml
+    qml/session/ChatTab.qml
+    qml/session/CompactChrome.qml
+    qml/session/PowerConfirm.qml
+    qml/session/PowerMenu.qml
+    qml/session/DisplayPicker.qml
+    qml/session/DisplayThumbnails.qml
+    qml/session/FilesTab.qml
+    qml/session/SessionTabs.qml
+    qml/session/SessionTools.qml
+    qml/session/SessionView.qml
+    qml/session/SessionWindow.qml
+    qml/session/SettingsTab.qml
+    qml/session/SidePanel.qml
+)
+# 手机版（BILIN_MOBILE）：一个窗口、底部标签栏（宽的时候侧栏），后台服务在本进程里
+set(mobile_sources
+    src/mobile/local_service.h
+    src/mobile/local_service.cpp
+)
+set(mobile_qml
+    qml/mobile/MobileMain.qml
+    qml/mobile/MobilePage.qml
+    qml/mobile/MobileTabBar.qml
+    qml/mobile/MobileNavRail.qml
+    qml/mobile/MobileOverview.qml
+    qml/mobile/MobileDevices.qml
+    qml/mobile/MobileRecent.qml
+    qml/mobile/MobileSettings.qml
+    qml/mobile/MobileDeviceRow.qml
+    qml/mobile/MobileLogin.qml
+    qml/mobile/MobileSession.qml
+    qml/mobile/mobile_format.js
+)
+
+if(BILIN_MOBILE)
+    qt_add_executable(Bilin main_mobile.cpp)
+    list(APPEND app_sources ${mobile_sources})
+    list(APPEND app_qml ${mobile_qml})
+else()
+    find_package(Qt6 REQUIRED COMPONENTS LabsPlatform)
+    qt_add_executable(Bilin main.cpp)
+    list(APPEND app_sources ${desktop_sources} ${gpu_frame_sources})
+    list(APPEND app_qml ${desktop_qml})
+endif()
 
 set_source_files_properties(qml/Theme.qml qml/AppSettings.qml
                             PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
 qt_add_qml_module(Bilin
     URI Bilin
-    SOURCES
-        src/account/account.h
-        src/account/account.cpp
-        src/app_lifecycle.h
-        src/app_lifecycle.cpp
-        src/appearance.h
-        src/appearance.cpp
-        src/autostart.h
-        src/autostart.cpp
-        src/chat/conversation.h
-        src/chat/conversation.cpp
-        src/chat/conversations.h
-        src/chat/conversations.cpp
-        src/clipboard.h
-        src/clipboard.cpp
-        src/cursor_position.h
-        src/cursor_position.cpp
-        src/devices/device_directory.h
-        src/devices/device_directory.cpp
-        src/devices/device_wake.h
-        src/devices/device_wake.cpp
-        src/dock.h
-        src/documents.h
-        src/documents.cpp
-        src/files/file_transfer_list.h
-        src/files/file_transfer_list.cpp
-        src/login_item.h
-        src/quit_reason.h
-        src/remote_view/frame_node.h
-        src/remote_view/frame_node.cpp
-        src/remote_view/frame_textures.h
-        src/remote_view/remote_input.h
-        src/remote_view/remote_input.cpp
-        src/remote_view/remote_view.h
-        src/remote_view/remote_view.cpp
-        src/remote_view/view_graphics.h
-        src/remote_view/view_graphics.cpp
-        src/service_client.h
-        src/service_client.cpp
-        src/session/frame_mailbox.h
-        src/session/frame_mailbox.cpp
-        src/session/remote_displays.h
-        src/session/remote_displays.cpp
-        src/session/view_quality.h
-        src/session/view_quality.cpp
-        src/session/viewer_audio.h
-        src/session/viewer_audio.cpp
-        src/session/viewer_chat.h
-        src/session/viewer_chat.cpp
-        src/session/viewer_clipboard.h
-        src/session/viewer_clipboard.cpp
-        src/session/viewer_power.h
-        src/session/viewer_power.cpp
-        src/session/viewer_files.h
-        src/session/viewer_files.cpp
-        src/session/viewer_session.h
-        src/session/viewer_session.cpp
-        src/session/viewer_sessions.h
-        src/session/viewer_sessions.cpp
-        src/setup/setup.h
-        src/setup/setup.cpp
-        src/setup/setup_platform.h
-        src/setup/setup_steps.h
-        src/setup/setup_steps.cpp
-        src/share/incoming_chat.h
-        src/share/incoming_chat.cpp
-        src/share/incoming_connections.h
-        src/share/incoming_connections.cpp
-        src/share/incoming_files.h
-        src/share/incoming_files.cpp
-        src/share/incoming_history.h
-        src/share/incoming_history.cpp
-        src/single_instance.h
-        src/single_instance.cpp
-        src/this_device.h
-        src/this_device.cpp
-        src/windowchrome.h
-    QML_FILES
-        qml/AppSettings.qml
-        qml/BrowseState.qml
-        qml/Main.qml
-        qml/Theme.qml
-        qml/auth/LoginArt.qml
-        qml/auth/LoginWindow.qml
-        qml/components/AdaptiveGrid.qml
-        qml/components/AppButton.qml
-        qml/components/AppComboBox.qml
-        qml/components/AppMenu.qml
-        qml/components/AppMenuItem.qml
-        qml/components/AppMenuLabel.qml
-        qml/components/AppMenuSeparator.qml
-        qml/components/AppSwitch.qml
-        qml/components/AppTextField.qml
-        qml/components/Avatar.qml
-        qml/components/ChatView.qml
-        qml/components/DeviceIcon.qml
-        qml/components/FileOfferCard.qml
-        qml/components/Icon.qml
-        qml/components/Logo.qml
-        qml/components/IconButton.qml
-        qml/components/LegalText.qml
-        qml/components/NavItem.qml
-        qml/components/PopupSurface.qml
-        qml/components/SearchBox.qml
-        qml/components/SegmentedControl.qml
-        qml/components/SettingsRow.qml
-        qml/components/SettingsScroll.qml
-        qml/components/SettingsSection.qml
-        qml/components/StatusDot.qml
-        qml/components/ToolGroup.qml
-        qml/components/TransferRow.qml
-        qml/components/UnderlineTab.qml
-        qml/components/WindowButtons.qml
-        qml/components/WindowDragArea.qml
-        qml/components/WindowMemory.qml
-        qml/main/AboutSettings.qml
-        qml/main/AccountDialog.qml
-        qml/main/AccountPopup.qml
-        qml/main/AccountSettings.qml
-        qml/main/AddDeviceDialog.qml
-        qml/main/DeviceDetail.qml
-        qml/main/DeviceMenu.qml
-        qml/main/DeviceRow.qml
-        qml/main/DeviceTile.qml
-        qml/main/DevicesPage.qml
-        qml/main/device_query.js
-        qml/main/LegalPage.qml
-        qml/main/LicensesPage.qml
-        qml/main/MainToolbar.qml
-        qml/main/MainWindow.qml
-        qml/main/OverviewPage.qml
-        qml/main/SettingsPage.qml
-        qml/main/Sidebar.qml
-        qml/setup/PermissionWindow.qml
-        qml/setup/SetupWindow.qml
-        qml/share/IncomingWindow.qml
-        qml/share/ShareChatWindow.qml
-        qml/session/ChatTab.qml
-        qml/session/CompactChrome.qml
-        qml/session/PowerConfirm.qml
-        qml/session/PowerMenu.qml
-        qml/session/DisplayPicker.qml
-        qml/session/DisplayThumbnails.qml
-        qml/session/FilesTab.qml
-        qml/session/RemoteCanvas.qml
-        qml/session/SessionTabs.qml
-        qml/session/SessionTools.qml
-        qml/session/SessionView.qml
-        qml/session/SessionWindow.qml
-        qml/session/SettingsTab.qml
-        qml/session/SidePanel.qml
+    SOURCES ${app_sources}
+    QML_FILES ${app_qml}
     RESOURCES
         branding/logo.svg
         qml/icons/apple.svg
@@ -257,10 +298,39 @@ qt_add_shaders(Bilin "shaders"
 
 # QML 类型注册按文件名包含头文件
 target_include_directories(Bilin PRIVATE src src/account src/chat src/devices src/files src/remote_view src/session
-                           src/setup src/share)
+                           src/setup src/share src/mobile)
 target_compile_definitions(Bilin PRIVATE APP_VERSION="${BILIN_VERSION}")
 
-# 只做 macOS 和 Windows
+# Qt6::Svg：界面里的图标都是 .svg，运行时靠 SVG 的图片格式插件（imageformats/qsvg）加载。部署工具只有看到程序链接了
+# QtSvg 才会把这个插件带进安装包，不链接的话打成包以后图标全是空的（开发时用的是 Qt 安装目录里的插件，看不出来）
+target_link_libraries(Bilin
+    PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Network Qt6::Svg Qt6::GuiPrivate rccore rcfiles RemoteControl::Core RemoteControl::Clipboard RemoteControl::Power
+)
+
+# 手机版：后台服务的逻辑编进程序里（LocalService），服务器地址也是。Android 打成 APK（platform/android：清单、名字、
+# 图标），版本号 0.1.0 记成 100（每次发布数字变大）
+if(BILIN_MOBILE)
+    target_link_libraries(Bilin PRIVATE rcservicecore)
+    target_compile_definitions(Bilin PRIVATE RC_SERVER_URL="${RC_SERVER_URL}")
+    # 苹果系统上是 .app 包（iOS 必须是；Mac 上预览时也是，不然程序和 QML 模块的目录 Bilin/ 同名）
+    set_target_properties(Bilin PROPERTIES MACOSX_BUNDLE TRUE)
+    if(ANDROID)
+        math(EXPR android_version_code "${PROJECT_VERSION_MAJOR} * 10000 + ${PROJECT_VERSION_MINOR} * 100 + ${PROJECT_VERSION_PATCH}")
+        set_target_properties(Bilin PROPERTIES
+            QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/platform/android"
+            QT_ANDROID_VERSION_NAME "${BILIN_VERSION}"
+            QT_ANDROID_VERSION_CODE ${android_version_code}
+            QT_ANDROID_MIN_SDK_VERSION 29
+            QT_ANDROID_TARGET_SDK_VERSION 35
+        )
+    endif()
+    return()
+endif()
+
+# 解出的 GPU 画面直接画（gpu_frame_sources）
+target_compile_definitions(Bilin PRIVATE RC_GPU_FRAMES)
+
+# 电脑版只做 macOS 和 Windows
 if(APPLE)
     target_sources(Bilin PRIVATE src/windowchrome_mac.mm src/dock_mac.mm src/login_item_mac.mm
                    src/quit_reason_mac.mm src/remote_view/frame_textures_mac.mm src/setup/setup_mac.mm)
@@ -297,12 +367,6 @@ set_target_properties(Bilin PROPERTIES
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
-)
-
-# Qt6::Svg：界面里的图标都是 .svg，运行时靠 SVG 的图片格式插件（imageformats/qsvg）加载。部署工具只有看到程序链接了
-# QtSvg 才会把这个插件带进安装包，不链接的话打成包以后图标全是空的（开发时用的是 Qt 安装目录里的插件，看不出来）
-target_link_libraries(Bilin
-    PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Network Qt6::Svg Qt6::GuiPrivate rccore rcfiles RemoteControl::Core RemoteControl::Clipboard RemoteControl::Power
 )
 
 # 后台服务和界面程序放在一起，界面从自己所在的地方启动它：Windows 上 Qt 把可执行文件都放在构建目录的顶层；

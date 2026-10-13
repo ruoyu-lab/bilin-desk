@@ -40,6 +40,10 @@ QString platformName()
         return QStringLiteral("macOS");
     if (type == u"windows")
         return QStringLiteral("Windows");
+    if (type == u"android")
+        return QStringLiteral("Android");
+    if (type == u"ios")
+        return QStringLiteral("iOS");
     return type;
 }
 

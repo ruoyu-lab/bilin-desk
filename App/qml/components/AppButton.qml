@@ -14,7 +14,7 @@ Button {
 
     readonly property bool solid: primary || dark || danger
 
-    implicitHeight: 32
+    implicitHeight: Theme.controlHeight
     leftPadding: 14
     rightPadding: 14
     hoverEnabled: true
@@ -45,7 +45,7 @@ Button {
             }
             Text {
                 text: root.text
-                font.pixelSize: 13
+                font.pixelSize: Theme.controlFont
                 color: root.dark ? Theme.inverseText : root.solid ? Theme.accentText : Theme.text
             }
         }

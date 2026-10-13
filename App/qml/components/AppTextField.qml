@@ -8,10 +8,10 @@ TextField {
     property color fill: Theme.fill
     property color focusFill: Theme.fillHover
 
-    implicitHeight: 34
+    implicitHeight: Theme.fieldHeight
     leftPadding: 12
     rightPadding: 12
-    font.pixelSize: 13
+    font.pixelSize: Theme.controlFont
     color: Theme.text
     placeholderTextColor: Theme.textMuted
     selectionColor: Theme.textSelection

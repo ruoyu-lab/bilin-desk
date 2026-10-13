@@ -17,7 +17,7 @@ ColumnLayout {
         id: heading
         Layout.leftMargin: 6
         visible: text.length > 0
-        font.pixelSize: 12
+        font.pixelSize: Theme.captionFont
         color: Theme.textSecondary
     }
     Rectangle {
@@ -40,7 +40,7 @@ ColumnLayout {
         Layout.rightMargin: 6
         visible: text.length > 0
         wrapMode: Text.Wrap
-        font.pixelSize: 12
+        font.pixelSize: Theme.captionFont
         color: Theme.textSecondary
     }
 }

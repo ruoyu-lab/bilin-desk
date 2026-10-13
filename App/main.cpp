@@ -14,8 +14,10 @@
 #include "single_instance.h"
 #include "this_device.h"
 
+#include <rc/ipc/endpoint.h>
 #include <rc/log_file.h>
 #include <rc/paths.h>
+#include <rc/system_service.h>
 
 #include <rcsdk/clipboard.h>
 #include <rcsdk/file_transfer.h>
@@ -136,8 +138,10 @@ int main(int argc, char *argv[])
     Autostart autostart(&app);
     Autostart::setInstance(&autostart);
 
-    // 本机的身份和被控那一面在后台服务里：连上它，没在运行就启动它
-    ServiceClient service;
+    // 本机的身份和被控那一面在后台服务里：连上它；开发版没在运行就启动它
+    const bool systemService = rc::system_service::installed();
+    ServiceClient service(systemService ? ServiceClient::Runner::System : ServiceClient::Runner::Beside,
+                          systemService ? rc::system_service::endpoint() : rc::ipc::serviceEndpoint());
     ThisDevice thisDevice(service, &app);
     ThisDevice::setInstance(&thisDevice);
     // 装好了系统服务时，开机时自动启动的开关也管它在界面程序没开着时接不接受我的设备连接

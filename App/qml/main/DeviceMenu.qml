@@ -3,7 +3,8 @@ import QtQuick
 AppMenu {
     id: root
 
-    property var device: ({})
+    // Devices 里的一项（device_directory.h）；还没选的时候是空的
+    property var device: ({ favorite: false, saved: false })
 
     signal connectRequested(bool viewOnly)
 

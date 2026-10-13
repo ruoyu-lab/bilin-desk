@@ -69,10 +69,22 @@ QtObject {
                                                        : Qt.Window
     readonly property int toolbarHeight: 52
     // Windows 顶部一排按钮（工具、侧栏开关、窗口按钮）的统一边长和图标大小
-    readonly property int titleButtonSize: 30
-    readonly property int titleIconSize: 16
+    readonly property int titleButtonSize: touch ? 44 : 30
+    readonly property int titleIconSize: touch ? 22 : 16
     readonly property int trafficLightsInset: 84
     readonly property int radius: 8
+
+    // 手机、平板（触摸屏）：手指点的东西做大，按钮、输入框至少 44 高，字也大一号。电脑上照旧
+    readonly property bool touch: Qt.platform.os === "android" || Qt.platform.os === "ios"
+    readonly property int controlHeight: touch ? 44 : 32
+    readonly property int fieldHeight: touch ? 44 : 34
+    readonly property int segmentHeight: touch ? 34 : 30
+    readonly property int controlFont: touch ? 15 : 13
+    // 列表、设置里的正文和下面的小字
+    readonly property int bodyFont: touch ? 15 : 13
+    readonly property int captionFont: touch ? 13 : 12
+    readonly property int switchWidth: touch ? 48 : 34
+    readonly property int switchHeight: touch ? 28 : 20
 
     function osStyle(os) {
         switch (os) {

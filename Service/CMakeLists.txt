@@ -18,6 +18,8 @@ qt_add_library(rcservicecore STATIC
     src/lan_signaling.cpp
     src/server_link.h
     src/server_link.cpp
+    src/service_wiring.h
+    src/service_wiring.cpp
     src/share_chat.h
     src/share_chat.cpp
     src/share_displays.h
@@ -36,9 +38,16 @@ target_link_libraries(rcservicecore PUBLIC rccore Qt6::WebSockets)
 if(APPLE)
     target_sources(rcservicecore PRIVATE src/client_rights_mac.cpp)
     target_link_libraries(rcservicecore PRIVATE "-framework SystemConfiguration" "-framework CoreFoundation")
-else()
+elseif(WIN32)
     target_sources(rcservicecore PRIVATE src/client_rights_win.cpp)
     target_link_libraries(rcservicecore PRIVATE advapi32 wtsapi32)
+elseif(ANDROID)
+    target_sources(rcservicecore PRIVATE src/client_rights_android.cpp)
+endif()
+
+# 手机上后台服务在程序自己的进程里（App/src/mobile/local_service.h），只要上面的库；被别人连、装成系统服务那些没有
+if(BILIN_MOBILE)
+    return()
 endif()
 
 # 用到 SDK 的部分只在程序里（测试不链接 SDK）

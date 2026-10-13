@@ -52,14 +52,18 @@ qt_add_library(rccore STATIC
 )
 
 if(APPLE)
-    target_sources(rccore PRIVATE src/rc/device_name_mac.cpp src/rc/download_mark_mac.mm src/rc/user_seal_mac.cpp
+    target_sources(rccore PRIVATE src/rc/device_name_mac.cpp src/rc/download_mark_mac.mm src/rc/user_seal_plain.cpp
                    src/rc/system_service_mac.cpp src/rc/release_mac.cpp src/rc/machine_mac.cpp)
     target_link_libraries(rccore PRIVATE "-framework CoreFoundation" "-framework SystemConfiguration"
                           "-framework Foundation" "-framework CoreServices" "-framework Security" "-framework IOKit")
-else()
+elseif(WIN32)
     target_sources(rccore PRIVATE src/rc/device_name.cpp src/rc/download_mark_win.cpp src/rc/user_seal_win.cpp
                    src/rc/system_service_win.cpp src/rc/release_win.cpp src/rc/machine_win.cpp)
     target_link_libraries(rccore PRIVATE crypt32 advapi32 shell32 ole32 bcrypt)
+elseif(ANDROID)
+    # 手机上没有系统服务、也不自己更新（rc/system_service.h、rc/release.h 的核对签名用不到）
+    target_sources(rccore PRIVATE src/rc/device_name_android.cpp src/rc/download_mark_android.cpp
+                   src/rc/user_seal_plain.cpp src/rc/machine_android.cpp)
 endif()
 
 target_include_directories(rccore PUBLIC src)

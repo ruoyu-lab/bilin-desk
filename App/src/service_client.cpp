@@ -1,10 +1,8 @@
 #include "service_client.h"
 
 #include <rc/line_channel.h>
-#include <rc/ipc/endpoint.h>
 #include <rc/programs.h>
 #include <rc/protocol.h>
-#include <rc/system_service.h>
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -30,9 +28,10 @@ QString serviceProgram()
 
 } // namespace
 
-ServiceClient::ServiceClient(QObject *parent)
+ServiceClient::ServiceClient(Runner runner, const QString &endpoint, QObject *parent)
     : QObject(parent)
-    , system_(rc::system_service::installed())
+    , runner_(runner)
+    , endpoint_(endpoint)
 {
     retryTimer_.setSingleShot(true);
     retryTimer_.setInterval(RetryMs);
@@ -57,7 +56,7 @@ void ServiceClient::stopService()
 {
     stopping_ = true;
     retryTimer_.stop();
-    if (!channel_ || system_)
+    if (!channel_ || runner_ != Runner::Beside)
         return;
     channel_->send(protocol::commandMessage(protocol::Quit));
     channel_->flush(500);
@@ -91,14 +90,14 @@ void ServiceClient::connectToService()
     connect(channel_, &rc::LineChannel::connectFailed, this, &ServiceClient::connectionFailed);
     connect(channel_, &rc::LineChannel::disconnected, this, &ServiceClient::disconnected);
     connect(channel_, &rc::LineChannel::received, this, &ServiceClient::received);
-    socket->connectToServer(system_ ? rc::system_service::endpoint() : rc::ipc::serviceEndpoint());
+    socket->connectToServer(endpoint_);
 }
 
 void ServiceClient::connectionFailed()
 {
     ++attempts_;
     // 系统服务由系统启动（开机、被看护者重启）：等它
-    if (!launched_ && !system_) {
+    if (!launched_ && runner_ == Runner::Beside) {
         launched_ = true;
         launch();
     }
@@ -151,7 +150,7 @@ void ServiceClient::received(const QJsonObject &message)
 
 void ServiceClient::checkService(const QJsonObject &json)
 {
-    if (system_) {
+    if (runner_ != Runner::Beside) {
         attempts_ = 0;
         setState(State::Ready);
         return;

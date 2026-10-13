@@ -1,0 +1,223 @@
+import QtQuick
+import QtQuick.Layouts
+import "../main/device_query.js" as DeviceQuery
+import "mobile_format.js" as MobileFormat
+
+// 手机的概览：最上面连接到设备（输设备 ID、IP 或名称），下面我的设备（在线的在前，最多 4 台）和最近连过的
+MobilePage {
+    id: root
+
+    title: qsTr("概览")
+
+    property bool viewOnly: false
+
+    signal connectRequested(var device, bool viewOnly)
+    signal menuRequested(var device)
+    signal allDevicesRequested()
+    signal recentRequested()
+    signal loginRequested()
+
+    readonly property var mine: DeviceQuery.query(Devices.devices, "mine", { sort: "online" })
+    readonly property var recent: DeviceQuery.query(Devices.devices, "recent", {})
+
+    function connectFromInput() {
+        const value = address.text.trim()
+        if (value.length === 0) {
+            error.text = qsTr("请输入设备 ID 或地址")
+            error.visible = true
+            address.forceActiveFocus()
+            return
+        }
+        const device = Devices.ensure(value, "")
+        if (!device.key) {
+            error.text = qsTr("要填 9 位设备 ID，或者同一网络里的 IP 地址")
+            error.visible = true
+            address.forceActiveFocus()
+            return
+        }
+        address.focus = false
+        root.connectRequested(device, root.viewOnly)
+        address.clear()
+    }
+
+    // ---- 连接到设备 ----
+    Rectangle {
+        Layout.fillWidth: true
+        implicitHeight: connectColumn.implicitHeight + 32
+        radius: Theme.cardRadius
+        color: Theme.card
+
+        ColumnLayout {
+            id: connectColumn
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 12
+
+            Text {
+                text: qsTr("连接到设备")
+                font.pixelSize: 17
+                font.weight: Font.DemiBold
+                color: Theme.text
+            }
+            RowLayout {
+                spacing: 8
+                AppTextField {
+                    id: address
+                    Layout.fillWidth: true
+                    placeholderText: qsTr("设备 ID、IP 或名称")
+                    inputMethodHints: Qt.ImhNoPredictiveText
+                    onTextChanged: error.visible = false
+                    onAccepted: root.connectFromInput()
+                    background: Rectangle {
+                        radius: Theme.radius
+                        color: Theme.surface
+                    }
+                }
+                AppButton {
+                    primary: true
+                    text: qsTr("连接")
+                    onClicked: root.connectFromInput()
+                }
+            }
+            RowLayout {
+                spacing: 10
+                SegmentedControl {
+                    Layout.preferredWidth: 170
+                    color: Theme.fillHover
+                    model: [qsTr("控制"), qsTr("仅查看")]
+                    currentIndex: root.viewOnly ? 1 : 0
+                    onCurrentIndexChanged: root.viewOnly = currentIndex === 1
+                }
+                Text {
+                    id: error
+                    Layout.fillWidth: true
+                    visible: false
+                    wrapMode: Text.Wrap
+                    font.pixelSize: 13
+                    color: Theme.danger
+                }
+            }
+        }
+    }
+
+    // ---- 我的设备 ----
+    RowLayout {
+        Layout.fillWidth: true
+        Layout.topMargin: 6
+        Text {
+            Layout.fillWidth: true
+            text: qsTr("我的设备")
+            font.pixelSize: 17
+            font.weight: Font.DemiBold
+            color: Theme.text
+        }
+        Text {
+            visible: root.mine.length > 4
+            text: qsTr("全部")
+            font.pixelSize: 15
+            color: Theme.textSecondary
+            TapHandler { onTapped: root.allDevicesRequested() }
+        }
+    }
+
+    Rectangle {
+        Layout.fillWidth: true
+        implicitHeight: mineColumn.implicitHeight
+        radius: Theme.cardRadius
+        color: Theme.card
+        clip: true
+
+        Column {
+            id: mineColumn
+            width: parent.width
+
+            Repeater {
+                model: root.mine.slice(0, 4)
+                delegate: MobileDeviceRow {
+                    required property var modelData
+                    required property int index
+                    width: mineColumn.width
+                    device: modelData
+                    first: index === 0
+                    onClicked: root.connectRequested(modelData, root.viewOnly)
+                    onPressAndHold: root.menuRequested(modelData)
+                }
+            }
+
+            // 没有我的设备：没登录时说登录有什么用，登录了说别的电脑登录同一个账号以后会出现
+            ColumnLayout {
+                visible: root.mine.length === 0
+                width: parent.width
+                spacing: 10
+                Item { Layout.preferredHeight: 8 }
+                Text {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    text: Account.signedIn ? qsTr("别的电脑登录同一个账号以后会出现在这里，不用密码就能连")
+                                           : qsTr("登录以后，同一个账号的电脑会出现在这里，不用密码就能连")
+                    wrapMode: Text.Wrap
+                    font.pixelSize: 14
+                    color: Theme.textSecondary
+                }
+                AppButton {
+                    visible: !Account.signedIn
+                    Layout.leftMargin: 16
+                    dark: true
+                    text: qsTr("登录 / 注册")
+                    onClicked: root.loginRequested()
+                }
+                Item { Layout.preferredHeight: 8 }
+            }
+        }
+    }
+
+    // ---- 最近 ----
+    RowLayout {
+        Layout.fillWidth: true
+        Layout.topMargin: 6
+        visible: root.recent.length > 0
+        Text {
+            Layout.fillWidth: true
+            text: qsTr("最近")
+            font.pixelSize: 17
+            font.weight: Font.DemiBold
+            color: Theme.text
+        }
+        Text {
+            visible: root.recent.length > 3
+            text: qsTr("全部")
+            font.pixelSize: 15
+            color: Theme.textSecondary
+            TapHandler { onTapped: root.recentRequested() }
+        }
+    }
+
+    Rectangle {
+        Layout.fillWidth: true
+        visible: root.recent.length > 0
+        implicitHeight: recentColumn.implicitHeight
+        radius: Theme.cardRadius
+        color: Theme.card
+        clip: true
+
+        Column {
+            id: recentColumn
+            width: parent.width
+
+            Repeater {
+                model: root.recent.slice(0, 3)
+                delegate: MobileDeviceRow {
+                    required property var modelData
+                    required property int index
+                    width: recentColumn.width
+                    device: modelData
+                    first: index === 0
+                    detail: MobileFormat.lastSeen(modelData.lastSeen)
+                    onClicked: root.connectRequested(modelData, root.viewOnly)
+                    onPressAndHold: root.menuRequested(modelData)
+                }
+            }
+        }
+    }
+}

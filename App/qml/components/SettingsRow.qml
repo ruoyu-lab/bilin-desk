@@ -31,7 +31,7 @@ Item {
     }
 
     Layout.fillWidth: true
-    implicitHeight: detail.length > 0 ? 56 : 44
+    implicitHeight: Theme.touch ? (detail.length > 0 ? 64 : 52) : (detail.length > 0 ? 56 : 44)
 
     Rectangle {
         anchors.fill: parent
@@ -77,7 +77,7 @@ Item {
                 Layout.fillWidth: true
                 text: root.label
                 elide: Text.ElideRight
-                font.pixelSize: 13
+                font.pixelSize: Theme.bodyFont
                 color: root.danger ? Theme.danger : Theme.text
             }
             Text {
@@ -85,7 +85,7 @@ Item {
                 visible: root.detail.length > 0
                 text: root.detail
                 elide: Text.ElideRight
-                font.pixelSize: 12
+                font.pixelSize: Theme.captionFont
                 color: Theme.textSecondary
             }
         }
@@ -94,7 +94,7 @@ Item {
             Layout.maximumWidth: 220
             text: root.value
             elide: Text.ElideMiddle
-            font.pixelSize: 13
+            font.pixelSize: Theme.bodyFont
             color: Theme.textSecondary
         }
         Item {

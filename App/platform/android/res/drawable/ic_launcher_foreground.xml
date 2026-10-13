@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logo 里的三支指针，坐标照抄 App/branding/logo.svg。Logo 的方块（824）对应图标露出来的 72dp，
+     整个图层 108dp 就是 1236，方块的左上角 (100, 100) 挪到 (206, 206) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1236"
+    android:viewportHeight="1236">
+    <group android:translateX="106" android:translateY="106">
+        <group android:translateX="79" android:translateY="132">
+            <path android:pathData="M450 330 L450 690 L536 606 L592 730 L652 703 L596 581 L716 581 Z"
+                android:fillColor="#e6e8ec" android:strokeColor="#e6e8ec" android:strokeWidth="20"
+                android:strokeLineJoin="round" />
+        </group>
+        <group android:translateX="4" android:translateY="57">
+            <path android:pathData="M450 330 L450 690 L536 606 L592 730 L652 703 L596 581 L716 581 Z"
+                android:fillColor="#c3c7ce" android:strokeColor="#c3c7ce" android:strokeWidth="20"
+                android:strokeLineJoin="round" />
+        </group>
+        <group android:translateX="-71" android:translateY="-18">
+            <path android:pathData="M450 330 L450 690 L536 606 L592 730 L652 703 L596 581 L716 581 Z"
+                android:fillColor="#16171a" android:strokeColor="#16171a" android:strokeWidth="20"
+                android:strokeLineJoin="round" />
+        </group>
+    </group>
+</vector>
