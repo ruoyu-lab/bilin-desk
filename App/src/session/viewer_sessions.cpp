@@ -17,11 +17,13 @@ ViewerSessions *instance = nullptr;
 } // namespace
 
 ViewerSessions::ViewerSessions(ServiceClient &service, Account &account, void *decodeDevice,
-                               Conversations &conversations, rc::InterruptedTransfers &transfers, QObject *parent)
+                               const LocalCodecs &codecs, Conversations &conversations,
+                               rc::InterruptedTransfers &transfers, QObject *parent)
     : QObject(parent)
     , service_(service)
     , account_(account)
     , decodeDevice_(decodeDevice)
+    , codecs_(codecs)
     , conversations_(conversations)
     , transfers_(transfers)
 {
@@ -44,7 +46,7 @@ ViewerSession *ViewerSessions::open(const QString &key, const QString &target)
 {
     if (ViewerSession *existing = sessions_.value(key))
         return existing;
-    auto *session = new ViewerSession(target, service_, decodeDevice_, *conversations_.get(key), transfers_,
+    auto *session = new ViewerSession(target, service_, decodeDevice_, codecs_, *conversations_.get(key), transfers_,
                                       [this](const QString &deviceId) { return account_.publicKey(deviceId); }, this);
     sessions_.insert(key, session);
     return session;

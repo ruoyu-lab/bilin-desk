@@ -1,6 +1,7 @@
 #pragma once
 
 #include "frame_mailbox.h"
+#include "local_codecs.h"
 #include "remote_displays.h"
 #include "view_quality.h"
 #include "viewer_audio.h"
@@ -132,11 +133,11 @@ public:
 
     // target：要连的设备 ID（空格、"-"不算），或者同一网络里的 IP 地址；都不是时一开始就是 failed。
     // decodeDevice：Windows 上会话窗口画画面用的 D3D11 设备（ViewGraphics），SDK 在它上面解码；
-    // Windows 上为空时画面是 CPU 上的图像。conversation：和这台设备的对话；transfers：没传完的文件记在哪里；
-    // mineKey：设备 ID 是我的设备时它的公钥（Account::publicKey），不是时为空
-    ViewerSession(const QString &target, ServiceClient &service, void *decodeDevice, Conversation &conversation,
-                  rc::InterruptedTransfers &transfers, std::function<QByteArray(const QString &deviceId)> mineKey,
-                  QObject *parent = nullptr);
+    // Windows 上为空时画面是 CPU 上的图像。codecs：本机的解码器；conversation：和这台设备的对话；
+    // transfers：没传完的文件记在哪里；mineKey：设备 ID 是我的设备时它的公钥（Account::publicKey），不是时为空
+    ViewerSession(const QString &target, ServiceClient &service, void *decodeDevice, const LocalCodecs &codecs,
+                  Conversation &conversation, rc::InterruptedTransfers &transfers,
+                  std::function<QByteArray(const QString &deviceId)> mineKey, QObject *parent = nullptr);
     ~ViewerSession() override;
 
     QString status() const { return status_; }
@@ -294,11 +295,10 @@ private:
     rcs_codec codecChoice_ = 0;
     bool clearText_ = false;
     bool lowLatency_ = false;
-    // 本机用显卡、CPU 解得了的编码格式；对方用显卡编得了的（它连上以后告诉本机，rc/control_protocol.h）
-    uint32_t hardwareDecoders_ = 0;
-    uint32_t softwareDecoders_ = 0;
-    // 本机用显卡解得了 4:4:4 的编码格式
-    uint32_t clearTextDecoders_ = 0;
+    // 本机解得了的编码格式（LocalCodecs）；还没列好时连接先等着
+    const LocalCodecs &codecs_;
+    bool waitingForCodecs_ = false;
+    // 对方用显卡编得了的（它连上以后告诉本机，rc/control_protocol.h）
     std::optional<uint32_t> peerHardware_;
     bool mainViewer_ = true;
     // 现在向对方要的画面，和对方正在分享的显示器（还不知道时宽为 0）

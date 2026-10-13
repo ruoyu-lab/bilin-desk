@@ -71,7 +71,7 @@ QString connectionTypeName(rc::NetworkPath path)
 } // namespace
 
 ViewerSession::ViewerSession(const QString &target, ServiceClient &service, void *decodeDevice,
-                             Conversation &conversation, rc::InterruptedTransfers &transfers,
+                             const LocalCodecs &codecs, Conversation &conversation, rc::InterruptedTransfers &transfers,
                              std::function<QByteArray(const QString &)> mineKey, QObject *parent)
     : QObject(parent)
     , service_(service)
@@ -84,6 +84,7 @@ ViewerSession::ViewerSession(const QString &target, ServiceClient &service, void
     , displays_(new RemoteDisplays([this](const QByteArray &message) { sendControl(message); }, this))
     , files_(new ViewerFiles(transfers, target_, this))
     , power_(new ViewerPower(this))
+    , codecs_(codecs)
 {
     channels_.add(rc::peer::ChatChannel, [this](int, const QByteArray &data) { chat_.receive(data); });
     channels_.add(rc::peer::ControlChannel, [this](int, const QByteArray &data) {
@@ -107,18 +108,11 @@ ViewerSession::ViewerSession(const QString &target, ServiceClient &service, void
             DeviceWake::instance()->remember(deviceId_, interfaces);
     });
     connect(DeviceWake::instance(), &DeviceWake::changed, this, &ViewerSession::wakeChanged);
-    // 显卡解得了 4:4:4 的编码格式（Mac 的 VideoToolbox；Windows 的 NVDEC、oneVPL）：文字更清楚只用它们，
-    // CPU 上解 4:4:4 太慢（1080p 每帧三十多毫秒）
-    for (const rcs_codec_implementation &implementation : rcsdk::codecImplementations()) {
-        if (implementation.direction == RCS_CODEC_DECODER && implementation.acceleration == RCS_ACCELERATION_HARDWARE
-            && (implementation.picture_formats & (1u << RCS_PICTURE_444_8)) != 0)
-            clearTextDecoders_ |= 1u << implementation.codec;
-    }
-    rcs_capabilities capabilities = rcs_capabilities_init();
-    if (rcs_get_capabilities(&capabilities) == RCS_OK) {
-        hardwareDecoders_ = capabilities.hardware_decoders;
-        softwareDecoders_ = capabilities.software_decoders;
-    }
+    // 本机的解码器列好了，等着的连接接着连
+    connect(&codecs_, &LocalCodecs::readyChanged, this, [this] {
+        if (waitingForCodecs_)
+            open(relay_);
+    });
     retryTimer_.setSingleShot(true);
     connect(&retryTimer_, &QTimer::timeout, this, [this] { open(false); });
     statsTimer_.setInterval(1000);
@@ -345,6 +339,12 @@ void ViewerSession::open(bool relay)
     relay_ = relay;
     if (service_.state() != ServiceClient::State::Ready) {
         setStatus(QStringLiteral("failed"), tr("后台服务没有在运行"));
+        return;
+    }
+    // 程序刚打开，本机的解码器还没列好：列好了再连（LocalCodecs），这时先显示正在连接
+    waitingForCodecs_ = !codecs_.ready();
+    if (waitingForCodecs_) {
+        setStatus(connectingStatus());
         return;
     }
     rcsdk::SessionConfig config(RCS_ROLE_VIEW, lowLatency_ ? RCS_PRESET_LOW_LATENCY : RCS_PRESET_BALANCED);
@@ -949,8 +949,9 @@ QList<view_quality::Codec> ViewerSession::codecs() const
         if (limit.codec != 0 && (limit.picture_formats & (1u << RCS_PICTURE_444_8)) != 0)
             peerClearText |= 1u << limit.codec;
     }
-    return view_quality::codecs(peer.codecs, *peerHardware_, hardwareDecoders_, softwareDecoders_,
-                                peerClearText & clearTextDecoders_);
+    const LocalCodecs::Decoders local = codecs_.decoders();
+    return view_quality::codecs(peer.codecs, *peerHardware_, local.hardware, local.software,
+                                peerClearText & local.clearText);
 }
 
 QList<view_quality::Codec> ViewerSession::codecChoices() const

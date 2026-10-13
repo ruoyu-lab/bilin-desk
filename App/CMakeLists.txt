@@ -35,6 +35,8 @@ set(app_sources
     src/service_client.cpp
     src/session/frame_mailbox.h
     src/session/frame_mailbox.cpp
+    src/session/local_codecs.h
+    src/session/local_codecs.cpp
     src/session/remote_displays.h
     src/session/remote_displays.cpp
     src/session/view_quality.h

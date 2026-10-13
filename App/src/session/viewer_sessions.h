@@ -24,10 +24,10 @@ class ViewerSessions : public QObject
 
 public:
     // 不给默认构造：QML 才会经 create() 取到 main 创建的这一个。
-    // decodeDevice：Windows 上 SDK 解码用的设备（ViewGraphics::decodeDevice）
+    // decodeDevice：Windows 上 SDK 解码用的设备（ViewGraphics::decodeDevice）；codecs：本机的解码器（每个会话共用）
     // account：去连我的设备时不要密码（ViewerSession）；transfers：去连别人时没传完的文件记在哪里（每个会话共用）
-    ViewerSessions(ServiceClient &service, Account &account, void *decodeDevice, Conversations &conversations,
-                   rc::InterruptedTransfers &transfers, QObject *parent);
+    ViewerSessions(ServiceClient &service, Account &account, void *decodeDevice, const LocalCodecs &codecs,
+                   Conversations &conversations, rc::InterruptedTransfers &transfers, QObject *parent);
 
     static void setInstance(ViewerSessions *instance);
     static ViewerSessions *create(QQmlEngine *, QJSEngine *);
@@ -45,6 +45,7 @@ private:
     ServiceClient &service_;
     Account &account_;
     void *decodeDevice_;
+    const LocalCodecs &codecs_;
     Conversations &conversations_;
     rc::InterruptedTransfers &transfers_;
     QHash<QString, ViewerSession *> sessions_;

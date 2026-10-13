@@ -177,7 +177,10 @@ int main(int argc, char *argv[])
     ViewGraphics::setInstance(&viewGraphics);
     // 去连别人时没传完的文件（下次接着传）
     rc::InterruptedTransfers transfers(rc::stateDirectory() + QStringLiteral("/viewer-transfers.json"));
-    ViewerSessions viewerSessions(service, account, viewGraphics.decodeDevice(), conversations, transfers, &app);
+    // 本机的解码器：一开始就在后台列（第一次要把编解码器挨个试一遍），去连的时候就不用等
+    LocalCodecs codecs(&app);
+    ViewerSessions viewerSessions(service, account, viewGraphics.decodeDevice(), codecs, conversations, transfers,
+                                  &app);
     ViewerSessions::setInstance(&viewerSessions);
     // 卸载（macOS 在设置里）
     Setup setup(std::nullopt, &app);

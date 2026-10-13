@@ -18,6 +18,12 @@
 #include <rcsdk/file_transfer.h>
 #include <rcsdk/power.h>
 #include <rcsdk/rcsdk.hpp>
+#ifdef Q_OS_ANDROID
+#include <rcsdk/android.h>
+
+#include <QJniEnvironment>
+#include <QJniObject>
+#endif
 
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -33,6 +39,10 @@ int main(int argc, char *argv[])
     QGuiApplication::setApplicationName(QStringLiteral("Bilin"));
     QGuiApplication::setApplicationVersion(QStringLiteral(APP_VERSION));
     QQuickStyle::setStyle("Basic");
+#ifdef Q_OS_ANDROID
+    // SDK 用到 Java 的地方（网络变化、硬件缓冲区……）要本进程的 Java 虚拟机和程序的 Context
+    rcs_android_initialize(QJniEnvironment::javaVM(), QNativeInterface::QAndroidApplication::context().object());
+#endif
     Appearance appearance(&app);
     Appearance::setInstance(&appearance);
 
@@ -48,6 +58,8 @@ int main(int argc, char *argv[])
     rcsdk::registerModule(*rcs_clipboard_module());
     rcsdk::registerModule(*rcs_file_transfer_module());
     rcsdk::registerModule(*rcs_power_module());
+    // 本机的解码器：一开始就在后台列（Android 上第一次要把编解码器挨个试一遍，好几秒），去连的时候就不用等
+    LocalCodecs codecs(&app);
 
     // 本机身份、账号、信令：在本进程里的后台服务，界面经本机连接和它说话（和电脑上一样）
     LocalService localService(directory, &app);
@@ -66,7 +78,8 @@ int main(int argc, char *argv[])
     ViewGraphics viewGraphics(&app);
     ViewGraphics::setInstance(&viewGraphics);
     rc::InterruptedTransfers transfers(directory + QStringLiteral("/viewer-transfers.json"));
-    ViewerSessions viewerSessions(service, account, viewGraphics.decodeDevice(), conversations, transfers, &app);
+    ViewerSessions viewerSessions(service, account, viewGraphics.decodeDevice(), codecs, conversations, transfers,
+                                  &app);
     ViewerSessions::setInstance(&viewerSessions);
     service.start();
 
