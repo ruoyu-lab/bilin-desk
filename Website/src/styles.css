@@ -1,0 +1,119 @@
+/* 和程序一个调子：白底黑字，没有强调色，卡片用填充色不用描边（App/qml/Theme.qml）。跟着系统的浅色、深色 */
+:root {
+  --bg: #ffffff;
+  --card: #f6f7fa;
+  --sidebar: #f4f5f8;
+  --fill: #eef0f3;
+  --selected: #e6e8ec;
+  --text: #16171a;
+  --text-body: #33363c;
+  --text-secondary: #4d5159;
+  --text-muted: #6b7079;
+  --online: #2f9e59;
+  --offline: #b8bcc4;
+  /* 黑底白字的按钮、隐私那一块 */
+  --primary: #16171a;
+  --primary-hover: #33353a;
+  --on-primary: #ffffff;
+  --panel: #16171a;
+  --panel-muted: #b8bcc4;
+  --panel-text: #d9dce2;
+  --header: rgba(255, 255, 255, 0.92);
+  --content: 1080px;
+  /* 不用网络字体：国内打不开，还会把访客交给第三方 */
+  --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  color-scheme: light dark;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 深色：程序深色时的颜色（Theme.qml） */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161719;
+    --card: #222326;
+    --sidebar: #1c1d20;
+    --fill: #2c2d31;
+    --selected: #36383d;
+    --text: #f2f2f4;
+    --text-body: #d6d7db;
+    --text-secondary: #a8abb2;
+    --text-muted: #868a93;
+    --online: #30d158;
+    --offline: #5c6069;
+    --primary: #f2f2f4;
+    --primary-hover: #d8d9de;
+    --on-primary: #16171a;
+    --panel: #222326;
+    --panel-muted: #868a93;
+    --panel-text: #c4c6cc;
+    --header: rgba(22, 23, 25, 0.9);
+  }
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1, h2, h3, p {
+  margin: 0;
+}
+
+/* 页面内容的宽度 */
+.wrap {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 12px 22px;
+  border-radius: 10px;
+  background: var(--fill);
+  color: var(--text);
+  transition: background 0.15s;
+}
+
+.button:hover {
+  background: var(--selected);
+}
+
+.button.primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.button.primary:hover {
+  background: var(--primary-hover);
+}
+
+.button.small {
+  font-size: 13px;
+  padding: 8px 15px;
+  border-radius: 9px;
+}
+
+.section-title {
+  font-size: clamp(26px, 3.2vw, 36px);
+  font-weight: 900;
+}
+
+.lead {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}

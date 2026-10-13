@@ -1,0 +1,20 @@
+# 构建产物
+build/
+CMakeLists.txt.user*
+CMakeUserPresets.json
+
+# 编辑器与系统文件
+.DS_Store
+.idea/
+.qtcreator/
+.vscode/
+
+# 服务端和管理后台的网页
+Server/node_modules/
+Server/dist/
+Server/admin/node_modules/
+Server/admin/dist/
+
+# 官网
+Website/node_modules/
+Website/dist/

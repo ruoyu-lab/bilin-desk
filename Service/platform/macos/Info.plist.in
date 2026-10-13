@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- 后台服务、助手嵌在程序里的 Info.plist（链接时放进 __TEXT,__info_plist）：它们在 .app 的 Contents/Helpers 里，
+     系统按这一份认它们。LSUIElement：用到系统的界面框架（录屏、剪贴板）时也不在 Dock 里出现、不抢前台 -->
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key><string>@HELPER_IDENTIFIER@</string>
+    <key>CFBundleName</key><string>@HELPER_NAME@</string>
+    <key>CFBundleDisplayName</key><string>比邻</string>
+    <key>CFBundleShortVersionString</key><string>@PROJECT_VERSION@</string>
+    <key>CFBundleVersion</key><string>@PROJECT_VERSION@</string>
+    <key>LSUIElement</key><true/>
+</dict>
+</plist>

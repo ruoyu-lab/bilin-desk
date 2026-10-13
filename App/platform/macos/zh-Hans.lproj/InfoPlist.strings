@@ -1,0 +1,3 @@
+/* 访达、程序坞、菜单栏里显示的名字（.app 的文件名是 Bilin.app） */
+CFBundleDisplayName = "比邻";
+CFBundleName = "比邻";

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key><string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
+    <key>CFBundleIdentifier</key><string>${MACOSX_BUNDLE_GUI_IDENTIFIER}</string>
+    <key>CFBundleName</key><string>${MACOSX_BUNDLE_BUNDLE_NAME}</string>
+    <key>CFBundleDisplayName</key><string>比邻</string>
+    <key>LSHasLocalizedDisplayName</key><true/>
+    <key>CFBundleIconFile</key><string>${MACOSX_BUNDLE_ICON_FILE}</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>${MACOSX_BUNDLE_SHORT_VERSION_STRING}</string>
+    <key>CFBundleVersion</key><string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
+    <key>LSMinimumSystemVersion</key><string>${CMAKE_OSX_DEPLOYMENT_TARGET}</string>
+    <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
+    <!-- 连局域网里的电脑时系统问用户的那句话 -->
+    <key>NSLocalNetworkUsageDescription</key><string>连接同一个网络里的电脑，看到和控制它的屏幕。</string>
+    <!-- 互传文件：收到的存进这些文件夹、从这些文件夹里发文件时系统问用户的那句话 -->
+    <key>NSDownloadsFolderUsageDescription</key><string>把对方发来的文件存到“下载”，或者把“下载”里的文件发给对方。</string>
+    <key>NSDesktopFolderUsageDescription</key><string>把对方发来的文件存到桌面，或者把桌面上的文件发给对方。</string>
+    <key>NSDocumentsFolderUsageDescription</key><string>把对方发来的文件存到“文稿”，或者把“文稿”里的文件发给对方。</string>
+</dict>
+</plist>

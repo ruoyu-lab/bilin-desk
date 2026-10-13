@@ -1,0 +1,25 @@
+{
+  "name": "bilin-website",
+  "private": true,
+  "description": "比邻的官网：首页、服务协议、隐私政策（静态网页）",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.5.43"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.4",
+    "vue-tsc": "^3.3.13"
+  }
+}

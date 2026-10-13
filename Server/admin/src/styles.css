@@ -1,0 +1,271 @@
+/* 和官网一个样子（Website/src/styles.css）：白底黑字，没有强调色，卡片用填充色不用描边、不用阴影。
+   不用网络字体、外面的脚本 */
+:root {
+  --bg: #ffffff;
+  --card: #f6f7fa;
+  --sidebar: #f4f5f8;
+  --fill: #eef0f3;
+  --selected: #e6e8ec;
+  --line: #e9ebef;
+  --text: #16171a;
+  --text-secondary: #4d5159;
+  --text-muted: #6b7079;
+  --online: #2f9e59;
+  --offline: #b8bcc4;
+  --danger: #d4372c;
+  --content: 1240px;
+  --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+
+  color-scheme: light;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 按钮：灰底；primary 黑底白字；ghost 没有底，悬停才有；danger 红字 ---- */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--fill);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.button:hover {
+  background: var(--selected);
+}
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.button.primary {
+  background: var(--text);
+  color: #ffffff;
+}
+.button.primary:hover:not(:disabled) {
+  background: #33353a;
+}
+.button.ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.button.ghost:hover:not(:disabled) {
+  background: var(--fill);
+  color: var(--text);
+}
+.button.danger {
+  color: var(--danger);
+}
+.button.small {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.field {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  background: var(--fill);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.field:focus {
+  border-color: var(--text);
+  background: var(--bg);
+}
+
+.error {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+/* ---- 页面：大标题、说明，下面一块一块 ---- */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: 8px;
+}
+.page-head h1 {
+  font-size: 28px;
+  font-weight: 900;
+}
+.page-head p {
+  margin-top: 8px;
+  max-width: 600px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.card {
+  padding: 22px;
+  border-radius: 16px;
+  background: var(--card);
+}
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+  margin-bottom: 16px;
+}
+.card-head h2 {
+  font-size: 16px;
+  font-weight: 700;
+}
+.card-head .hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+}
+.grid.two {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  align-items: start;
+}
+
+/* 用量条 */
+.track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--selected);
+}
+.track > div {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--text);
+  transition: width 0.4s ease;
+}
+.track > div.warn {
+  background: var(--danger);
+}
+
+.empty {
+  padding: 22px 0 6px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* 一行一项的列表（卡片里） */
+.rows .row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 0;
+  border-top: 1px solid var(--line);
+}
+.rows .row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.rows .row:last-child {
+  padding-bottom: 0;
+}
+.rows .main {
+  flex: 1;
+  min-width: 0;
+}
+.rows .title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.rows .meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.rows .actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 21px;
+  margin-left: 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--text);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 500;
+  vertical-align: 2px;
+}
+.tag.light {
+  background: var(--selected);
+  color: var(--text-secondary);
+}
+
+.tile {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+}

@@ -1,0 +1,24 @@
+{
+  "name": "bilin-admin",
+  "private": true,
+  "description": "比邻的管理后台网页：服务器的状态、发布新版本、数据库的备份（接口在 Server/src/admin）",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build"
+  },
+  "dependencies": {
+    "vue": "^3.5.43"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.4",
+    "vue-tsc": "^3.3.13"
+  }
+}

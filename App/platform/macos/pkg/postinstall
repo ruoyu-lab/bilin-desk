@@ -1,0 +1,9 @@
+#!/bin/sh
+# .pkg 装好以后：启动后台服务（LaunchDaemon），控制台前的用户的会话里启动助手（LaunchAgent）；
+# 登录窗口上的助手 launchd 在登录窗口出来时自己启动
+/bin/launchctl bootstrap system /Library/LaunchDaemons/com.bilindesk.bilin.service.plist
+user=$(/usr/bin/stat -f %u /dev/console)
+if [ "$user" != "0" ]; then
+    /bin/launchctl bootstrap "gui/$user" /Library/LaunchAgents/com.bilindesk.bilin.agent.plist
+fi
+exit 0

@@ -1,0 +1,8 @@
+#!/bin/sh
+# .pkg 安装（升级）之前：停掉正在运行的比邻（后台服务、各个会话里的助手、界面程序），新的才换得上
+/bin/launchctl bootout system/com.bilindesk.bilin.service 2>/dev/null
+for uid in $(/bin/ps -axo uid=,comm= | /usr/bin/awk '/BilinAgent$/ { print $1 }' | /usr/bin/sort -u); do
+    /bin/launchctl bootout "gui/$uid/com.bilindesk.bilin.agent" 2>/dev/null
+done
+/usr/bin/killall Bilin BilinService BilinAgent 2>/dev/null
+exit 0

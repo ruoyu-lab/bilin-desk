@@ -1,0 +1,115 @@
+#pragma once
+
+#include "remote_input.h"
+#include "viewer_session.h"
+
+#include <rcsdk/view_geometry.hpp>
+
+#include <QPointer>
+#include <QQuickItem>
+#include <QVariantList>
+#include <QtQml/qqmlregistration.h>
+
+#include <memory>
+#include <optional>
+
+class FrameMailbox;
+class QQuickPaintedItem;
+
+// 会话窗口里的远程画面（QML 元素）：画观看会话解出的帧，控制时把本机的鼠标、键盘发给对方。
+// GPU 上的帧由 FrameNode 直接画，CPU 上的图像（显卡建不起解码设备时）上传成纹理画。
+// 对方的指针单独传来：控制时本机的指针换成它的样子（跟手，没有延迟），只看时在画面上画出来；
+// 关掉"显示远程光标"时都不要，只有本机自己的指针
+class RemoteView : public QQuickItem
+{
+    Q_OBJECT
+    QML_ELEMENT
+
+    Q_PROPERTY(ViewerSession *session READ session WRITE setSession NOTIFY sessionChanged)
+    // 原始大小（一个画面像素对一个屏幕像素，不控制时滚轮平移）；否则适应窗口、留黑边
+    Q_PROPERTY(bool nativeSize READ nativeSize WRITE setNativeSize NOTIFY nativeSizeChanged)
+    // 把本机的输入发给对方；关掉时松开对方那里按着的键
+    Q_PROPERTY(bool inputEnabled READ inputEnabled WRITE setInputEnabled NOTIFY inputEnabledChanged)
+    Q_PROPERTY(bool hasFrame READ hasFrame NOTIFY hasFrameChanged)
+    Q_PROPERTY(bool remoteCursor READ remoteCursor WRITE setRemoteCursor NOTIFY remoteCursorChanged)
+    // 会话窗口"发送快捷键"菜单：对方系统上的组合键 [{id, label, keys}]，连上以后按对方的系统
+    Q_PROPERTY(QVariantList shortcuts READ shortcuts NOTIFY shortcutsChanged)
+
+public:
+    explicit RemoteView(QQuickItem *parent = nullptr);
+    ~RemoteView() override;
+
+    ViewerSession *session() const { return session_; }
+    void setSession(ViewerSession *session);
+    bool nativeSize() const { return nativeSize_; }
+    void setNativeSize(bool nativeSize);
+    bool inputEnabled() const { return inputEnabled_; }
+    void setInputEnabled(bool enabled);
+    bool hasFrame() const { return hasFrame_; }
+    bool remoteCursor() const { return remoteCursor_; }
+    void setRemoteCursor(bool remoteCursor);
+    QVariantList shortcuts() const;
+
+    // 按下又松开 shortcuts 里 id 那一项
+    Q_INVOKABLE void sendShortcut(const QString &id);
+
+signals:
+    void sessionChanged();
+    void nativeSizeChanged();
+    void inputEnabledChanged();
+    void hasFrameChanged();
+    void remoteCursorChanged();
+    void shortcutsChanged();
+
+protected:
+    QSGNode *updatePaintNode(QSGNode *old, UpdatePaintNodeData *) override;
+    void itemChange(ItemChange change, const ItemChangeData &value) override;
+    bool event(QEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void hoverMoveEvent(QHoverEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
+    void keyReleaseEvent(QKeyEvent *event) override;
+    void focusOutEvent(QFocusEvent *event) override;
+
+private:
+    enum class NodeKind { None, Frame, Image };
+
+    // 画面在条目里的位置（物理像素）；画和输入用同一个
+    rcsdk::ViewGeometry geometry() const;
+    // 条目里的一点 → 对方显示器上的位置；在画面外或黑边上时 false（clamp：贴到边上）
+    bool position(QPointF point, rcs_input_event &event, bool clamp) const;
+    void send(const rcs_input_event &event);
+    void releaseAll();
+    void button(QMouseEvent *mouse, bool down);
+    void key(QKeyEvent *key, bool down);
+    void updateCursor();
+    bool remoteIsMac() const;
+    // 同步时：画面有没有，界面线程上再通知
+    void publishHasFrame(bool hasFrame);
+
+    QPointer<ViewerSession> session_;
+    std::shared_ptr<FrameMailbox> frames_;
+    bool nativeSize_ = false;
+    bool inputEnabled_ = false;
+    bool remoteCursor_ = true;
+    int panX_ = 0;
+    int panY_ = 0;
+    QPointF lastHover_;
+    remote_input::WheelLines wheelX_;
+    remote_input::WheelLines wheelY_;
+
+    // 同步时写（界面线程停着），界面线程读
+    NodeKind nodeKind_ = NodeKind::None;
+    uint32_t frameWidth_ = 0;
+    uint32_t frameHeight_ = 0;
+    qint64 imageKey_ = 0; // 已经上传的那张图像
+    bool hasFrame_ = false;
+
+    QQuickPaintedItem *cursorOverlay_; // 只看时画对方的指针
+    // 控制时本机指针换成了对方的哪个形状（或藏起来）；空：本机自己的指针
+    std::optional<uint32_t> localCursorShape_;
+    double localCursorScale_ = 0;
+};

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- 助手（LaunchAgent）：登录窗口上一个（root），每个登录的用户的会话里一个（以那个用户），录屏、声音、键鼠在这里 -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bilindesk.bilin.agent</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/Bilin.app/Contents/Helpers/BilinAgent</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>LimitLoadToSessionType</key>
+    <array>
+        <string>LoginWindow</string>
+        <string>Aqua</string>
+    </array>
+    <key>ProcessType</key>
+    <string>Interactive</string>
+</dict>
+</plist>

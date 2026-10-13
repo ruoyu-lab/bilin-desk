@@ -1,0 +1,22 @@
+find_package(Qt6 REQUIRED COMPONENTS Test)
+
+function(rc_service_test name)
+    qt_add_executable(${name} ${name}.cpp)
+    target_link_libraries(${name} PRIVATE rcservicecore Qt6::Test)
+    add_test(NAME ${name} COMMAND ${name})
+endfunction()
+
+rc_service_test(tst_app_keeper)
+rc_service_test(tst_connection_history)
+rc_service_test(tst_device_store)
+rc_service_test(tst_control_server)
+rc_service_test(tst_server_link)
+# 测试 wss:// 用的证书：自己签的、只给 127.0.0.1，私钥也只给测试用（程序不认它）
+target_compile_definitions(tst_server_link PRIVATE TEST_TLS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tls")
+rc_service_test(tst_signaling)
+rc_service_test(tst_lan)
+rc_service_test(tst_share_chat)
+rc_service_test(tst_share_displays)
+rc_service_test(tst_share_ids)
+rc_service_test(tst_share_transport)
+rc_service_test(tst_updater)

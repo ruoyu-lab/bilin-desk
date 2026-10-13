@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="824" height="824" viewBox="100 100 824 824">
+  <!-- 程序的 Logo：白色的圆角方块正中一支黑色的指针，两道浅灰的残影从右下角拉过来（指针被远处挪动）。
+       只有方块本身（不留边）：程序里直接显示它；程序图标（macOS 的 .icns 按苹果的规格四周留白、Windows 的 .ico）
+       由 scripts/make-icons.sh 生成 -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f0f1f4"/></linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)"/>
+  <rect x="101.5" y="101.5" width="821" height="821" rx="184.5" fill="none" stroke="#000000" stroke-opacity="0.08" stroke-width="3"/>
+  <path transform="translate(79 132)" d="M450 330 L450 690 L536 606 L592 730 L652 703 L596 581 L716 581 Z" fill="#e6e8ec" stroke="#e6e8ec" stroke-width="20" stroke-linejoin="round"/>
+  <path transform="translate(4 57)" d="M450 330 L450 690 L536 606 L592 730 L652 703 L596 581 L716 581 Z" fill="#c3c7ce" stroke="#c3c7ce" stroke-width="20" stroke-linejoin="round"/>
+  <path transform="translate(-71 -18)" d="M450 330 L450 690 L536 606 L592 730 L652 703 L596 581 L716 581 Z" fill="#16171a" stroke="#16171a" stroke-width="20" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,29 @@
+{
+  "name": "bilin-server",
+  "private": true,
+  "description": "远程控制的服务端：设备登记、在线、转发信令",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@fastify/websocket": "^11.3.4",
+    "fastify": "^5.12.5",
+    "ioredis": "^6.0.0",
+    "mongodb": "^7.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/ws": "^8.18.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3",
+    "ws": "^8.22.0"
+  }
+}

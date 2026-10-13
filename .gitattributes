@@ -1,0 +1,7 @@
+# 自己的 Windows 脚本用 CRLF
+/scripts/*.cmd text eol=crlf
+/scripts/*.bat text eol=crlf
+/scripts/*.ps1 text eol=crlf
+
+# 第三方代码的副本逐字节保存，不做换行转换
+/third_party/qwindowkit/** -text
