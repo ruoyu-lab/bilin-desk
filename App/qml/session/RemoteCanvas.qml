@@ -27,11 +27,27 @@ Rectangle {
     // 控制对方：对方允许、自己没选"仅查看"
     readonly property bool controlling: session !== null && session.controlGranted && !viewOnly
 
+    // 手机：手指怎么操作对方（RemoteView.touchMode）、放大的倍数、对方是不是 Mac（按键栏上写 ⌘ 还是 Win）
+    property string touchMode
+    readonly property real zoom: video.zoom
+    readonly property bool remoteMac: video.remoteMac
+
     signal closeRequested()
 
     // 会话窗口"发送快捷键"菜单
     function sendShortcut(id) {
         video.sendShortcut(id)
+    }
+
+    // 手机：打的字、按键栏上的键、回到整个画面
+    function sendText(text) {
+        video.sendText(text)
+    }
+    function pressKey(key, modifiers) {
+        video.pressKey(key, modifiers)
+    }
+    function resetZoom() {
+        video.resetZoom()
     }
 
     color: Theme.canvas
@@ -62,6 +78,7 @@ Rectangle {
         nativeSize: root.nativeSize
         remoteCursor: root.remoteCursor
         inputEnabled: root.controlling && root.showVideo
+        touchMode: root.touchMode
     }
 
     // 连上了、第一帧还没到

@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import "../main/device_query.js" as DeviceQuery
@@ -30,14 +32,15 @@ MobilePage {
             Repeater {
                 model: root.recent
                 delegate: MobileDeviceRow {
+                    id: row
                     required property var modelData
                     required property int index
                     width: rows.width
-                    device: modelData
-                    first: index === 0
-                    detail: MobileFormat.lastSeen(modelData.lastSeen)
-                    onClicked: root.connectRequested(modelData, false)
-                    onPressAndHold: root.menuRequested(modelData)
+                    device: row.modelData
+                    first: row.index === 0
+                    detail: MobileFormat.lastSeen(row.modelData.lastSeen)
+                    onClicked: root.connectRequested(row.modelData, false)
+                    onPressAndHold: root.menuRequested(row.modelData)
                 }
             }
         }

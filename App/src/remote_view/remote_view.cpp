@@ -8,12 +8,15 @@
 
 #include <QCoreApplication>
 #include <QCursor>
+#include <QDateTime>
 #include <QGuiApplication>
+#include <QLineF>
 #include <QPainter>
 #include <QQuickPaintedItem>
 #include <QQuickWindow>
 #include <QSGSimpleTextureNode>
 #include <QStyleHints>
+#include <QTouchEvent>
 #include <QVariantMap>
 
 #include <algorithm>
@@ -24,6 +27,17 @@ namespace {
 
 // 本机指针换成了"对方的指针看不见"
 constexpr uint32_t HiddenCursor = std::numeric_limits<uint32_t>::max();
+
+// 手机上的手指（逻辑像素、毫秒）
+constexpr qreal TapSlop = 10;         // 动了不到这么多还算点
+constexpr int LongPressMs = 450;      // 按住不放多久算长按
+constexpr int DoubleTapMs = 350;      // 两下点得这么快、
+constexpr qreal DoubleTapSlop = 28;   // 离得这么近，第二下落在第一下的地方（对方才认成双击）
+constexpr qreal PinchSlop = 24;       // 两个手指的距离变了这么多算缩放
+constexpr qreal ScrollSlop = 12;      // 两个手指一起动了这么多算滚动
+constexpr qreal ScrollLinePx = 18;    // 两个手指滑多少滚一行
+constexpr double TouchpadSpeed = 1.6; // 触摸板：手指动一点，光标在看到的画面上动这么多倍
+constexpr QLatin1StringView Touchpad("touchpad");
 
 // 只看时画在画面上的对方指针：一张图，缩放到条目的大小
 class CursorOverlay final : public QQuickPaintedItem
@@ -62,8 +76,11 @@ RemoteView::RemoteView(QQuickItem *parent)
     setAcceptedMouseButtons(Qt::LeftButton | Qt::RightButton | Qt::MiddleButton | Qt::BackButton
                             | Qt::ForwardButton);
     connect(this, &RemoteView::hasFrameChanged, this, &RemoteView::updateCursor);
-    connect(this, &QQuickItem::widthChanged, this, &RemoteView::updateCursor);
-    connect(this, &QQuickItem::heightChanged, this, &RemoteView::updateCursor);
+    connect(this, &QQuickItem::widthChanged, this, &RemoteView::clampZoom);
+    connect(this, &QQuickItem::heightChanged, this, &RemoteView::clampZoom);
+    longPress_.setSingleShot(true);
+    longPress_.setInterval(LongPressMs);
+    connect(&longPress_, &QTimer::timeout, this, &RemoteView::longPressed);
 }
 
 RemoteView::~RemoteView()
@@ -183,8 +200,40 @@ bool RemoteView::remoteIsMac() const
 rcsdk::ViewGeometry RemoteView::geometry() const
 {
     const qreal ratio = window()->effectiveDevicePixelRatio();
-    return rcsdk::viewGeometry(int(width() * ratio), int(height() * ratio), frameWidth_, frameHeight_,
-                               nativeSize_ ? rcsdk::ViewScale::nativePixels : rcsdk::ViewScale::fit, panX_, panY_);
+    const int viewWidth = int(width() * ratio);
+    const int viewHeight = int(height() * ratio);
+    rcsdk::ViewGeometry g = rcsdk::viewGeometry(viewWidth, viewHeight, frameWidth_, frameHeight_,
+                                                nativeSize_ ? rcsdk::ViewScale::nativePixels : rcsdk::ViewScale::fit,
+                                                panX_, panY_);
+    if (zoom_ <= 1 || nativeSize_ || g.width <= 0)
+        return g;
+    // 手机上放大：放得下时的大小乘倍数，露出来的是条目那么大的一块（zoomX_、zoomY_ 是它在放大的画面里的左上角）；
+    // 放大以后还比条目窄的那一边照旧居中
+    const auto axis = [](double scaled, int view, double offset, uint32_t frame, int &x, int &size, int &source,
+                         int &sourceSize) {
+        if (scaled <= view) {
+            size = int(scaled);
+            x = (view - size) / 2;
+            source = 0;
+            sourceSize = int(frame);
+            return;
+        }
+        x = 0;
+        size = view;
+        source = int(offset / scaled * frame);
+        sourceSize = std::max(1, int(view / scaled * frame));
+    };
+    const double scaledWidth = g.width * zoom_;
+    const double scaledHeight = g.height * zoom_;
+    axis(scaledWidth, viewWidth, zoomX_, frameWidth_, g.x, g.width, g.sourceX, g.sourceWidth);
+    axis(scaledHeight, viewHeight, zoomY_, frameHeight_, g.y, g.height, g.sourceY, g.sourceHeight);
+    return g;
+}
+
+rcsdk::ViewGeometry RemoteView::fitGeometry() const
+{
+    const qreal ratio = window()->effectiveDevicePixelRatio();
+    return rcsdk::viewGeometry(int(width() * ratio), int(height() * ratio), frameWidth_, frameHeight_);
 }
 
 QSGNode *RemoteView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
@@ -280,6 +329,14 @@ void RemoteView::updateCursor()
         unsetCursor();
         localCursorShape_.reset();
     };
+    // 触摸板：没在用手指移的时候跟着对方报来的位置（对方那边的人也可能在动鼠标）
+    if (touchpad() && !touching_ && session_ && session_->cursor().visible) {
+        uint32_t x = session_->cursor().x;
+        uint32_t y = session_->cursor().y;
+        rcsdk::framePosition(x, y, session_->streamInfo());
+        cursorX_ = x;
+        cursorY_ = y;
+    }
     const ViewerSession::CursorShape *shape =
         session_ && frameWidth_ && remoteCursor_ ? session_->cursorShape(session_->cursor().shapeId) : nullptr;
     if (!shape) {
@@ -294,8 +351,8 @@ void RemoteView::updateCursor()
     const double scale = rcsdk::displayScale(g, info) / ratio; // 对方显示器的一个像素在条目里多大
     const QSizeF size(shape->image.width() * scale, shape->image.height() * scale);
 
-    // 控制时：本机的指针换成对方指针的样子
-    if (inputEnabled_) {
+    // 控制时：本机的指针换成对方指针的样子（手机上没有本机的指针，和只看时一样画在画面上）
+    if (inputEnabled_ && touchMode_.isEmpty()) {
         cursorOverlay_->setVisible(false);
         if (!cursor.visible) {
             setCursor(Qt::BlankCursor);
@@ -311,11 +368,15 @@ void RemoteView::updateCursor()
         return;
     }
 
-    // 只看时：在画面上对方指针的位置画出来
+    // 只看时、手机上：在画面上对方指针的位置画出来（触摸板：本机算出来的位置）
     restoreLocal();
     uint32_t x = cursor.x;
     uint32_t y = cursor.y;
     rcsdk::framePosition(x, y, info);
+    if (touchpad()) {
+        x = uint32_t(cursorX_);
+        y = uint32_t(cursorY_);
+    }
     double px = 0;
     double py = 0;
     if (!cursor.visible || !g.point(x, y, frameWidth_, frameHeight_, px, py)) {
@@ -461,4 +522,379 @@ bool RemoteView::event(QEvent *event)
         return true;
     }
     return QQuickItem::event(event);
+}
+
+// ---- 手机 ----
+
+bool RemoteView::touchpad() const
+{
+    return touchMode_ == Touchpad;
+}
+
+void RemoteView::setTouchMode(const QString &mode)
+{
+    if (mode == touchMode_)
+        return;
+    touchMode_ = mode;
+    // 收手指（不收的话 Qt 把手指当成鼠标）；手机上画面一直跟着手指，没有悬停
+    setAcceptTouchEvents(!mode.isEmpty());
+    emit touchModeChanged();
+    updateCursor();
+}
+
+void RemoteView::sendText(const QString &text)
+{
+    if (!inputEnabled_)
+        return;
+    rcs_input_event event = rcs_input_event_init();
+    event.type = RCS_INPUT_TEXT;
+    for (const char32_t c : text.toUcs4()) {
+        event.code = c;
+        send(event);
+    }
+}
+
+void RemoteView::pressKey(const QString &key, const QStringList &modifiers)
+{
+    const uint32_t usage = remote_input::namedKeyUsage(key);
+    if (!inputEnabled_ || !usage)
+        return;
+    rcs_input_event event = rcs_input_event_init();
+    event.type = RCS_INPUT_KEY;
+    event.down = 1;
+    for (const QString &modifier : modifiers) {
+        event.code = remote_input::namedKeyUsage(modifier);
+        send(event);
+    }
+    event.code = usage;
+    send(event);
+    event.down = 0;
+    send(event);
+    for (auto modifier = modifiers.rbegin(); modifier != modifiers.rend(); ++modifier) {
+        event.code = remote_input::namedKeyUsage(*modifier);
+        send(event);
+    }
+}
+
+void RemoteView::resetZoom()
+{
+    zoomAt(QPointF(width() / 2, height() / 2), 1);
+}
+
+// 最多放大到画面的一个像素占屏幕上两个像素
+qreal RemoteView::maxZoom() const
+{
+    const rcsdk::ViewGeometry fit = fitGeometry();
+    return fit.width > 0 ? std::max(2.0, 2.0 * frameWidth_ / fit.width) : 1.0;
+}
+
+// 放大到 zoom 倍，focus（条目坐标）下面的画面不动
+void RemoteView::zoomAt(QPointF focus, qreal zoom)
+{
+    const rcsdk::ViewGeometry before = geometry();
+    const rcsdk::ViewGeometry fit = fitGeometry();
+    if (before.width <= 0 || fit.width <= 0)
+        return;
+    const qreal ratio = window()->effectiveDevicePixelRatio();
+    const QPointF at = focus * ratio;
+    // 手指下面是帧上的哪一点
+    const double frameX = before.sourceX + (at.x() - before.x) * before.sourceWidth / before.width;
+    const double frameY = before.sourceY + (at.y() - before.y) * before.sourceHeight / before.height;
+    const qreal zoomed = std::clamp(zoom, 1.0, maxZoom());
+    zoomX_ = frameX / frameWidth_ * fit.width * zoomed - at.x();
+    zoomY_ = frameY / frameHeight_ * fit.height * zoomed - at.y();
+    if (!qFuzzyCompare(zoomed, zoom_)) {
+        zoom_ = zoomed;
+        emit zoomChanged();
+    }
+    clampZoom();
+}
+
+void RemoteView::panBy(QPointF delta)
+{
+    const qreal ratio = window()->effectiveDevicePixelRatio();
+    zoomX_ -= delta.x() * ratio;
+    zoomY_ -= delta.y() * ratio;
+    clampZoom();
+}
+
+// 露出来的那一块不出放大的画面。还没放进窗口时（QML 先定大小）不用管
+void RemoteView::clampZoom()
+{
+    if (!window())
+        return;
+    const rcsdk::ViewGeometry fit = fitGeometry();
+    const qreal ratio = window()->effectiveDevicePixelRatio();
+    zoomX_ = std::clamp(zoomX_, 0.0, std::max(0.0, fit.width * zoom_ - width() * ratio));
+    zoomY_ = std::clamp(zoomY_, 0.0, std::max(0.0, fit.height * zoom_ - height() * ratio));
+    updateCursor();
+    update();
+}
+
+void RemoteView::touchEvent(QTouchEvent *event)
+{
+    if (touchMode_.isEmpty()) {
+        QQuickItem::touchEvent(event);
+        return;
+    }
+    event->accept();
+    if (event->type() == QEvent::TouchCancel) {
+        if (gesture_.kind == Gesture::Kind::Drag)
+            touchButton(RCS_BUTTON_LEFT, false, gesture_.last);
+        longPress_.stop();
+        touching_ = false;
+        return;
+    }
+    QList<QPointF> pressed;
+    for (const QEventPoint &point : event->points()) {
+        if (point.state() != QEventPoint::Released)
+            pressed.append(point.position());
+    }
+    if (event->type() == QEvent::TouchBegin && !pressed.isEmpty())
+        beginTouch(pressed.front());
+    if (pressed.size() >= 2)
+        twoFingers(pressed.at(0), pressed.at(1));
+    else if (pressed.size() == 1)
+        oneFinger(pressed.front());
+    else
+        endTouch();
+}
+
+void RemoteView::beginTouch(QPointF point)
+{
+    touching_ = true;
+    gesture_ = {};
+    gesture_.start = point;
+    gesture_.last = point;
+    longPress_.start();
+}
+
+void RemoteView::oneFinger(QPointF point)
+{
+    using Kind = Gesture::Kind;
+    if (gesture_.kind == Kind::Pending) {
+        if (QLineF(point, gesture_.start).length() < TapSlop)
+            return;
+        longPress_.stop();
+        if (!inputEnabled_) {
+            gesture_.kind = Kind::Pan;
+        } else if (touchpad()) {
+            gesture_.kind = Kind::Move;
+        } else {
+            // 直接点：从按下的地方按着左键拖
+            gesture_.kind = Kind::Drag;
+            touchButton(RCS_BUTTON_LEFT, true, gesture_.start);
+        }
+    }
+    const QPointF delta = point - gesture_.last;
+    gesture_.last = point;
+    switch (gesture_.kind) {
+    case Kind::Move:
+        moveCursor(delta);
+        break;
+    case Kind::Drag:
+        if (touchpad()) {
+            moveCursor(delta);
+        } else {
+            rcs_input_event event = rcs_input_event_init();
+            event.type = RCS_INPUT_MOVE;
+            if (position(point, event, true))
+                send(event);
+        }
+        break;
+    case Kind::Pan:
+        panBy(delta);
+        break;
+    default:
+        // 两个手指的操作里抬起了一个：等另一个也抬起
+        break;
+    }
+}
+
+void RemoteView::twoFingers(QPointF a, QPointF b)
+{
+    using Kind = Gesture::Kind;
+    const QPointF center = (a + b) / 2;
+    const qreal distance = QLineF(a, b).length();
+    switch (gesture_.kind) {
+    case Kind::Pending:
+    case Kind::Move:
+    case Kind::Pan:
+        // 第二个手指按下
+        longPress_.stop();
+        gesture_.kind = Kind::TwoPending;
+        gesture_.twoStart = center;
+        gesture_.last = center;
+        gesture_.startDistance = std::max<qreal>(1, distance);
+        gesture_.startZoom = zoom_;
+        return;
+    case Kind::TwoPending:
+        if (std::abs(distance - gesture_.startDistance) > PinchSlop)
+            gesture_.kind = Kind::Pinch;
+        else if (QLineF(center, gesture_.twoStart).length() > ScrollSlop)
+            gesture_.kind = inputEnabled_ ? Kind::Scroll : Kind::Pinch;
+        else
+            return;
+        break;
+    case Kind::Scroll:
+    case Kind::Pinch:
+        break;
+    default:
+        // 拖着的时候按下的第二个手指不算
+        return;
+    }
+    const QPointF delta = center - gesture_.last;
+    gesture_.last = center;
+    if (gesture_.kind == Kind::Pinch) {
+        zoomAt(center, gesture_.startZoom * distance / gesture_.startDistance);
+        panBy(delta);
+    } else {
+        scrollBy(delta, center);
+    }
+}
+
+void RemoteView::endTouch()
+{
+    using Kind = Gesture::Kind;
+    longPress_.stop();
+    if (inputEnabled_) {
+        switch (gesture_.kind) {
+        case Kind::Pending:
+            tap(gesture_.start);
+            break;
+        case Kind::TwoPending:
+            // 两个手指点一下：右键
+            touchButton(RCS_BUTTON_RIGHT, true, gesture_.twoStart);
+            touchButton(RCS_BUTTON_RIGHT, false, gesture_.twoStart);
+            break;
+        case Kind::Drag:
+            touchButton(RCS_BUTTON_LEFT, false, gesture_.last);
+            break;
+        default:
+            break;
+        }
+    }
+    touching_ = false;
+    gesture_ = {};
+    updateCursor();
+}
+
+// 按住不放：触摸板上按下左键（接着拖），直接点是右键
+void RemoteView::longPressed()
+{
+    if (!inputEnabled_ || gesture_.kind != Gesture::Kind::Pending)
+        return;
+    if (touchpad()) {
+        gesture_.kind = Gesture::Kind::Drag;
+        touchButton(RCS_BUTTON_LEFT, true, gesture_.start);
+        return;
+    }
+    gesture_.kind = Gesture::Kind::Done;
+    touchButton(RCS_BUTTON_RIGHT, true, gesture_.start);
+    touchButton(RCS_BUTTON_RIGHT, false, gesture_.start);
+}
+
+void RemoteView::tap(QPointF point)
+{
+    // 点两下：第二下落在第一下的地方
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (now - lastTapTime_ < DoubleTapMs && QLineF(point, lastTapPoint_).length() < DoubleTapSlop)
+        point = lastTapPoint_;
+    lastTapPoint_ = point;
+    lastTapTime_ = now;
+    touchButton(RCS_BUTTON_LEFT, true, point);
+    touchButton(RCS_BUTTON_LEFT, false, point);
+}
+
+// 两个手指滑：内容跟着手指走（手指往上，内容往上，是往下滚）
+void RemoteView::scrollBy(QPointF delta, QPointF at)
+{
+    gesture_.scrollRest += delta;
+    const int linesX = int(gesture_.scrollRest.x() / ScrollLinePx);
+    const int linesY = int(gesture_.scrollRest.y() / ScrollLinePx);
+    if (!linesX && !linesY)
+        return;
+    gesture_.scrollRest -= QPointF(linesX * ScrollLinePx, linesY * ScrollLinePx);
+    rcs_input_event event = rcs_input_event_init();
+    event.type = RCS_INPUT_WHEEL;
+    event.wheel_x = -linesX;
+    event.wheel_y = linesY;
+    if (touchTarget(at, event))
+        send(event);
+}
+
+bool RemoteView::touchTarget(QPointF point, rcs_input_event &event) const
+{
+    if (!touchpad())
+        return position(point, event, true);
+    if (!frameWidth_ || !session_)
+        return false;
+    event.x = uint32_t(cursorX_);
+    event.y = uint32_t(cursorY_);
+    return rcsdk::displayPosition(event.x, event.y, session_->streamInfo(), true);
+}
+
+void RemoteView::touchButton(uint32_t button, bool down, QPointF point)
+{
+    rcs_input_event event = rcs_input_event_init();
+    event.type = RCS_INPUT_BUTTON;
+    event.code = button;
+    event.down = down;
+    if (touchTarget(point, event))
+        send(event);
+}
+
+// 触摸板：手指动了 delta（条目坐标），光标在看到的画面上动 TouchpadSpeed 倍
+void RemoteView::moveCursor(QPointF delta)
+{
+    const rcsdk::ViewGeometry g = geometry();
+    if (g.width <= 0 || g.height <= 0 || !frameWidth_ || !frameHeight_)
+        return;
+    const qreal ratio = window()->effectiveDevicePixelRatio();
+    // 条目上的一个物理像素是帧上的几个像素，再换成 0..65535
+    const double dx = delta.x() * ratio * g.sourceWidth / g.width * TouchpadSpeed;
+    const double dy = delta.y() * ratio * g.sourceHeight / g.height * TouchpadSpeed;
+    cursorX_ = std::clamp(cursorX_ + dx / std::max(1u, frameWidth_ - 1) * 65535, 0.0, 65535.0);
+    cursorY_ = std::clamp(cursorY_ + dy / std::max(1u, frameHeight_ - 1) * 65535, 0.0, 65535.0);
+    rcs_input_event event = rcs_input_event_init();
+    event.type = RCS_INPUT_MOVE;
+    if (touchTarget({}, event))
+        send(event);
+    keepCursorInView();
+    updateCursor();
+}
+
+// 放大了的时候光标走到边上：画面跟着移，光标留在条目里（离边至少六分之一）
+void RemoteView::keepCursorInView()
+{
+    if (zoom_ <= 1)
+        return;
+    const rcsdk::ViewGeometry g = geometry();
+    double px = 0;
+    double py = 0;
+    const auto inside = [&] {
+        return g.point(uint32_t(cursorX_), uint32_t(cursorY_), frameWidth_, frameHeight_, px, py);
+    };
+    const qreal ratio = window()->effectiveDevicePixelRatio();
+    const double viewWidth = width() * ratio;
+    const double viewHeight = height() * ratio;
+    if (!inside()) {
+        // 光标在露出来的那一块外面：把它放到正中
+        const rcsdk::ViewGeometry fit = fitGeometry();
+        zoomX_ = cursorX_ / 65535 * fit.width * zoom_ - viewWidth / 2;
+        zoomY_ = cursorY_ / 65535 * fit.height * zoom_ - viewHeight / 2;
+        clampZoom();
+        return;
+    }
+    const double marginX = viewWidth / 6;
+    const double marginY = viewHeight / 6;
+    if (px < marginX)
+        zoomX_ -= marginX - px;
+    else if (px > viewWidth - marginX)
+        zoomX_ += px - (viewWidth - marginX);
+    if (py < marginY)
+        zoomY_ -= marginY - py;
+    else if (py > viewHeight - marginY)
+        zoomY_ += py - (viewHeight - marginY);
+    clampZoom();
 }

@@ -8,15 +8,12 @@ MobilePage {
 
     title: qsTr("设置")
 
-    // 平板（MobileMain）：手指默认直接点
-    property bool tablet: false
+    // 手指怎么操作电脑：touchpad | direct（MobileMain 按设置和手机、平板定）
+    property string fingerMode: "touchpad"
 
     signal accountRequested()
     signal loginRequested()
     signal aboutRequested()
-
-    readonly property string fingerMode: AppSettings.fingerMode.length > 0 ? AppSettings.fingerMode
-                                                                           : tablet ? "direct" : "touchpad"
 
     // ---- 账号 ----
     Rectangle {

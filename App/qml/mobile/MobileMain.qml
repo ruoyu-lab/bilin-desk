@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -17,6 +19,9 @@ ApplicationWindow {
     readonly property bool wide: width >= 720
     // 平板：短的那一边至少 600
     readonly property bool tablet: Math.min(Screen.width, Screen.height) >= 600
+    // 手指怎么操作电脑：设置里选的；没选过时手机是触摸板、平板直接点
+    readonly property string fingerMode: AppSettings.fingerMode.length > 0 ? AppSettings.fingerMode
+                                                                           : tablet ? "direct" : "touchpad"
     property int currentTab: 0
 
     function connectTo(device, viewOnly) {
@@ -60,8 +65,9 @@ ApplicationWindow {
         if (stack.depth <= 1)
             return
         close.accepted = false
-        if (stack.currentItem instanceof MobileSession)
-            stack.currentItem.close()
+        const session = stack.currentItem as MobileSession
+        if (session)
+            session.close()
         else
             stack.pop()
     }
@@ -114,7 +120,7 @@ ApplicationWindow {
             }
             MobileSettings {
                 bottomInset: home.tabInset
-                tablet: app.tablet
+                fingerMode: app.fingerMode
                 onAccountRequested: stack.push(accountPage)
                 onLoginRequested: stack.push(loginPage)
                 onAboutRequested: stack.push(aboutPage)
@@ -138,12 +144,13 @@ ApplicationWindow {
         parent: Overlay.overlay
         x: Math.round((app.width - width) / 2)
         y: Math.round((app.height - height) / 2)
-        onConnectRequested: viewOnly => app.connectTo(device, viewOnly)
+        onConnectRequested: viewOnly => app.connectTo(deviceMenu.device, viewOnly)
     }
 
     Component {
         id: sessionPage
         MobileSession {
+            fingerMode: app.fingerMode
             onClosed: stack.pop()
         }
     }

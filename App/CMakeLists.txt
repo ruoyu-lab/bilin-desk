@@ -172,6 +172,8 @@ set(desktop_qml
 set(mobile_sources
     src/mobile/local_service.h
     src/mobile/local_service.cpp
+    src/mobile/screen_awake.h
+    src/mobile/screen_awake.cpp
 )
 set(mobile_qml
     qml/mobile/MobileMain.qml

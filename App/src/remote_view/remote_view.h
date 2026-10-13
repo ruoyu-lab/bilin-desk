@@ -7,6 +7,7 @@
 
 #include <QPointer>
 #include <QQuickItem>
+#include <QTimer>
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
@@ -19,7 +20,11 @@ class QQuickPaintedItem;
 // 会话窗口里的远程画面（QML 元素）：画观看会话解出的帧，控制时把本机的鼠标、键盘发给对方。
 // GPU 上的帧由 FrameNode 直接画，CPU 上的图像（显卡建不起解码设备时）上传成纹理画。
 // 对方的指针单独传来：控制时本机的指针换成它的样子（跟手，没有延迟），只看时在画面上画出来；
-// 关掉"显示远程光标"时都不要，只有本机自己的指针
+// 关掉"显示远程光标"时都不要，只有本机自己的指针。
+// 手机（touchMode）：没有本机的指针，对方的指针一直画在画面上。手指的操作：
+// - 触摸板：一个手指滑动移光标，点一下是点击（点两下双击），按住不放再拖是按着左键拖，两个手指点一下是右键
+// - 直接点：点在哪就点哪，拖就是按着左键拖，按住不放是右键
+// - 都是：两个手指上下左右滑是滚轮，两个手指张开、捏拢放大缩小画面（放大以后两个手指拖着移动）
 class RemoteView : public QQuickItem
 {
     Q_OBJECT
@@ -34,6 +39,12 @@ class RemoteView : public QQuickItem
     Q_PROPERTY(bool remoteCursor READ remoteCursor WRITE setRemoteCursor NOTIFY remoteCursorChanged)
     // 会话窗口"发送快捷键"菜单：对方系统上的组合键 [{id, label, keys}]，连上以后按对方的系统
     Q_PROPERTY(QVariantList shortcuts READ shortcuts NOTIFY shortcutsChanged)
+    // 对方是 Mac（手机的按键栏上写 ⌘ 还是 Win）
+    Q_PROPERTY(bool remoteMac READ remoteIsMac NOTIFY shortcutsChanged)
+    // 手机：手指怎么操作对方，touchpad | direct；空：电脑上（没有手指）
+    Q_PROPERTY(QString touchMode READ touchMode WRITE setTouchMode NOTIFY touchModeChanged)
+    // 手机上放大的倍数：1 是整个画面放得下
+    Q_PROPERTY(qreal zoom READ zoom NOTIFY zoomChanged)
 
 public:
     explicit RemoteView(QQuickItem *parent = nullptr);
@@ -53,6 +64,16 @@ public:
     // 按下又松开 shortcuts 里 id 那一项
     Q_INVOKABLE void sendShortcut(const QString &id);
 
+    QString touchMode() const { return touchMode_; }
+    void setTouchMode(const QString &mode);
+    qreal zoom() const { return zoom_; }
+    // 手机上打的字（输入法定下来的），一个字一个字发给对方
+    Q_INVOKABLE void sendText(const QString &text);
+    // 手机的按键栏：按一下 key，同时按着 modifiers（名字见 remote_input::namedKeyUsage）
+    Q_INVOKABLE void pressKey(const QString &key, const QStringList &modifiers = {});
+    // 回到整个画面放得下
+    Q_INVOKABLE void resetZoom();
+
 signals:
     void sessionChanged();
     void nativeSizeChanged();
@@ -60,6 +81,8 @@ signals:
     void hasFrameChanged();
     void remoteCursorChanged();
     void shortcutsChanged();
+    void touchModeChanged();
+    void zoomChanged();
 
 protected:
     QSGNode *updatePaintNode(QSGNode *old, UpdatePaintNodeData *) override;
@@ -73,9 +96,25 @@ protected:
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
     void focusOutEvent(QFocusEvent *event) override;
+    void touchEvent(QTouchEvent *event) override;
 
 private:
     enum class NodeKind { None, Frame, Image };
+
+    // 手机：手指的一次操作（第一个手指按下到全部抬起）。pending：刚按下，还不知道是点还是拖 | move：触摸板上移光标 |
+    // drag：按着左键拖 | twoPending：两个手指，还不知道是缩放还是滚动 | scroll | pinch：缩放、移动画面 |
+    // pan：只看时一个手指移动画面 | done：这一次处理完了（按住不放出了右键）
+    struct Gesture
+    {
+        enum class Kind { Pending, Move, Drag, TwoPending, Scroll, Pinch, Pan, Done };
+        Kind kind = Kind::Pending;
+        QPointF start; // 第一个手指按下的地方（条目坐标）
+        QPointF last;  // 上一次一个手指在哪、两个手指的中点
+        QPointF twoStart;
+        qreal startDistance = 0;
+        qreal startZoom = 1;
+        QPointF scrollRest; // 滚动还没攒够一行的
+    };
 
     // 画面在条目里的位置（物理像素）；画和输入用同一个
     rcsdk::ViewGeometry geometry() const;
@@ -87,6 +126,25 @@ private:
     void key(QKeyEvent *key, bool down);
     void updateCursor();
     bool remoteIsMac() const;
+    bool touchpad() const;
+    // 整个画面放得下时的位置（放大以前）
+    rcsdk::ViewGeometry fitGeometry() const;
+    qreal maxZoom() const;
+    void zoomAt(QPointF focus, qreal zoom);
+    void panBy(QPointF delta);
+    void clampZoom();
+    void beginTouch(QPointF point);
+    void oneFinger(QPointF point);
+    void twoFingers(QPointF a, QPointF b);
+    void endTouch();
+    void longPressed();
+    void tap(QPointF point);
+    void scrollBy(QPointF delta, QPointF at);
+    // 手机上的输入落在哪：触摸板是光标，直接点是手指（point）
+    bool touchTarget(QPointF point, rcs_input_event &event) const;
+    void touchButton(uint32_t button, bool down, QPointF point);
+    void moveCursor(QPointF delta);
+    void keepCursorInView();
     // 同步时：画面有没有，界面线程上再通知
     void publishHasFrame(bool hasFrame);
 
@@ -112,4 +170,19 @@ private:
     // 控制时本机指针换成了对方的哪个形状（或藏起来）；空：本机自己的指针
     std::optional<uint32_t> localCursorShape_;
     double localCursorScale_ = 0;
+
+    QString touchMode_;
+    Gesture gesture_;
+    bool touching_ = false;
+    QTimer longPress_;
+    // 触摸板：光标在编码帧上的位置（0..65535），手指移动时本机先算，不等对方报回来
+    double cursorX_ = 32767;
+    double cursorY_ = 32767;
+    // 上一次点在哪、什么时候（点两下要落在同一个地方，对方才认成双击）
+    QPointF lastTapPoint_;
+    qint64 lastTapTime_ = 0;
+    // 放大：倍数，放大以后的画面里条目的左上角在哪（物理像素）
+    qreal zoom_ = 1;
+    double zoomX_ = 0;
+    double zoomY_ = 0;
 };

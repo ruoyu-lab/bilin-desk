@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 
@@ -29,13 +31,14 @@ Rectangle {
         Repeater {
             model: root.tabs
             delegate: NavItem {
+                id: item
                 required property var modelData
                 required property int index
                 Layout.fillWidth: true
-                iconName: modelData.icon
-                text: modelData.title
-                current: index === root.currentIndex
-                onClicked: root.selected(index)
+                iconName: item.modelData.icon
+                text: item.modelData.title
+                current: item.index === root.currentIndex
+                onClicked: root.selected(item.index)
             }
         }
 

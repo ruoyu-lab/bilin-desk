@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QStringView>
 #include <Qt>
 
 #include <cstdint>
@@ -17,6 +18,11 @@ uint32_t keyUsage(const QKeyEvent &key, bool remoteIsMac);
 
 // 鼠标键 → RCS_BUTTON_*；SDK 不转发的键为 0
 uint32_t button(Qt::MouseButton button);
+
+// 手机的按键栏：按键的名字 → HID 键盘用法。名字是 Enter、Escape、Backspace、Tab、Space、Delete、Home、End、PageUp、
+// PageDown、Left、Right、Up、Down、F1~F12、Control、Shift、Alt、Meta（Mac 的 Command、Windows 的 Win），
+// 或者一个字母、数字（按着修饰键时打的）；不认识的为 0
+uint32_t namedKeyUsage(QStringView name);
 
 // 会话窗口"发送快捷键"菜单里的一项：对方系统上常用、本机按不出来（本机的系统先拿走了）的组合键
 struct Shortcut

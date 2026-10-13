@@ -124,6 +124,39 @@ uint32_t keyUsage(const QKeyEvent &key, bool remoteIsMac)
 #endif
 }
 
+uint32_t namedKeyUsage(QStringView name)
+{
+    static constexpr std::pair<QLatin1StringView, uint8_t> Named[] = {
+        {QLatin1StringView("Enter"), 40},    {QLatin1StringView("Escape"), 41}, {QLatin1StringView("Backspace"), 42},
+        {QLatin1StringView("Tab"), 43},      {QLatin1StringView("Space"), 44},  {QLatin1StringView("Home"), 74},
+        {QLatin1StringView("PageUp"), 75},   {QLatin1StringView("Delete"), 76}, {QLatin1StringView("End"), 77},
+        {QLatin1StringView("PageDown"), 78}, {QLatin1StringView("Right"), 79},  {QLatin1StringView("Left"), 80},
+        {QLatin1StringView("Down"), 81},     {QLatin1StringView("Up"), 82},     {QLatin1StringView("Control"), LeftControl},
+        {QLatin1StringView("Shift"), LeftShift}, {QLatin1StringView("Alt"), LeftAlt}, {QLatin1StringView("Meta"), LeftGui},
+    };
+    for (const auto &[key, usage] : Named) {
+        if (name == key)
+            return usage;
+    }
+    // F1~F12：58~69
+    if (name.size() >= 2 && name.front() == u'F') {
+        bool ok = false;
+        const int number = name.mid(1).toInt(&ok);
+        if (ok && number >= 1 && number <= 12)
+            return 57 + number;
+    }
+    if (name.size() == 1) {
+        const char16_t c = QChar(name.front()).toLower().unicode();
+        if (c >= u'a' && c <= u'z')
+            return 4 + (c - u'a');
+        if (c >= u'1' && c <= u'9')
+            return 30 + (c - u'1');
+        if (c == u'0')
+            return 39;
+    }
+    return 0;
+}
+
 uint32_t button(Qt::MouseButton button)
 {
     switch (button) {

@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 
@@ -37,7 +39,7 @@ Rectangle {
                 id: tab
                 required property var modelData
                 required property int index
-                readonly property bool current: index === root.currentIndex
+                readonly property bool current: tab.index === root.currentIndex
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
