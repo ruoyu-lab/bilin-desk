@@ -43,8 +43,11 @@ ViewGraphics::ViewGraphics(QObject *parent)
     device->context.As(&device->lock);
     device->lock->SetMultithreadProtected(TRUE);
     device_ = std::move(device);
-#else
+#elif defined(Q_OS_APPLE)
     QQuickWindow::setGraphicsApi(QSGRendererInterface::Metal);
+#else
+    // Android：OpenGL ES
+    QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 #endif
 }
 
