@@ -130,7 +130,7 @@ void RemoteView::setInputEnabled(bool enabled)
     if (inputEnabled_)
         releaseAll();
     inputEnabled_ = enabled;
-    setAcceptHoverEvents(enabled);
+    updateHover();
     emit inputEnabledChanged();
     updateCursor();
 }
@@ -414,6 +414,13 @@ void RemoteView::releaseAll()
     send(release);
 }
 
+// 控制时收鼠标悬停（移动就是对方的指针在动）。手机上不收：Qt 每一帧都拿最后一次指针的位置再报一次悬停，
+// 手指抬起以后那就是抬起的地方，触摸板的光标会跳过去
+void RemoteView::updateHover()
+{
+    setAcceptHoverEvents(inputEnabled_ && touchMode_.isEmpty());
+}
+
 // 鼠标悬停移动（控制时才接收）。Qt Quick 在没有移动时也会每帧再报一次悬停
 void RemoteView::hoverMoveEvent(QHoverEvent *hover)
 {
@@ -536,8 +543,9 @@ void RemoteView::setTouchMode(const QString &mode)
     if (mode == touchMode_)
         return;
     touchMode_ = mode;
-    // 收手指（不收的话 Qt 把手指当成鼠标）；手机上画面一直跟着手指，没有悬停
+    // 收手指（不收的话 Qt 把手指当成鼠标）
     setAcceptTouchEvents(!mode.isEmpty());
+    updateHover();
     emit touchModeChanged();
     updateCursor();
 }

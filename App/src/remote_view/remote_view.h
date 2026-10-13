@@ -125,6 +125,7 @@ private:
     void button(QMouseEvent *mouse, bool down);
     void key(QKeyEvent *key, bool down);
     void updateCursor();
+    void updateHover();
     bool remoteIsMac() const;
     bool touchpad() const;
     // 整个画面放得下时的位置（放大以前）
