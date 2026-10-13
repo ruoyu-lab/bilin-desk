@@ -10,10 +10,10 @@
 </p>
 
 <p align="center">
-  <a href="https://www.bilindesk.com"><img src="https://img.shields.io/badge/官网-bilindesk.com-111111?style=flat-square" alt="官网"></a>
-  <img src="https://img.shields.io/badge/版本-0.1.0--beta-111111?style=flat-square" alt="版本">
-  <img src="https://img.shields.io/badge/系统-macOS%2014%2B%20%7C%20Windows%2010%2B-111111?style=flat-square" alt="系统">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/许可-AGPL--3.0-111111?style=flat-square" alt="许可"></a>
+  <a href="https://www.bilindesk.com"><img src="https://img.shields.io/badge/官网-bilindesk.com-007aff?style=flat-square" alt="官网"></a>
+  <img src="https://img.shields.io/badge/版本-0.1.0--beta-ff9500?style=flat-square" alt="版本">
+  <img src="https://img.shields.io/badge/系统-macOS%2014%2B%20%7C%20Windows%2010%2B-34c759?style=flat-square" alt="系统">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/许可-AGPL--3.0-af52de?style=flat-square" alt="许可"></a>
 </p>
 
 <p align="center">
