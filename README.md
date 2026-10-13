@@ -120,6 +120,7 @@ third_party/  远程控制 SDK、QWindowKit
 - [会话里的画面](docs/session.md)：分辨率、帧率、编码器、文字更清楚、低延迟模式
 - [网络](docs/network.md)：怎么找到对方、直连和中继、服务器
 - [安装和第一次运行](docs/install-and-first-run.md)：安装包、系统服务、无人值守、授权
+- [手机版](docs/mobile.md)：Android 连电脑（开发中）
 - [开发](docs/development.md)、[测试](docs/testing.md)、[管理后台](docs/admin.md)、[官网](docs/website.md)
 
 ## 许可
