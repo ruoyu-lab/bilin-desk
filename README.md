@@ -10,10 +10,12 @@
 </p>
 
 <p align="center">
-  <a href="https://www.bilindesk.com"><img src="https://img.shields.io/badge/官网-bilindesk.com-007aff?style=flat-square" alt="官网"></a>
-  <img src="https://img.shields.io/badge/版本-0.1.0--beta-ff9500?style=flat-square" alt="版本">
-  <img src="https://img.shields.io/badge/系统-macOS%2014%2B%20%7C%20Windows%2010%2B-34c759?style=flat-square" alt="系统">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/许可-AGPL--3.0-af52de?style=flat-square" alt="许可"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
+  <img src="https://img.shields.io/badge/version-0.1.0--beta-orange.svg" alt="Version">
+  <img src="https://img.shields.io/badge/C%2B%2B-20-00599C.svg" alt="C++20">
+  <img src="https://img.shields.io/badge/Qt-6.11-41CD52.svg?logo=qt&logoColor=white" alt="Qt 6.11">
+  <img src="https://img.shields.io/badge/platforms-macOS%2014%2B%20%7C%20Windows%2010%2B-lightgrey.svg" alt="Platforms">
+  <a href="https://www.bilindesk.com"><img src="https://img.shields.io/badge/website-bilindesk.com-007aff.svg" alt="Website"></a>
 </p>
 
 <p align="center">
