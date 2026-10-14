@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <!-- 比邻的 Android 版（App/CMakeLists.txt 的手机版）：Qt 的模板改的，百分号括起来的那几处打包时由 Qt 填。
-     只去连电脑：要上网、看网络状态；局域网里发现附近的电脑要收发 UDP 广播；新版本交给系统装 -->
+     只去连电脑：要上网、看网络状态；局域网里发现附近的电脑要收发 UDP 广播；连着时开前台服务（到了后台连接不断）；
+     新版本交给系统装 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.bilindesk.bilin"
     android:installLocation="auto"
@@ -10,6 +11,10 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- 连着电脑时的前台服务（SessionService）：连的是网络上的另一台设备（connectedDevice，要上面的
+         CHANGE_WIFI_MULTICAST_STATE 这类权限之一） -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <!-- 新版本从官网下载，交给系统的安装界面装（Updater） -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- %%INSERT_FEATURES -->
@@ -47,6 +52,11 @@
                 android:name="android.app.arguments"
                 android:value="-- %%INSERT_APP_ARGUMENTS%% --" />
         </activity>
+        <service
+            android:name="com.bilindesk.bilin.SessionService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice"
+            android:stopWithTask="true" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.qtprovider"

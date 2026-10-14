@@ -38,6 +38,15 @@ public:
     // 断开并忘掉
     Q_INVOKABLE void close(const QString &key);
 
+    // 有没有会话（连着的、在连的、等密码的）
+    bool isEmpty() const { return sessions_.isEmpty(); }
+    // 画面没人看（ViewerSession::setHidden）：现在的和之后打开的会话都是
+    void setHidden(bool hidden);
+
+signals:
+    // 打开、关掉了会话
+    void sessionsChanged();
+
 private:
     void serviceEvent(const QString &name, const QJsonObject &arguments);
     ViewerSession *byConnection(const QString &connection) const;
@@ -49,4 +58,5 @@ private:
     Conversations &conversations_;
     rc::InterruptedTransfers &transfers_;
     QHash<QString, ViewerSession *> sessions_;
+    bool hidden_ = false;
 };

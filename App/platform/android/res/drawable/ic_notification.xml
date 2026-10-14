@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 通知栏的小图标（SessionService）：Logo 里的三支指针（ic_launcher_foreground.xml），系统只看不透明度，
+     后面两支淡一些。视口是三支指针连描边的范围 (369, 302)~(805, 872) 补成正方形 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="570"
+    android:viewportHeight="570">
+    <group android:translateX="-302" android:translateY="-302">
+        <group android:translateX="79" android:translateY="132">
+            <path android:pathData="M450 330 L450 690 L536 606 L592 730 L652 703 L596 581 L716 581 Z"
+                android:fillColor="#ffffff" android:fillAlpha="0.35" android:strokeColor="#ffffff"
+                android:strokeAlpha="0.35" android:strokeWidth="20" android:strokeLineJoin="round" />
+        </group>
+        <group android:translateX="4" android:translateY="57">
+            <path android:pathData="M450 330 L450 690 L536 606 L592 730 L652 703 L596 581 L716 581 Z"
+                android:fillColor="#ffffff" android:fillAlpha="0.6" android:strokeColor="#ffffff"
+                android:strokeAlpha="0.6" android:strokeWidth="20" android:strokeLineJoin="round" />
+        </group>
+        <group android:translateX="-71" android:translateY="-18">
+            <path android:pathData="M450 330 L450 690 L536 606 L592 730 L652 703 L596 581 L716 581 Z"
+                android:fillColor="#ffffff" android:strokeColor="#ffffff" android:strokeWidth="20"
+                android:strokeLineJoin="round" />
+        </group>
+    </group>
+</vector>

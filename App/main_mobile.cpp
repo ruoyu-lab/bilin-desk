@@ -20,6 +20,7 @@
 #include <rcsdk/rcsdk.hpp>
 #ifdef Q_OS_ANDROID
 #include "mobile/android_files.h"
+#include "mobile/session_keeper.h"
 
 #include <rcsdk/android.h>
 
@@ -85,6 +86,9 @@ int main(int argc, char *argv[])
     ViewerSessions viewerSessions(service, account, viewGraphics.decodeDevice(), codecs, conversations, transfers,
                                   &app);
     ViewerSessions::setInstance(&viewerSessions);
+#ifdef Q_OS_ANDROID
+    SessionKeeper keeper(viewerSessions, &app);
+#endif
     service.start();
 
     QQmlApplicationEngine engine;

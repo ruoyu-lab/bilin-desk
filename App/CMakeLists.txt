@@ -177,12 +177,14 @@ set(mobile_sources
     src/mobile/phone_window.h
     src/mobile/phone_window.cpp
 )
-# Android 上的互传文件：content:// 地址、存到公共的"下载"
+# Android 上的互传文件（content:// 地址、存到公共的"下载"），到了后台连接不断
 set(android_sources
     src/mobile/android_files.h
     src/mobile/android_files.cpp
     src/mobile/android_file_picker.h
     src/mobile/android_file_picker.cpp
+    src/mobile/session_keeper.h
+    src/mobile/session_keeper.cpp
 )
 set(mobile_qml
     qml/mobile/MobileMain.qml

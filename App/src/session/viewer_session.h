@@ -193,6 +193,9 @@ public:
     // 用上一次的密码（我的设备：设备密钥）再连一次
     Q_INVOKABLE void retry();
     void stop();
+    // 画面没人看（Android 上程序到了后台）：暂停收画面（对方也不再给本机采集、编码），连接、输入、声音、消息照常；
+    // 回来时从关键帧接着
+    void setHidden(bool hidden);
 
     // 这一次连接的编号（信令里的 session）；没在连时是空的
     QString connection() const { return connection_; }
@@ -298,6 +301,7 @@ private:
     // 本机解得了的编码格式（LocalCodecs）；还没列好时连接先等着
     const LocalCodecs &codecs_;
     bool waitingForCodecs_ = false;
+    bool hidden_ = false;
     // 对方用显卡编得了的（它连上以后告诉本机，rc/control_protocol.h）
     std::optional<uint32_t> peerHardware_;
     bool mainViewer_ = true;

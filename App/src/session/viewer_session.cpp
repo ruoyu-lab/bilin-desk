@@ -523,6 +523,8 @@ void ViewerSession::open(bool relay)
         return;
     }
     files_->attach(session_->handle());
+    if (hidden_)
+        session_->pause(RCS_PAUSE_VIDEO);
     setStatus(connectingStatus());
     if (session_->start() != RCS_OK) {
         const QString message = QString::fromStdString(session_->failure().message);
@@ -558,6 +560,19 @@ void ViewerSession::updateIceServers()
     useTransport(config, ice);
     if (session_->update(config.iceServers()) != RCS_OK)
         qWarning("连接 %s 换 P2P 和中继用的服务器：%s", qUtf8Printable(target_), rcsdk::lastCallError().c_str());
+}
+
+void ViewerSession::setHidden(bool hidden)
+{
+    if (hidden == hidden_)
+        return;
+    hidden_ = hidden;
+    if (!session_)
+        return;
+    if (hidden)
+        session_->pause(RCS_PAUSE_VIDEO);
+    else
+        session_->resume(RCS_PAUSE_VIDEO);
 }
 
 void ViewerSession::retry()

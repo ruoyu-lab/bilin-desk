@@ -48,7 +48,9 @@ ViewerSession *ViewerSessions::open(const QString &key, const QString &target)
         return existing;
     auto *session = new ViewerSession(target, service_, decodeDevice_, codecs_, *conversations_.get(key), transfers_,
                                       [this](const QString &deviceId) { return account_.publicKey(deviceId); }, this);
+    session->setHidden(hidden_);
     sessions_.insert(key, session);
+    emit sessionsChanged();
     return session;
 }
 
@@ -64,6 +66,14 @@ void ViewerSessions::close(const QString &key)
         return;
     session->stop();
     session->deleteLater();
+    emit sessionsChanged();
+}
+
+void ViewerSessions::setHidden(bool hidden)
+{
+    hidden_ = hidden;
+    for (ViewerSession *session : std::as_const(sessions_))
+        session->setHidden(hidden);
 }
 
 void ViewerSessions::serviceEvent(const QString &name, const QJsonObject &arguments)

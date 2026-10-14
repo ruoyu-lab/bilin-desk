@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">比邻</string>
+    <!-- 连着电脑时的通知（SessionService） -->
+    <string name="session_channel">远程连接</string>
+    <string name="session_title">正在远程连接</string>
+    <string name="session_text">连接在后台保持，点按返回比邻</string>
 </resources>
