@@ -5,7 +5,7 @@ import { SOURCE_URL } from '../links'
 <template>
   <footer class="wrap footer">
     <span class="name">比邻</span>
-    <span>免费、开源（AGPL-3.0），没有广告</span>
+    <span>免费开源（AGPL-3.0）· 无广告</span>
     <a :href="SOURCE_URL">源代码</a>
     <a href="./terms.html">服务协议</a>
     <a href="./privacy.html">隐私政策</a>

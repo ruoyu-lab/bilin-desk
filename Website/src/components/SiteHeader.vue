@@ -14,9 +14,9 @@ const github = 'M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55
         比邻
       </a>
       <div class="links">
-        <a href="./#modes">怎么连</a>
-        <a href="./#features">功能</a>
-        <a href="./#privacy">隐私</a>
+        <a href="./#modes">连接方式</a>
+        <a href="./#features">核心能力</a>
+        <a href="./#privacy">隐私安全</a>
         <a href="./#download">下载</a>
       </div>
       <a :href="SOURCE_URL" class="button small source" aria-label="GitHub 上的源代码">

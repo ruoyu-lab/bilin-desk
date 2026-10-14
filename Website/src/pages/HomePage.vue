@@ -18,52 +18,58 @@ const modes: { icon: IconName; title: string; text: string }[] = [
   {
     icon: 'monitor',
     title: '我的设备',
-    text: '同一个账号登录的电脑，点一下就连上：不用密码，不用有人点允许。锁屏了、停在登录界面也能连，还能让它重启、关机、睡眠、注销。',
+    text: '登录同一账号的设备之间一键直连，无需密码，也无需对方确认。设备处于锁屏或登录界面时同样可以连接，并支持远程重启、关机、睡眠与注销。',
   },
   {
     icon: 'people',
-    title: '别人的电脑',
-    text: '对方报给你设备 ID 和一串临时密码，再在他的电脑上点“允许”。临时密码只在两台电脑之间核对，服务器不知道；用过一次就换。',
+    title: '远程协助',
+    text: '对方提供设备 ID 与临时密码，并在本机确认授权后即可建立连接。临时密码仅在两台设备之间校验，服务器无从获知，每次使用后自动更新。',
   },
 ]
 
-const features: { icon: IconName; title: string; text: string }[] = [
+const features: { icon: IconName; title: string; text: string; tags: string[] }[] = [
   {
     icon: 'bolt',
-    title: '画面跟手',
-    text: '显卡编码、显卡解码，H.264、HEVC、AV1 两边都支持的才用；画面到了就画，不排队。分辨率、帧率、码率都能自己挑。',
+    title: '低延迟，高画质',
+    text: '全程硬件编解码，自动选用双方均支持硬件加速的格式，优先 HEVC。分辨率与帧率最高可达对方显示器的原生规格，另提供文字清晰模式与低延迟模式。',
+    tags: ['HEVC', 'H.264', 'AV1', 'VP9'],
   },
   {
     icon: 'wifi',
-    title: '能直连就直连',
-    text: '同一网络里自动发现附近的设备，画面不绕外网；隔着网络也先试直连，打不通才经中继。从 Wi-Fi 换到热点，连接不断。',
+    title: '智能连接',
+    text: '局域网内自动发现设备并直接连接，画面不经公网；跨网络时优先 P2P 直连，无法打通时自动切换至中继。网络切换时连接不中断。',
+    tags: ['局域网直连', 'P2P', '自动中继'],
   },
   {
     icon: 'displays',
-    title: '多块显示器、声音',
-    text: '对方有几块屏幕，工具栏上就有几个按钮，点哪块看哪块。对方电脑里放的声音，这边也听得到。',
+    title: '多显示器与音频',
+    text: '工具栏实时显示对方每块显示器的缩略图，点击即可切换；远端设备播放的声音同步传输到本地。',
+    tags: ['多屏切换', '远端音频'],
   },
   {
     icon: 'file',
-    title: '互传文件、共用剪贴板',
-    text: '文件拖过去就发，断了下次接着传。这边复制、那边粘贴；密码管理器里标了“不要分享”的不会传。',
+    title: '文件与剪贴板',
+    text: '拖放即可发送文件，中断后支持断点续传；剪贴板双向同步，密码管理器中标记为敏感的内容不会被传输。',
+    tags: ['断点续传', '剪贴板同步'],
   },
   {
-    icon: 'chat',
-    title: '边连边聊',
-    text: '连着的时候直接打字说话，不用另开聊天软件。记录只存在两台电脑上。',
+    icon: 'shield',
+    title: '端到端加密',
+    text: '画面、声音、键鼠输入、剪贴板、文件与消息均在两台设备之间端到端加密。服务器只负责协助双方建立连接，经中继转发时也仅接触加密数据，且不做任何留存。',
+    tags: ['全程加密', '中继不留存'],
   },
   {
     icon: 'power',
-    title: '没人在也能连',
-    text: '自己的电脑开机就能连，锁屏界面能解锁，Windows 上能按 Ctrl+Alt+Del。重启以后自己连回来。',
+    title: '无人值守访问',
+    text: '本人设备开机即可连接，可在锁屏界面解锁，Windows 上支持发送 Ctrl+Alt+Del；设备重启后自动恢复在线，也可由同一网络内的其他设备远程唤醒。',
+    tags: ['锁屏解锁', '远程唤醒'],
   },
 ]
 
 const privacy = [
-  { title: '画面、声音、键盘鼠标端到端加密。', text: '直连打不通走中继时，中继只看得到加密后的数据，也不保存。' },
-  { title: '临时密码服务器不知道。', text: '它只在两台电脑之间核对。' },
-  { title: '没有广告，没有第三方统计。', text: '对话、文件、连接记录只在你自己的电脑上。' },
+  { title: '全程端到端加密。', text: '画面、声音、键鼠输入、文件与消息均在两台设备之间加密传输；经中继转发时，中继只接触加密数据，且不做任何留存。' },
+  { title: '临时密码不经服务器。', text: '密码仅在两台设备之间完成校验。' },
+  { title: '无广告，无第三方统计。', text: '消息、文件与连接记录均只保存在您自己的设备上。' },
 ]
 
 const downloads: { platform: Platform; name: string; requirement: string; note: string; button: string }[] = [
@@ -71,14 +77,14 @@ const downloads: { platform: Platform; name: string; requirement: string; note: 
     platform: 'macos-arm64',
     name: 'macOS',
     requirement: 'macOS 14 及以上，Apple 芯片。',
-    note: '装好后按引导授予“屏幕与系统音频录制”和“辅助功能”。',
+    note: '安装完成后，请按引导授予“屏幕与系统音频录制”及“辅助功能”权限。',
     button: '下载 .pkg 安装包',
   },
   {
     platform: 'windows-x64',
     name: 'Windows',
     requirement: 'Windows 10 及以上，64 位。',
-    note: '安装时需要管理员权限，用来装后台服务。',
+    note: '安装过程需要管理员权限，用于部署后台服务。',
     button: '下载安装程序',
   },
 ]
@@ -96,9 +102,9 @@ const cards = computed(() =>
   <SiteHeader />
   <main>
     <section id="top" class="wrap hero">
-      <div class="badge">远程控制 · macOS 与 Windows</div>
+      <div class="badge">开源远程桌面 · macOS 与 Windows</div>
       <h1>天涯若比邻</h1>
-      <p class="hero-text">在这台电脑前，用另一台。自己的电脑之间不用密码，帮别人时报一串临时密码就够了。</p>
+      <p class="hero-text">安全、流畅的跨平台远程桌面，全程端到端加密。<br>本人设备免密直连，远程协助凭一次性临时密码授权。</p>
       <div class="hero-buttons">
         <a :href="downloadLink('macos-arm64')" class="button primary">
           <LineIcon name="download" :size="18" :stroke="2" />
@@ -109,14 +115,14 @@ const cards = computed(() =>
           下载 Windows 版
         </a>
       </div>
-      <div class="requirements">macOS 14 及以上（Apple 芯片）· Windows 10 及以上（64 位）</div>
+      <div class="requirements">支持 macOS 14 及以上（Apple 芯片）与 Windows 10 及以上（64 位）</div>
       <AppWindowMock class="mock" />
     </section>
 
     <section id="modes" class="wrap block">
       <div class="intro">
-        <h2 class="section-title">两种连法，各管各的</h2>
-        <p class="lead">比邻按“谁在连”定规矩：自己的电脑随时能连，别人的电脑要对方点头。</p>
+        <h2 class="section-title">两种连接方式，授权各自独立</h2>
+        <p class="lead">比邻按连接对象区分授权策略：本人设备随时可达，他人设备须经对方确认。</p>
       </div>
       <div class="modes">
         <div v-for="mode in modes" :key="mode.title" class="mode">
@@ -128,12 +134,20 @@ const cards = computed(() =>
     </section>
 
     <section id="features" class="wrap block">
-      <h2 class="section-title">该有的都在</h2>
+      <div class="intro">
+        <h2 class="section-title">核心能力</h2>
+        <p class="lead">从画质、网络到协作，覆盖远程办公与技术支持的完整场景。</p>
+      </div>
       <div class="features">
         <div v-for="feature in features" :key="feature.title" class="feature">
-          <LineIcon :name="feature.icon" />
-          <h3>{{ feature.title }}</h3>
+          <h3>
+            <LineIcon :name="feature.icon" :size="22" />
+            {{ feature.title }}
+          </h3>
           <p>{{ feature.text }}</p>
+          <ul class="tags">
+            <li v-for="tag in feature.tags" :key="tag">{{ tag }}</li>
+          </ul>
         </div>
       </div>
     </section>
@@ -141,9 +155,9 @@ const cards = computed(() =>
     <section id="privacy" class="wrap block">
       <div class="privacy">
         <div class="privacy-quote">
-          <div class="privacy-label">隐私</div>
-          <p class="quote">能不收的就不收，能只存在你电脑上的就不上传。</p>
-          <a href="./privacy.html" class="privacy-link">读隐私政策全文</a>
+          <div class="privacy-label">隐私与安全</div>
+          <p class="quote">非必要不收集，能留在本地的数据绝不上传。</p>
+          <a href="./privacy.html" class="privacy-link">阅读完整隐私政策</a>
         </div>
         <div class="privacy-points">
           <div v-for="point in privacy" :key="point.title"><strong>{{ point.title }}</strong>{{ point.text }}</div>
@@ -154,7 +168,7 @@ const cards = computed(() =>
     <section id="download" class="wrap block">
       <div class="intro centered">
         <h2 class="section-title">下载比邻</h2>
-        <p class="lead">两台电脑都装上，一台报 ID，另一台连。</p>
+        <p class="lead">在两台设备上分别安装比邻，通过设备 ID 即可发起连接。</p>
       </div>
       <div class="downloads">
         <div v-for="card in cards" :key="card.platform" class="download">
@@ -164,12 +178,12 @@ const cards = computed(() =>
             <a :href="card.release.url" class="button primary" download>{{ card.button }}</a>
             <span class="version">版本 {{ card.release.version }} · {{ megabytes(card.release) }}</span>
           </template>
-          <span v-else-if="card.state === 'loading'" class="version">正在查最新版本…</span>
-          <span v-else-if="card.state === 'unpublished'" class="version">还没有发布，敬请期待</span>
-          <span v-else class="version">暂时取不到安装包，过一会儿再试</span>
+          <span v-else-if="card.state === 'loading'" class="version">正在获取最新版本…</span>
+          <span v-else-if="card.state === 'unpublished'" class="version">即将发布，敬请期待</span>
+          <span v-else class="version">暂时无法获取安装包，请稍后重试</span>
         </div>
       </div>
-      <p class="update-note">装好以后，程序里就能检查更新。</p>
+      <p class="update-note">安装后可在应用内检查并获取更新。</p>
     </section>
   </main>
   <SiteFooter />
@@ -276,24 +290,53 @@ h1 {
 
 .features {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 32px 28px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
 }
 
 .feature {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  padding: 28px;
+  border-radius: 16px;
+  background: var(--card);
 }
 
 .feature h3 {
-  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
   font-weight: 700;
 }
 
+.feature h3 svg {
+  flex: none;
+}
+
 .feature p {
+  flex: 1;
   font-size: 14px;
-  line-height: 1.75;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tags li {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--fill);
+  font-size: 12px;
+  font-weight: 500;
   color: var(--text-secondary);
 }
 
