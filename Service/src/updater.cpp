@@ -135,7 +135,7 @@ Updater::Updater(Options options, UpdateSource &source, std::function<bool()> in
 
 void Updater::start()
 {
-    qInfo("程序的版本 %s，%d 分钟后问有没有新版本", qUtf8Printable(options_.version.toString()), options_.firstCheckMs / 60000);
+    qInfo("程序的版本 %s，%d 秒后问有没有新版本", qUtf8Printable(options_.version.toString()), options_.firstCheckMs / 1000);
     timer_.start(options_.firstCheckMs);
 }
 
