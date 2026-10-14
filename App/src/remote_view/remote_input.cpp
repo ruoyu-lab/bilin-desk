@@ -80,6 +80,55 @@ constexpr std::pair<uint16_t, uint8_t> ScanCodes[] = {
     {0xE04B, 80},  {0xE04D, 79},  {0xE04F, 77},  {0xE050, 81},  {0xE051, 78},  {0xE052, 73},  {0xE053, 76},
     {0xE05B, 227}, {0xE05C, 231}, {0xE05D, 101},
 };
+#elif defined(Q_OS_ANDROID)
+// Android：Qt 不给原始键码，只给是哪个键（Qt::Key）。按美式键盘上那个键的位置换；Shift 打出来的符号算它下面那个键
+constexpr std::pair<uint16_t, uint8_t> AndroidSymbols[] = {
+    {u'-', 45},  {u'_', 45},  {u'=', 46},  {u'+', 46},  {u'[', 47},  {u'{', 47},  {u']', 48},  {u'}', 48},
+    {u'\\', 49}, {u'|', 49},  {u';', 51},  {u':', 51},  {u'\'', 52}, {u'"', 52},  {u'`', 53},  {u'~', 53},
+    {u',', 54},  {u'<', 54},  {u'.', 55},  {u'>', 55},  {u'/', 56},  {u'?', 56},  {u'!', 30},  {u'@', 31},
+    {u'#', 32},  {u'$', 33},  {u'%', 34},  {u'^', 35},  {u'&', 36},  {u'*', 37},  {u'(', 38},  {u')', 39},
+};
+
+uint32_t androidUsage(int key)
+{
+    if (key >= Qt::Key_A && key <= Qt::Key_Z)
+        return 4 + (key - Qt::Key_A);
+    if (key >= Qt::Key_1 && key <= Qt::Key_9)
+        return 30 + (key - Qt::Key_1);
+    if (key >= Qt::Key_F1 && key <= Qt::Key_F12)
+        return 58 + (key - Qt::Key_F1);
+    switch (key) {
+    case Qt::Key_0: return 39;
+    case Qt::Key_Return: return 40;
+    case Qt::Key_Enter: return 88;
+    case Qt::Key_Escape: return Escape;
+    case Qt::Key_Backspace: return 42;
+    case Qt::Key_Tab:
+    case Qt::Key_Backtab: return Tab;
+    case Qt::Key_Space: return Space;
+    case Qt::Key_CapsLock: return 57;
+    case Qt::Key_Print: return 70;
+    case Qt::Key_ScrollLock: return 71;
+    case Qt::Key_Pause: return 72;
+    case Qt::Key_Insert: return 73;
+    case Qt::Key_Home: return 74;
+    case Qt::Key_PageUp: return 75;
+    case Qt::Key_Delete: return 76;
+    case Qt::Key_End: return 77;
+    case Qt::Key_PageDown: return 78;
+    case Qt::Key_Right: return 79;
+    case Qt::Key_Left: return 80;
+    case Qt::Key_Down: return 81;
+    case Qt::Key_Up: return 82;
+    case Qt::Key_NumLock: return 83;
+    case Qt::Key_Menu: return 101;
+    case Qt::Key_Control: return LeftControl;
+    case Qt::Key_Shift: return LeftShift;
+    case Qt::Key_Alt: return LeftAlt;
+    case Qt::Key_Meta: return LeftGui;
+    default: return key < 0x80 ? lookUp(AndroidSymbols, uint32_t(key)) : 0;
+    }
+}
 #else
 // macOS 的虚拟键码（kVK_*，NSEvent.keyCode）；Fn 没有对应的用法
 constexpr std::pair<uint16_t, uint8_t> MacKeyCodes[] = {
@@ -110,6 +159,9 @@ uint32_t keyUsage(const QKeyEvent &key, bool remoteIsMac)
     // Qt 给的扫描码：低 8 位是码，第 8 位是扩展键
     const quint32 scan = key.nativeScanCode();
     return lookUp(ScanCodes, (scan & 0xff) | ((scan & 0x100) ? 0xE000u : 0u));
+#elif defined(Q_OS_ANDROID)
+    Q_UNUSED(remoteIsMac);
+    return androidUsage(key.key());
 #else
     const uint32_t usage = lookUp(MacKeyCodes, key.nativeVirtualKey());
     if (remoteIsMac)

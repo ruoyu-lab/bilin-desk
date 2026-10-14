@@ -44,6 +44,13 @@ ApplicationWindow {
     }
 
     Component.onCompleted: Qt.callLater(decideLogin)
+
+    // 状态栏、导航条的图标跟着程序的外观（程序选了深色、手机是浅色时也看得清）
+    Binding {
+        target: PhoneWindow
+        property: "dark"
+        value: Theme.dark
+    }
     Connections {
         target: ThisDevice
         function onServiceStateChanged() { Qt.callLater(app.decideLogin) }

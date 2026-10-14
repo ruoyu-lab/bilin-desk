@@ -33,6 +33,8 @@ Rectangle {
     readonly property bool remoteMac: video.remoteMac
 
     signal closeRequested()
+    // 手机：按住不放起了作用（RemoteView）
+    signal pressedAndHeld()
 
     // 会话窗口"发送快捷键"菜单
     function sendShortcut(id) {
@@ -79,6 +81,7 @@ Rectangle {
         remoteCursor: root.remoteCursor
         inputEnabled: root.controlling && root.showVideo
         touchMode: root.touchMode
+        onPressedAndHeld: root.pressedAndHeld()
     }
 
     // 连上了、第一帧还没到

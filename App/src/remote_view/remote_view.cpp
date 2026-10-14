@@ -130,7 +130,7 @@ void RemoteView::setInputEnabled(bool enabled)
     if (inputEnabled_)
         releaseAll();
     inputEnabled_ = enabled;
-    updateHover();
+    setAcceptHoverEvents(enabled);
     emit inputEnabledChanged();
     updateCursor();
 }
@@ -414,19 +414,17 @@ void RemoteView::releaseAll()
     send(release);
 }
 
-// 控制时收鼠标悬停（移动就是对方的指针在动）。手机上不收：Qt 每一帧都拿最后一次指针的位置再报一次悬停，
-// 手指抬起以后那就是抬起的地方，触摸板的光标会跳过去
-void RemoteView::updateHover()
-{
-    setAcceptHoverEvents(inputEnabled_ && touchMode_.isEmpty());
-}
-
-// 鼠标悬停移动（控制时才接收）。Qt Quick 在没有移动时也会每帧再报一次悬停
+// 鼠标悬停移动（控制时才接收）。Qt Quick 在没有移动时也会每帧再报一次悬停（位置是最后一次指针在的地方）。
+// 手机上手指碰过屏幕以后的那一次不算：那是手指抬起的地方，触摸板的光标会跳过去；之后接着的鼠标照常
 void RemoteView::hoverMoveEvent(QHoverEvent *hover)
 {
     if (hover->position() == lastHover_)
         return;
     lastHover_ = hover->position();
+    if (touchedSinceHover_) {
+        touchedSinceHover_ = false;
+        return;
+    }
     rcs_input_event event = rcs_input_event_init();
     event.type = RCS_INPUT_MOVE;
     if (position(hover->position(), event, false))
@@ -545,7 +543,6 @@ void RemoteView::setTouchMode(const QString &mode)
     touchMode_ = mode;
     // 收手指（不收的话 Qt 把手指当成鼠标）
     setAcceptTouchEvents(!mode.isEmpty());
-    updateHover();
     emit touchModeChanged();
     updateCursor();
 }
@@ -646,6 +643,7 @@ void RemoteView::touchEvent(QTouchEvent *event)
         return;
     }
     event->accept();
+    touchedSinceHover_ = true;
     if (event->type() == QEvent::TouchCancel) {
         if (gesture_.kind == Gesture::Kind::Drag)
             touchButton(RCS_BUTTON_LEFT, false, gesture_.last);
@@ -792,6 +790,7 @@ void RemoteView::longPressed()
 {
     if (!inputEnabled_ || gesture_.kind != Gesture::Kind::Pending)
         return;
+    emit pressedAndHeld();
     if (touchpad()) {
         gesture_.kind = Gesture::Kind::Drag;
         touchButton(RCS_BUTTON_LEFT, true, gesture_.start);

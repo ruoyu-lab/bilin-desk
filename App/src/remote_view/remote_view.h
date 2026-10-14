@@ -83,6 +83,8 @@ signals:
     void shortcutsChanged();
     void touchModeChanged();
     void zoomChanged();
+    // 手机：按住不放起了作用（触摸板开始拖、直接点出了右键），手机震一下
+    void pressedAndHeld();
 
 protected:
     QSGNode *updatePaintNode(QSGNode *old, UpdatePaintNodeData *) override;
@@ -125,7 +127,6 @@ private:
     void button(QMouseEvent *mouse, bool down);
     void key(QKeyEvent *key, bool down);
     void updateCursor();
-    void updateHover();
     bool remoteIsMac() const;
     bool touchpad() const;
     // 整个画面放得下时的位置（放大以前）
@@ -175,6 +176,7 @@ private:
     QString touchMode_;
     Gesture gesture_;
     bool touching_ = false;
+    bool touchedSinceHover_ = false; // 手指碰过屏幕，下一次悬停不算（hoverMoveEvent）
     QTimer longPress_;
     // 触摸板：光标在编码帧上的位置（0..65535），手指移动时本机先算，不等对方报回来
     double cursorX_ = 32767;

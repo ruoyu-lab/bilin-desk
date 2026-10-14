@@ -74,8 +74,8 @@ Item {
 
     // 连着的时候屏幕不自己熄灭（设置里能关）
     Binding {
-        target: ScreenAwake
-        property: "keep"
+        target: PhoneWindow
+        property: "keepAwake"
         value: AppSettings.keepScreenOn && root.session !== null
     }
 
@@ -98,6 +98,8 @@ Item {
         viewOnly: root.viewOnly
         touchMode: root.fingerMode
         onCloseRequested: root.close()
+        // 按住不放出了右键、开始拖：震一下
+        onPressedAndHeld: PhoneWindow.pressFeedback()
     }
 
     // 画面上浮着的一组：深色半透明的圆角条
