@@ -96,6 +96,18 @@ private slots:
         QVERIFY(transfers.discarded().isEmpty());
     }
 
+    // 发的、还要接着发的路径；收的不算
+    void sendingPaths()
+    {
+        QTemporaryDir directory;
+        rc::InterruptedTransfers transfers(directory.filePath(QStringLiteral("transfers.json")), Now);
+        transfers.put(sending('a', QStringLiteral("482915307")));
+        transfers.put(receiving('b', QStringLiteral("482915307")));
+        QCOMPARE(transfers.sendingPaths(), QStringList{QStringLiteral("/Users/me/视频.mov")});
+        transfers.remove(QByteArray(16, 'a'));
+        QVERIFY(transfers.sendingPaths().isEmpty());
+    }
+
     // 放了 30 天的：发的去掉，收的当作不要了
     void oldOnesGo()
     {

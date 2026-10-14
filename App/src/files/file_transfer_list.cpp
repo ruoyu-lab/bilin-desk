@@ -1,5 +1,11 @@
 #include "file_transfer_list.h"
 
+#ifdef Q_OS_ANDROID
+#include "mobile/android_files.h"
+
+#include <QDesktopServices>
+#endif
+
 #include <QDir>
 #include <QFileInfo>
 #include <QLocale>
@@ -15,7 +21,11 @@ namespace {
 
 QString downloads()
 {
+#ifdef Q_OS_ANDROID
+    return android_files::downloads();
+#else
     return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+#endif
 }
 
 QString bytes(qint64 count)
@@ -54,6 +64,9 @@ void FileTransferList::showInFolder(int id) const
     const QString path = QDir::toNativeSeparators(transfer->savedPath);
 #ifdef Q_OS_MACOS
     QProcess::startDetached(QStringLiteral("/usr/bin/open"), {QStringLiteral("-R"), path});
+#elif defined(Q_OS_ANDROID)
+    // 手机上没有"在文件夹中显示"：用能打开它的程序打开
+    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
 #else
     // "/select," 和路径分成两项：路径里有空格时加了引号，资源管理器也认得
     QProcess::startDetached(QStringLiteral("explorer.exe"), {QStringLiteral("/select,"), path});

@@ -60,14 +60,14 @@ ApplicationWindow {
         }
     }
 
-    // 系统的返回：退回上一层；连着电脑时就是断开
+    // 系统的返回：退回上一层；连着电脑时先问要不要断开
     onClosing: close => {
         if (stack.depth <= 1)
             return
         close.accepted = false
         const session = stack.currentItem as MobileSession
         if (session)
-            session.close()
+            session.askDisconnect()
         else
             stack.pop()
     }

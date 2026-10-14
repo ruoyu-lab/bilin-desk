@@ -89,7 +89,8 @@ RowLayout {
         implicitHeight: 26
         iconSize: 14
         iconName: "folder"
-        text: qsTr("在文件夹中显示")
+        // 手机上用能打开它的程序打开
+        text: Qt.platform.os === "android" ? qsTr("打开") : qsTr("在文件夹中显示")
         onClicked: root.files.showInFolder(root.transfer.id)
     }
     Icon {

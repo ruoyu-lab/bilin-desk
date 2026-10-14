@@ -140,6 +140,16 @@ QList<InterruptedTransfer> InterruptedTransfers::discarded() const
     return found;
 }
 
+QStringList InterruptedTransfers::sendingPaths() const
+{
+    QStringList paths;
+    for (const InterruptedTransfer &transfer : transfers_) {
+        if (transfer.sending)
+            paths += transfer.paths;
+    }
+    return paths;
+}
+
 void InterruptedTransfers::save() const
 {
     QJsonArray array;

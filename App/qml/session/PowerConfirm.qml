@@ -2,12 +2,13 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// 让自己的另一台电脑重启、关机、睡眠、注销之前的确认气泡，弹在右上角的电源按钮下方：只有一句话和两个按钮
+// 让自己的另一台电脑重启、关机、睡眠、注销之前的确认气泡，弹在右上角的电源按钮下方：只有一句话和两个按钮。
+// 手机上按返回键断开连接之前也用它（disconnect）
 Popup {
     id: root
 
     property string name
-    // "restart" | "shutDown" | "sleep" | "signOut"
+    // "restart" | "shutDown" | "sleep" | "signOut" | "disconnect"
     property string action
 
     signal confirmed(string action)
@@ -20,11 +21,21 @@ Popup {
         open()
     }
 
+    // 手机：在屏幕正中
+    function openCentered(action) {
+        root.action = action
+        parent = Overlay.overlay
+        x = Math.round((parent.width - width) / 2)
+        y = Math.round((parent.height - height) / 2)
+        open()
+    }
+
     readonly property var copy: ({
         restart: { title: qsTr("重启「%1」？"), button: qsTr("重启") },
         shutDown: { title: qsTr("关闭「%1」？"), button: qsTr("关机") },
         sleep: { title: qsTr("让「%1」睡眠？"), button: qsTr("睡眠") },
         signOut: { title: qsTr("注销「%1」上的用户？"), button: qsTr("注销") },
+        disconnect: { title: qsTr("断开和「%1」的连接？"), button: qsTr("断开") },
     })
     readonly property var current: copy[action] ?? copy.restart
 
@@ -41,7 +52,7 @@ Popup {
             Layout.fillWidth: true
             text: root.current.title.arg(root.name)
             wrapMode: Text.Wrap
-            font.pixelSize: 14
+            font.pixelSize: Theme.touch ? 16 : 14
             font.weight: Font.DemiBold
             color: Theme.text
         }

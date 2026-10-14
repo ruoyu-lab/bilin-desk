@@ -51,6 +51,8 @@ public:
     void discard(const QByteArray &token);
     // 收的、要删掉半截文件的
     QList<InterruptedTransfer> discarded() const;
+    // 发的、还要接着发的那些本机路径（手机上为发送复制出来的文件留着它们）
+    QStringList sendingPaths() const;
 
 private:
     void save() const;

@@ -22,7 +22,8 @@ public:
     void detach() { files_.detach(); }
     void handle(const rc::FileEvent &event) { files_.handle(event); }
 
-    // 拖进来的、选的文件和文件夹发给对方。返回空字符串表示发了，否则是给人看的原因
+    // 拖进来的、选的文件和文件夹发给对方。返回空字符串表示发了，否则是给人看的原因。
+    // Android 的文件选择器给的是 content:// 地址：在后台复制一份（android_files）再发，复制不了时 sendFailed
     Q_INVOKABLE QString send(const QList<QUrl> &urls);
     Q_INVOKABLE void clearCompleted();
 
@@ -30,6 +31,9 @@ public:
     void cancel(int id) override;
     void retry(int id) override;
     void remove(int id) override;
+
+signals:
+    void sendFailed(const QString &message);
 
 protected:
     void acceptInto(int id, const QString &directory) override;

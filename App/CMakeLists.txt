@@ -99,6 +99,8 @@ set(app_qml
     qml/session/FilesTab.qml
     qml/session/SettingsTab.qml
     qml/session/SidePanel.qml
+    qml/session/PowerMenu.qml
+    qml/session/PowerConfirm.qml
     qml/auth/LoginForm.qml
     qml/main/device_query.js
     qml/main/DeviceMenu.qml
@@ -161,8 +163,6 @@ set(desktop_qml
     qml/share/IncomingWindow.qml
     qml/share/ShareChatWindow.qml
     qml/session/CompactChrome.qml
-    qml/session/PowerConfirm.qml
-    qml/session/PowerMenu.qml
     qml/session/DisplayPicker.qml
     qml/session/DisplayThumbnails.qml
     qml/session/SessionTabs.qml
@@ -176,6 +176,11 @@ set(mobile_sources
     src/mobile/local_service.cpp
     src/mobile/screen_awake.h
     src/mobile/screen_awake.cpp
+)
+# Android 上的互传文件：content:// 地址、存到公共的"下载"
+set(android_sources
+    src/mobile/android_files.h
+    src/mobile/android_files.cpp
 )
 set(mobile_qml
     qml/mobile/MobileMain.qml
@@ -195,6 +200,9 @@ set(mobile_qml
 if(BILIN_MOBILE)
     qt_add_executable(Bilin main_mobile.cpp)
     list(APPEND app_sources ${mobile_sources})
+    if(ANDROID)
+        list(APPEND app_sources ${android_sources})
+    endif()
     list(APPEND app_qml ${mobile_qml})
 else()
     find_package(Qt6 REQUIRED COMPONENTS LabsPlatform)
@@ -219,6 +227,7 @@ qt_add_qml_module(Bilin
         qml/icons/chevron-down.svg
         qml/icons/chevron-right.svg
         qml/icons/clock.svg
+        qml/icons/command.svg
         qml/icons/copy.svg
         qml/icons/download.svg
         qml/icons/eye.svg

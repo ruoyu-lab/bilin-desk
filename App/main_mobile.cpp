@@ -19,6 +19,8 @@
 #include <rcsdk/power.h>
 #include <rcsdk/rcsdk.hpp>
 #ifdef Q_OS_ANDROID
+#include "mobile/android_files.h"
+
 #include <rcsdk/android.h>
 
 #include <QJniEnvironment>
@@ -78,6 +80,10 @@ int main(int argc, char *argv[])
     ViewGraphics viewGraphics(&app);
     ViewGraphics::setInstance(&viewGraphics);
     rc::InterruptedTransfers transfers(directory + QStringLiteral("/viewer-transfers.json"));
+#ifdef Q_OS_ANDROID
+    // 上次为发送复制出来、已经不用接着发的文件删掉
+    android_files::removeStaleCopies(transfers);
+#endif
     ViewerSessions viewerSessions(service, account, viewGraphics.decodeDevice(), codecs, conversations, transfers,
                                   &app);
     ViewerSessions::setInstance(&viewerSessions);

@@ -4,7 +4,8 @@ import QtQuick
 import QtQuick.Layouts
 
 // 手机上连着一台电脑：远程画面铺满（RemoteCanvas，和电脑版的会话一样：连接中、输临时密码、出错都在里面），
-// 上面浮着几个按钮：左上角返回（断开）、名字和延迟，右上角键盘、手指操作方式、"…"；放大了时中间是倍数，点一下复原。
+// 上面浮着几个按钮：左上角名字和延迟（点开是断开连接、对方电脑的重启关机，PowerMenu），右上角键盘、快捷键、
+// 手指操作方式、"…"；放大了时中间是倍数，点一下复原。系统的返回先问一句再断开。
 // 打字时键盘上面多一排电脑上的键（Esc、Tab、Ctrl……），修饰键点一下按住、打下一个键时一起按。
 // "…"拉出电脑版会话的侧边面板（SidePanel：对话、文件、设置）：竖着从下面拉出来，横着在右边
 Item {
@@ -32,6 +33,11 @@ Item {
     function close() {
         ViewerSessions.close(root.device.key)
         root.closed()
+    }
+
+    // 系统的返回（MobileMain）：先问一句，免得手一滑就断了
+    function askDisconnect() {
+        powerConfirm.openCentered("disconnect")
     }
 
     function toggleHeld(modifier) {
@@ -101,8 +107,9 @@ Item {
         color: "#c71c1c1e"
     }
 
-    // ---- 左上角：返回（断开）、名字、延迟 ----
+    // ---- 左上角：名字、延迟；点开是断开连接和对方电脑的电源 ----
     Pill {
+        id: namePill
         x: root.SafeArea.margins.left + 10
         y: root.SafeArea.margins.top + 10
         width: back.implicitWidth + 24
@@ -137,11 +144,42 @@ Item {
         }
 
         TapHandler {
-            onTapped: root.close()
+            onTapped: {
+                powerMenu.anchor = namePill
+                powerMenu.popup(namePill, 0, namePill.height + 8)
+            }
         }
     }
 
-    // ---- 右上角：键盘、手指操作方式（控制着的时候才有） ----
+    PowerMenu {
+        id: powerMenu
+        session: root.session
+        viewOnly: root.viewOnly
+        onDisconnectRequested: root.close()
+        onActionChosen: action => powerConfirm.openCentered(action)
+    }
+
+    PowerConfirm {
+        id: powerConfirm
+        name: root.device.name
+        onConfirmed: action => action === "disconnect" ? root.close() : root.session.requestPower(action)
+    }
+
+    // 对方系统上的组合键（Ctrl+Alt+Del、Win+D……，按对方是 Mac 还是 Windows）
+    AppMenu {
+        id: keysMenu
+        Repeater {
+            model: canvas.shortcuts
+            delegate: AppMenuItem {
+                required property var modelData
+                text: modelData.label
+                hint: modelData.keys
+                onTriggered: canvas.sendShortcut(modelData.id)
+            }
+        }
+    }
+
+    // ---- 右上角：键盘、快捷键、手指操作方式（控制着的时候才有） ----
     Pill {
         id: toolsPill
         visible: root.controlling
@@ -174,6 +212,20 @@ Item {
                             Qt.inputMethod.show()
                         }
                     }
+                }
+            }
+            Item {
+                id: keysButton
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 40
+                Icon {
+                    anchors.centerIn: parent
+                    name: "command"
+                    size: 19
+                    color: "white"
+                }
+                TapHandler {
+                    onTapped: keysMenu.popup(keysButton, keysButton.width - keysMenu.width, keysButton.height + 8)
                 }
             }
             Item {

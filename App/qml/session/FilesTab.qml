@@ -22,6 +22,12 @@ ColumnLayout {
         error = root.files.send(urls)
     }
 
+    // Android：要发的文件在后台复制，复制不了时
+    Connections {
+        target: root.files
+        function onSendFailed(message) { root.error = message }
+    }
+
     spacing: 12
 
     // 对方发来的，等本机的人决定
@@ -160,7 +166,9 @@ ColumnLayout {
             text: qsTr("发送文件")
             onClicked: filePicker.open()
         }
+        // Android 的文件选择器给的是整个文件夹的授权地址，复制不了，先不支持
         AppButton {
+            visible: Qt.platform.os !== "android"
             Layout.fillWidth: true
             enabled: root.connected
             iconName: "folder"
