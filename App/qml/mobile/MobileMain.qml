@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 // 手机版的窗口（main_mobile.cpp）：一个窗口铺满屏幕，四个标签页（概览、设备、最近、设置）。

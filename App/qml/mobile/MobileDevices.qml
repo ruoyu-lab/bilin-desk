@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import "../main/device_query.js" as DeviceQuery
+import "../shared/device_query.js" as DeviceQuery
 
 // 手机的设备页：电脑版侧栏里的我的设备、附近、收藏变成上面的分段；在线的一组、离线的一组。搜索名字、ID、IP
 MobilePage {

@@ -1,6 +1,6 @@
 import QtQuick
 import QtTest
-import "../../qml/main/device_query.js" as Query
+import "../../qml/shared/device_query.js" as Query
 
 TestCase {
     name: "DeviceQuery"

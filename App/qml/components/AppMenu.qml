@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 
 // 菜单：按最宽的一项定宽，右边带快捷键这样的说明时不挤在一起；至少 160。
 // 只量菜单项：小标题、说明（AppMenuLabel）会折行，不撑宽

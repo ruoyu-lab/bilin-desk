@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 // 设置和它点进去的下一页的外框：上下能滚的一列（最宽 640，居中），最上面是标题；下一页的标题左边有返回。

@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import "../main/device_query.js" as DeviceQuery
+import "../shared/device_query.js" as DeviceQuery
 import "mobile_format.js" as MobileFormat
 
 // 手机的概览：最上面连接到设备（输设备 ID、IP 或名称），下面我的设备（在线的在前，最多 4 台）和最近连过的

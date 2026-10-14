@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 // 手机的登录页：第一次打开时（没登录、没选过"以后再说"），设置里没登录时点账号卡片也到这里。

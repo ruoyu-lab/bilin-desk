@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 // 手机上一个标签页的外框：最上面是大标题（右边可以放按钮），下面上下能滚（最宽 640，居中）。

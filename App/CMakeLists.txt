@@ -3,7 +3,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     message(FATAL_ERROR "请打开仓库根目录的 CMakeLists.txt，而不是 App/CMakeLists.txt")
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Network ShaderTools GuiPrivate Svg)
+find_package(Qt6 REQUIRED COMPONENTS Quick Network ShaderTools GuiPrivate Svg)
 
 # 电脑版、手机版共用的
 set(app_sources
@@ -59,8 +59,8 @@ set(app_sources
     src/this_device.cpp
 )
 set(app_qml
-    qml/AppSettings.qml
-    qml/Theme.qml
+    qml/common/AppSettings.qml
+    qml/common/Theme.qml
     qml/components/AdaptiveGrid.qml
     qml/components/AppButton.qml
     qml/components/AppComboBox.qml
@@ -89,21 +89,21 @@ set(app_qml
     qml/components/ToolGroup.qml
     qml/components/TransferRow.qml
     qml/components/UnderlineTab.qml
-    qml/main/AboutSettings.qml
-    qml/main/AccountDialog.qml
-    qml/main/AccountSettings.qml
-    qml/main/LegalPage.qml
-    qml/main/LicensesPage.qml
-    qml/session/RemoteCanvas.qml
-    qml/session/ChatTab.qml
-    qml/session/FilesTab.qml
-    qml/session/SettingsTab.qml
-    qml/session/SidePanel.qml
-    qml/session/PowerMenu.qml
-    qml/session/PowerConfirm.qml
-    qml/auth/LoginForm.qml
-    qml/main/device_query.js
-    qml/main/DeviceMenu.qml
+    qml/shared/AboutSettings.qml
+    qml/shared/AccountDialog.qml
+    qml/shared/AccountSettings.qml
+    qml/shared/LegalPage.qml
+    qml/shared/LicensesPage.qml
+    qml/shared/RemoteCanvas.qml
+    qml/shared/ChatTab.qml
+    qml/shared/FilesTab.qml
+    qml/shared/SettingsTab.qml
+    qml/shared/SidePanel.qml
+    qml/shared/PowerMenu.qml
+    qml/shared/PowerConfirm.qml
+    qml/shared/LoginForm.qml
+    qml/shared/device_query.js
+    qml/shared/DeviceMenu.qml
 )
 # 电脑版才有的：安装、托盘、开机启动、单实例、窗口外框、被别人连（share）
 set(desktop_sources
@@ -140,35 +140,35 @@ set(gpu_frame_sources
     src/remote_view/frame_textures.h
 )
 set(desktop_qml
-    qml/BrowseState.qml
-    qml/Main.qml
-    qml/auth/LoginArt.qml
-    qml/auth/LoginWindow.qml
-    qml/components/WindowButtons.qml
-    qml/components/WindowDragArea.qml
-    qml/components/WindowMemory.qml
-    qml/main/AccountPopup.qml
-    qml/main/AddDeviceDialog.qml
-    qml/main/DeviceDetail.qml
-    qml/main/DeviceRow.qml
-    qml/main/DeviceTile.qml
-    qml/main/DevicesPage.qml
-    qml/main/MainToolbar.qml
-    qml/main/MainWindow.qml
-    qml/main/OverviewPage.qml
-    qml/main/SettingsPage.qml
-    qml/main/Sidebar.qml
-    qml/setup/PermissionWindow.qml
-    qml/setup/SetupWindow.qml
-    qml/share/IncomingWindow.qml
-    qml/share/ShareChatWindow.qml
-    qml/session/CompactChrome.qml
-    qml/session/DisplayPicker.qml
-    qml/session/DisplayThumbnails.qml
-    qml/session/SessionTabs.qml
-    qml/session/SessionTools.qml
-    qml/session/SessionView.qml
-    qml/session/SessionWindow.qml
+    qml/desktop/BrowseState.qml
+    qml/desktop/Main.qml
+    qml/desktop/auth/LoginArt.qml
+    qml/desktop/auth/LoginWindow.qml
+    qml/desktop/components/WindowButtons.qml
+    qml/desktop/components/WindowDragArea.qml
+    qml/desktop/components/WindowMemory.qml
+    qml/desktop/main/AccountPopup.qml
+    qml/desktop/main/AddDeviceDialog.qml
+    qml/desktop/main/DeviceDetail.qml
+    qml/desktop/main/DeviceRow.qml
+    qml/desktop/main/DeviceTile.qml
+    qml/desktop/main/DevicesPage.qml
+    qml/desktop/main/MainToolbar.qml
+    qml/desktop/main/MainWindow.qml
+    qml/desktop/main/OverviewPage.qml
+    qml/desktop/main/SettingsPage.qml
+    qml/desktop/main/Sidebar.qml
+    qml/desktop/setup/PermissionWindow.qml
+    qml/desktop/setup/SetupWindow.qml
+    qml/desktop/share/IncomingWindow.qml
+    qml/desktop/share/ShareChatWindow.qml
+    qml/desktop/session/CompactChrome.qml
+    qml/desktop/session/DisplayPicker.qml
+    qml/desktop/session/DisplayThumbnails.qml
+    qml/desktop/session/SessionTabs.qml
+    qml/desktop/session/SessionTools.qml
+    qml/desktop/session/SessionView.qml
+    qml/desktop/session/SessionWindow.qml
 )
 # 手机版（BILIN_MOBILE）：一个窗口、底部标签栏（宽的时候侧栏），后台服务在本进程里
 set(mobile_sources
@@ -181,6 +181,8 @@ set(mobile_sources
 set(android_sources
     src/mobile/android_files.h
     src/mobile/android_files.cpp
+    src/mobile/android_file_picker.h
+    src/mobile/android_file_picker.cpp
 )
 set(mobile_qml
     qml/mobile/MobileMain.qml
@@ -202,16 +204,19 @@ if(BILIN_MOBILE)
     list(APPEND app_sources ${mobile_sources})
     if(ANDROID)
         list(APPEND app_sources ${android_sources} ${gpu_frame_sources} src/remote_view/frame_textures_android.cpp)
+        list(APPEND app_qml qml/android/FilePickers.qml)
+    else()
+        list(APPEND app_qml qml/desktop/session/FilePickers.qml)
     endif()
     list(APPEND app_qml ${mobile_qml})
 else()
     find_package(Qt6 REQUIRED COMPONENTS LabsPlatform)
     qt_add_executable(Bilin main.cpp)
     list(APPEND app_sources ${desktop_sources} ${gpu_frame_sources})
-    list(APPEND app_qml ${desktop_qml})
+    list(APPEND app_qml ${desktop_qml} qml/desktop/session/FilePickers.qml)
 endif()
 
-set_source_files_properties(qml/Theme.qml qml/AppSettings.qml
+set_source_files_properties(qml/common/Theme.qml qml/common/AppSettings.qml
                             PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
 qt_add_qml_module(Bilin
@@ -319,7 +324,7 @@ target_compile_definitions(Bilin PRIVATE APP_VERSION="${BILIN_VERSION}")
 # Qt6::Svg：界面里的图标都是 .svg，运行时靠 SVG 的图片格式插件（imageformats/qsvg）加载。部署工具只有看到程序链接了
 # QtSvg 才会把这个插件带进安装包，不链接的话打成包以后图标全是空的（开发时用的是 Qt 安装目录里的插件，看不出来）
 target_link_libraries(Bilin
-    PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Network Qt6::Svg Qt6::GuiPrivate rccore rcfiles RemoteControl::Core RemoteControl::Clipboard RemoteControl::Power
+    PRIVATE Qt6::Quick Qt6::Network Qt6::Svg Qt6::GuiPrivate rccore rcfiles RemoteControl::Core RemoteControl::Clipboard RemoteControl::Power
 )
 
 # 手机版：后台服务的逻辑编进程序里（LocalService），服务器地址也是。Android 打成 APK（platform/android：清单、名字、
@@ -330,9 +335,10 @@ if(BILIN_MOBILE)
     # 苹果系统上是 .app 包（iOS 必须是；Mac 上预览时也是，不然程序和 QML 模块的目录 Bilin/ 同名）
     set_target_properties(Bilin PROPERTIES MACOSX_BUNDLE TRUE)
     if(ANDROID)
-        # 解出的画面直接画（frame_textures_android.cpp：EGLImage、外部纹理）
+        # 解出的画面直接画（frame_textures_android.cpp：EGLImage、外部纹理）；系统的文件选择器要 Qt 的私有接口
+        #（android_file_picker.cpp，QtAndroidPrivate::startActivity）
         target_compile_definitions(Bilin PRIVATE RC_GPU_FRAMES)
-        target_link_libraries(Bilin PRIVATE EGL GLESv2 android)
+        target_link_libraries(Bilin PRIVATE EGL GLESv2 android Qt6::CorePrivate)
         math(EXPR android_version_code "${PROJECT_VERSION_MAJOR} * 10000 + ${PROJECT_VERSION_MINOR} * 100 + ${PROJECT_VERSION_PATCH}")
         set_target_properties(Bilin PROPERTIES
             QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/platform/android"
@@ -340,6 +346,12 @@ if(BILIN_MOBILE)
             QT_ANDROID_VERSION_CODE ${android_version_code}
             QT_ANDROID_MIN_SDK_VERSION 29
             QT_ANDROID_TARGET_SDK_VERSION 35
+            # 打包时按 QML 用到的模块决定带上哪些 Qt 的库：只扫编进手机版的 QML（构建目录里的模块，和它们所在的
+            # qml/common、components、shared、mobile、android），不扫整个 App 目录（电脑版、测试的 QML 会带进托盘、
+            # 测试、各种界面风格这些用不到的库）
+            QT_QML_ROOT_PATH "${CMAKE_CURRENT_BINARY_DIR}/Bilin"
+            # 库在 APK 里压缩（装的时候解出来）：APK 是从官网下载的，下载的大小要紧
+            QT_ANDROID_LEGACY_PACKAGING ON
         )
         # Qt 在 Android 上的加密连接（连正式服务器的 wss://）靠 OpenSSL，Qt 不带：用 Android SDK 目录里 KDAB 的
         # android_openssl（Qt 的文档推荐，Qt Creator 装 Android 开发环境时一起下好）打进 APK，Qt 运行时自己加载。

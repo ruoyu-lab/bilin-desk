@@ -29,7 +29,6 @@
 
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include <QQuickStyle>
 
 // 手机版（Android、iOS）：只去连电脑，不被连。一个窗口（MobileMain.qml），后台服务在本进程里（LocalService）；
 // 没有安装程序、托盘、开机启动、单实例这些电脑上才有的
@@ -40,7 +39,6 @@ int main(int argc, char *argv[])
     QGuiApplication::setOrganizationDomain(QStringLiteral("bilindesk.com"));
     QGuiApplication::setApplicationName(QStringLiteral("Bilin"));
     QGuiApplication::setApplicationVersion(QStringLiteral(APP_VERSION));
-    QQuickStyle::setStyle("Basic");
 #ifdef Q_OS_ANDROID
     // SDK 用到 Java 的地方（网络变化、硬件缓冲区……）要本进程的 Java 虚拟机和程序的 Context
     rcs_android_initialize(QJniEnvironment::javaVM(), QNativeInterface::QAndroidApplication::context().object());

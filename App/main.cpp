@@ -27,7 +27,6 @@
 #include <QDir>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include <QQuickStyle>
 #include <QQuickWindow>
 
 namespace {
@@ -104,7 +103,6 @@ int main(int argc, char *argv[])
     QGuiApplication::setOrganizationDomain(QStringLiteral("bilindesk.com"));
     QGuiApplication::setApplicationName(QStringLiteral("Bilin"));
     QGuiApplication::setApplicationVersion(QStringLiteral(APP_VERSION));
-    QQuickStyle::setStyle("Basic");
     // 浅色、深色：在任何窗口之前设好（安装界面也跟着）
     Appearance appearance(&app);
     Appearance::setInstance(&appearance);

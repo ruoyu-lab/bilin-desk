@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import "../main/device_query.js" as DeviceQuery
+import "../shared/device_query.js" as DeviceQuery
 import "mobile_format.js" as MobileFormat
 
 // 手机的最近：连过的设备，最近连的在最上面，写着上次是什么时候

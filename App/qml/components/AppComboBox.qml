@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 
 // 下拉框：浅灰底，右边一个向下的箭头；弹出来的列表和菜单（AppMenu）一个样子，选中的那项前面打勾。
 // model 是 [{label, value}] 这样的列表（textRole: "label"）；选了哪个看 activated(index)
