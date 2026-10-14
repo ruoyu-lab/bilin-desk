@@ -37,6 +37,7 @@ public:
         auto buffer = static_cast<CVPixelBufferRef>(frame.info().resource);
         auto textures = std::make_unique<MetalTextures>();
         textures->frame = frame;
+        textures->shader = QStringLiteral("nv12");
         if (!addPlane(*textures, buffer, 0, MTLPixelFormatR8Unorm, QRhiTexture::R8)
             || !addPlane(*textures, buffer, 1, MTLPixelFormatRG8Unorm, QRhiTexture::RG8))
             return nullptr;

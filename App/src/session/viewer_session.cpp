@@ -373,7 +373,7 @@ void ViewerSession::open(bool relay)
 #elif defined(RC_GPU_FRAMES)
     const bool gpuFrames = true;
 #else
-    // 手机：SDK 从显卡读回来的 CPU 上的图像
+    // iOS（和在电脑上预览手机界面）还没接：SDK 从显卡读回来的 CPU 上的图像
     const bool gpuFrames = false;
 #endif
     // 我的设备：只认它的公钥，它也只认本机的；别人：临时密码

@@ -18,6 +18,7 @@ public:
         const QRhiTexture::NativeTexture native{quint64(quintptr(info.resource)), 0};
         auto textures = std::make_unique<FrameTextures>();
         textures->frame = frame;
+        textures->shader = info.format == RCS_PIXEL_BGRA8 ? QStringLiteral("bgra") : QStringLiteral("nv12");
         if (info.format == RCS_PIXEL_BGRA8) {
             if (!addPlane(*textures, QRhiTexture::BGRA8, size, native))
                 return nullptr;

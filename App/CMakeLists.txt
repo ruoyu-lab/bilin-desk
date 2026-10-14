@@ -133,7 +133,7 @@ set(desktop_sources
     src/single_instance.cpp
     src/windowchrome.h
 )
-# 解出的 GPU 画面直接画（Mac 的 Metal、Windows 的 D3D11 纹理）；手机上先用 CPU 上的图像（RemoteView）
+# 解出的 GPU 画面直接画（Mac 的 Metal、Windows 的 D3D11 纹理、Android 的硬件缓冲区），各平台的纹理在下面加
 set(gpu_frame_sources
     src/remote_view/frame_node.h
     src/remote_view/frame_node.cpp
@@ -201,7 +201,7 @@ if(BILIN_MOBILE)
     qt_add_executable(Bilin main_mobile.cpp)
     list(APPEND app_sources ${mobile_sources})
     if(ANDROID)
-        list(APPEND app_sources ${android_sources})
+        list(APPEND app_sources ${android_sources} ${gpu_frame_sources} src/remote_view/frame_textures_android.cpp)
     endif()
     list(APPEND app_qml ${mobile_qml})
 else()
@@ -307,6 +307,8 @@ qt_add_shaders(Bilin "shaders"
         src/remote_view/shaders/frame.vert
         src/remote_view/shaders/nv12.frag
         src/remote_view/shaders/bgra.frag
+        # Android 的外部纹理：OpenGL ES 那一份换成手写的（samplerExternalOES）
+        "src/remote_view/shaders/external.frag@glsl,100es,src/remote_view/shaders/external_gles.frag"
 )
 
 # QML 类型注册按文件名包含头文件
@@ -328,6 +330,9 @@ if(BILIN_MOBILE)
     # 苹果系统上是 .app 包（iOS 必须是；Mac 上预览时也是，不然程序和 QML 模块的目录 Bilin/ 同名）
     set_target_properties(Bilin PROPERTIES MACOSX_BUNDLE TRUE)
     if(ANDROID)
+        # 解出的画面直接画（frame_textures_android.cpp：EGLImage、外部纹理）
+        target_compile_definitions(Bilin PRIVATE RC_GPU_FRAMES)
+        target_link_libraries(Bilin PRIVATE EGL GLESv2 android)
         math(EXPR android_version_code "${PROJECT_VERSION_MAJOR} * 10000 + ${PROJECT_VERSION_MINOR} * 100 + ${PROJECT_VERSION_PATCH}")
         set_target_properties(Bilin PROPERTIES
             QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/platform/android"

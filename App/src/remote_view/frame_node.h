@@ -35,7 +35,7 @@ public:
 
 private:
     void importPending();
-    void createPipeline(QRhi *rhi, QRhiRenderTarget *target, rcs_pixel_format format);
+    void createPipeline(QRhi *rhi, QRhiRenderTarget *target, const QString &shader);
 
     QQuickWindow *window_;
     std::shared_ptr<FrameMailbox> frames_;
@@ -54,5 +54,5 @@ private:
     std::unique_ptr<QRhiShaderResourceBindings> bindings_;
     std::unique_ptr<QRhiGraphicsPipeline> pipeline_;
     QRhiRenderPassDescriptor *pipelinePass_ = nullptr;
-    rcs_pixel_format pipelineFormat_ = 0;
+    QString pipelineShader_;
 };

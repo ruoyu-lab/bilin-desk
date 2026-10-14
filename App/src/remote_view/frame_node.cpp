@@ -100,11 +100,11 @@ void FrameNode::prepare()
         bindings_->setBindings(list.cbegin(), list.cend());
         bindings_->create();
         // 格式没变时布局一样，管线照用
-        if (pipeline_ && pipelineFormat_ == info.format)
+        if (pipeline_ && pipelineShader_ == current.shader)
             pipeline_->setShaderResourceBindings(bindings_.get());
     }
-    if (!pipeline_ || pipelinePass_ != target->renderPassDescriptor() || pipelineFormat_ != info.format)
-        createPipeline(rhi, target, info.format);
+    if (!pipeline_ || pipelinePass_ != target->renderPassDescriptor() || pipelineShader_ != current.shader)
+        createPipeline(rhi, target, current.shader);
 
     const auto x0 = float(target_.left()), y0 = float(target_.top());
     const auto x1 = float(target_.right()), y1 = float(target_.bottom());
@@ -162,7 +162,7 @@ QRectF FrameNode::rect() const
     return target_;
 }
 
-void FrameNode::createPipeline(QRhi *rhi, QRhiRenderTarget *target, rcs_pixel_format format)
+void FrameNode::createPipeline(QRhi *rhi, QRhiRenderTarget *target, const QString &shader)
 {
     pipeline_.reset(rhi->newGraphicsPipeline());
     pipeline_->setTopology(QRhiGraphicsPipeline::TriangleStrip);
@@ -170,7 +170,7 @@ void FrameNode::createPipeline(QRhi *rhi, QRhiRenderTarget *target, rcs_pixel_fo
     pipeline_->setShaderStages({
         {QRhiShaderStage::Vertex, loadShader(QStringLiteral("frame.vert"))},
         {QRhiShaderStage::Fragment,
-         loadShader(format == RCS_PIXEL_BGRA8 ? QStringLiteral("bgra.frag") : QStringLiteral("nv12.frag"))},
+         loadShader(shader + QStringLiteral(".frag"))},
     });
     QRhiVertexInputLayout layout;
     layout.setBindings({{4 * sizeof(float)}});
@@ -190,5 +190,5 @@ void FrameNode::createPipeline(QRhi *rhi, QRhiRenderTarget *target, rcs_pixel_fo
     pipeline_->setRenderPassDescriptor(target->renderPassDescriptor());
     pipeline_->create();
     pipelinePass_ = target->renderPassDescriptor();
-    pipelineFormat_ = format;
+    pipelineShader_ = shader;
 }
