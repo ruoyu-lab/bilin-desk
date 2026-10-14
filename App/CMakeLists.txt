@@ -353,17 +353,9 @@ if(BILIN_MOBILE)
             # 库在 APK 里压缩（装的时候解出来）：APK 是从官网下载的，下载的大小要紧
             QT_ANDROID_LEGACY_PACKAGING ON
         )
-        # Qt 在 Android 上的加密连接（连正式服务器的 wss://）靠 OpenSSL，Qt 不带：用 Android SDK 目录里 KDAB 的
-        # android_openssl（Qt 的文档推荐，Qt Creator 装 Android 开发环境时一起下好）打进 APK，Qt 运行时自己加载。
-        # 它的许可（Apache-2.0）进开源声明
-        set(android_openssl "${ANDROID_SDK_ROOT}/android_openssl")
-        set(android_openssl_libs "${android_openssl}/ssl_3/${CMAKE_ANDROID_ARCH_ABI}")
-        if(NOT EXISTS "${android_openssl_libs}/libssl_3.so")
-            message(FATAL_ERROR "没有 Android 的 OpenSSL（${android_openssl_libs}）：在 Qt Creator 的 Android 设置里装，"
-                                "或者把 https://github.com/KDAB/android_openssl 克隆到 Android SDK 目录下")
-        endif()
+        # OpenSSL（顶层 CMakeLists.txt）打进 APK，Qt 运行时自己加载。它的许可（Apache-2.0）进开源声明
         set_property(TARGET Bilin APPEND PROPERTY QT_ANDROID_EXTRA_LIBS
-                     "${android_openssl_libs}/libcrypto_3.so" "${android_openssl_libs}/libssl_3.so")
+                     "${android_openssl_abi}/libcrypto_3.so" "${android_openssl_abi}/libssl_3.so")
         set_source_files_properties("${android_openssl}/LICENSE" PROPERTIES QT_RESOURCE_ALIAS OpenSSL.txt)
         qt_add_resources(Bilin "licenses_android"
             PREFIX "/licenses"

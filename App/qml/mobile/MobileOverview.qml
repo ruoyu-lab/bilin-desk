@@ -42,6 +42,72 @@ MobilePage {
         address.clear()
     }
 
+    // ---- 新版本（Android 上从官网装的才有）：点了下载，交给系统的安装界面 ----
+    Rectangle {
+        id: update
+        readonly property string phase: ThisDevice.updatePhase
+        Layout.fillWidth: true
+        visible: ThisDevice.updateAvailable.length > 0
+        implicitHeight: updateRow.implicitHeight + 28
+        radius: Theme.cardRadius
+        color: Theme.card
+        clip: true
+
+        RowLayout {
+            id: updateRow
+            anchors.fill: parent
+            anchors.leftMargin: 16
+            anchors.rightMargin: 14
+            spacing: 12
+            Icon {
+                name: "download"
+                size: 20
+                color: Theme.text
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("有新版本 %1").arg(ThisDevice.updateAvailable)
+                    elide: Text.ElideRight
+                    font.pixelSize: 15
+                    font.weight: Font.DemiBold
+                    color: Theme.text
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: update.phase === "downloading"
+                          ? qsTr("正在下载 %1%").arg(Math.floor(ThisDevice.updateProgress * 100))
+                          : update.phase === "installing" ? qsTr("正在安装")
+                          : ThisDevice.updateFailed === "download" ? qsTr("上次没下载成，再试一次")
+                          : ThisDevice.updateFailed === "install" ? qsTr("上次没装上，再试一次")
+                          : qsTr("现在是 %1").arg(Qt.application.version)
+                    elide: Text.ElideRight
+                    font.pixelSize: 13
+                    color: ThisDevice.updateFailed.length > 0 && update.phase === "idle" ? Theme.danger
+                                                                                        : Theme.textSecondary
+                }
+            }
+            AppButton {
+                dark: true
+                enabled: update.phase === "idle"
+                text: qsTr("更新")
+                onClicked: ThisDevice.installUpdate()
+            }
+        }
+
+        // 下载的进度
+        Rectangle {
+            anchors.left: parent.left
+            anchors.bottom: parent.bottom
+            visible: update.phase === "downloading"
+            width: parent.width * ThisDevice.updateProgress
+            height: 3
+            color: Theme.text
+        }
+    }
+
     // ---- 连接到设备 ----
     Rectangle {
         Layout.fillWidth: true

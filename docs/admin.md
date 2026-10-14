@@ -51,6 +51,7 @@ Server/deploy/set-admin-password.sh dev    # 开发用的虚拟机
    - Windows：`scripts/build-windows-vm.sh`，在 Mac 上的 Parallels 虚拟机里编（ARM64 的 Windows 也行，交叉编译成 x64），
      编好的 `Bilin-Setup.exe` 放在 `build/release/<版本>/`。在 Windows 上直接编：`scripts\build-windows-installer.cmd`，
      Qt 用 `msvc2022_64`，编好的复制到这台 Mac 上来签名
+   - Android：`scripts/build-android.sh`，编好的 `build/android/Bilin.apk`（用 APK 的密钥库签名，[手机版](mobile.md)）
 3. 签名：`node scripts/sign-release.mjs <安装包>`，旁边写出 `<安装包>.release.json`（版本号取 CMakeLists.txt 里的）
 4. 发布：后台"版本发布"里把安装包和它的 `.release.json` 一起选上，点发布；或者 `scripts/publish-release.sh <安装包>`
    （经 SSH，服务器上做的和后台一样）
@@ -64,6 +65,7 @@ Server/deploy/set-admin-password.sh dev    # 开发用的虚拟机
 - 安装包放在服务器的 `/var/lib/bilin/updates/<平台>/<版本>/`，程序和官网的下载按钮从 `https://www.bilindesk.com/updates/` 下载
 
 程序怎么更新（Service/src/updater.h）：只有装好的（后台服务是系统服务）有新版本，开发时编出来的没有。
+Android 版的见[手机版](mobile.md)的"更新"。
 
 - 启动 2 分钟后问一次有没有新版本，之后每 6 小时一次。有了（签名核对过）就在左侧导航栏、登录的上面出现"更新到 x.x.x"
 - 本机的人点了才下载（按钮上有进度），下载到数据目录（只有 SYSTEM / root 能进），核对签名、大小、sha256，再启动安装：

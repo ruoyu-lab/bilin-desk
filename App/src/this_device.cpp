@@ -22,8 +22,9 @@ ThisDevice::ThisDevice(ServiceClient &service, QObject *parent)
     connect(&service_, &ServiceClient::topicChanged, this, [this](const QString &topic) {
         if (topic == protocol::UpdateTopic) {
             const auto update = protocol::UpdateState::fromJson(service_.topic(protocol::UpdateTopic));
-            if (update != update_) {
+            if (update != update_ || !updatable_) {
                 update_ = update;
+                updatable_ = true;
                 emit updateChanged();
             }
             return;

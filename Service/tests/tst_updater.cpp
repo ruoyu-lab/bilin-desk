@@ -164,6 +164,27 @@ private slots:
         QVERIFY(readRecord().isEmpty());
     }
 
+    // 交给系统的安装界面、那边取消了（Android）：回到"有新版本"，再点直接装刚才下载好的，不再下载
+    void installAbandoned()
+    {
+        auto updater = make(QStringLiteral("0.1"));
+        updater->start();
+        QTRY_COMPARE(updater->state().available, QStringLiteral("0.2"));
+        updater->installAbandoned();
+        QCOMPARE(updater->state().phase, QStringLiteral("idle"));
+        updater->installNow();
+        QCOMPARE(updater->state().phase, QStringLiteral("installing"));
+        updater->installAbandoned();
+        QCOMPARE(updater->state().phase, QStringLiteral("idle"));
+        QCOMPARE(updater->state().available, QStringLiteral("0.2"));
+        QVERIFY(updater->state().failed.isEmpty());
+        QVERIFY(readRecord().isEmpty());
+        updater->installNow();
+        QCOMPARE(source_.downloads, 1);
+        QCOMPARE(installs_, 2);
+        QCOMPARE(installedBytes_, Installer);
+    }
+
     // 设置里点了检查更新：已是最新、问不了服务器、有新版本（这时结果为空，界面说有新版本）
     void checksWhenAsked()
     {

@@ -61,9 +61,10 @@ elseif(WIN32)
                    src/rc/system_service_win.cpp src/rc/release_win.cpp src/rc/machine_win.cpp)
     target_link_libraries(rccore PRIVATE crypt32 advapi32 shell32 ole32 bcrypt)
 elseif(ANDROID)
-    # 手机上没有系统服务、也不自己更新（rc/system_service.h、rc/release.h 的核对签名用不到）
+    # 手机上没有系统服务（rc/system_service.h）；核对新版本的签名用 OpenSSL（顶层 CMakeLists.txt）
     target_sources(rccore PRIVATE src/rc/device_name_android.cpp src/rc/download_mark_android.cpp
-                   src/rc/user_seal_plain.cpp src/rc/machine_android.cpp)
+                   src/rc/user_seal_plain.cpp src/rc/machine_android.cpp src/rc/release_android.cpp)
+    target_link_libraries(rccore PRIVATE android_openssl_crypto)
 endif()
 
 target_include_directories(rccore PUBLIC src)

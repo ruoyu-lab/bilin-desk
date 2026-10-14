@@ -87,6 +87,13 @@ const downloads: { platform: Platform; name: string; requirement: string; note: 
     note: '安装过程需要管理员权限，用于部署后台服务。',
     button: '下载安装程序',
   },
+  {
+    platform: 'android-arm64',
+    name: 'Android',
+    requirement: 'Android 10 及以上，64 位。',
+    note: '用手机连接并控制电脑，手机本身不会被远程控制。首次安装需允许浏览器“安装未知应用”。',
+    button: '下载 .apk 安装包',
+  },
 ]
 
 // 每个平台的下载卡片：问到了的安装包，或者还在问
@@ -102,7 +109,7 @@ const cards = computed(() =>
   <SiteHeader />
   <main>
     <section id="top" class="wrap hero">
-      <div class="badge">开源远程桌面 · macOS 与 Windows</div>
+      <div class="badge">开源远程桌面 · macOS、Windows 与 Android</div>
       <h1>天涯若比邻</h1>
       <p class="hero-text">安全、流畅的跨平台远程桌面，全程端到端加密。<br>本人设备免密直连，远程协助凭一次性临时密码授权。</p>
       <div class="hero-buttons">
@@ -115,7 +122,10 @@ const cards = computed(() =>
           下载 Windows 版
         </a>
       </div>
-      <div class="requirements">支持 macOS 14 及以上（Apple 芯片）与 Windows 10 及以上（64 位）</div>
+      <div class="requirements">
+        支持 macOS 14 及以上（Apple 芯片）与 Windows 10 及以上（64 位）；手机上可用
+        <a href="#download">Android 版</a>连接电脑
+      </div>
       <AppWindowMock class="mock" />
     </section>
 
@@ -233,6 +243,12 @@ h1 {
 .requirements {
   font-size: 13px;
   color: var(--text-muted);
+}
+
+.requirements a {
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .mock {

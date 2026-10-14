@@ -16,9 +16,13 @@ SettingsScroll {
     signal documentRequested(string kind)
     signal uninstallRequested()
 
-    readonly property string updateText: !ThisDevice.systemService ? ""
+    readonly property string updateText: !ThisDevice.updatable ? ""
         : ThisDevice.updatePhase === "checking" ? qsTr("正在检查…")
-        : ThisDevice.updateAvailable.length > 0 ? qsTr("有新版本 %1，在左侧导航栏里点一下就能更新").arg(ThisDevice.updateAvailable)
+        : ThisDevice.updatePhase === "downloading" ? qsTr("正在下载 %1%").arg(Math.floor(ThisDevice.updateProgress * 100))
+        : ThisDevice.updatePhase === "installing" ? qsTr("正在安装")
+        : ThisDevice.updateFailed === "download" ? qsTr("上次没下载成，再试一次")
+        : ThisDevice.updateFailed === "install" ? qsTr("上次没装上，再试一次")
+        : ThisDevice.updateAvailable.length > 0 ? qsTr("有新版本 %1").arg(ThisDevice.updateAvailable)
         : ThisDevice.updateChecked === "upToDate" ? qsTr("已经是最新版本")
         : ThisDevice.updateChecked === "failed" ? qsTr("连不上服务器，稍后再试") : ""
 
@@ -52,11 +56,14 @@ SettingsScroll {
                     color: Theme.textSecondary
                 }
             }
+            // 有新版本时就地更新（电脑上左边的导航栏里也有）
             AppButton {
-                visible: ThisDevice.systemService
+                readonly property bool available: ThisDevice.updateAvailable.length > 0
+                visible: ThisDevice.updatable
                 enabled: ThisDevice.serviceState === "ready" && ThisDevice.updatePhase === "idle"
-                text: qsTr("检查更新")
-                onClicked: ThisDevice.checkUpdate()
+                dark: available
+                text: available ? qsTr("更新") : qsTr("检查更新")
+                onClicked: available ? ThisDevice.installUpdate() : ThisDevice.checkUpdate()
             }
         }
     }

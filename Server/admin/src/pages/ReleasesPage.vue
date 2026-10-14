@@ -47,7 +47,7 @@ async function choose(files: File[]) {
   error.value = ''
   pending.value = null
   progress.value = null
-  const installer = files.find((f) => f.name.endsWith('.pkg') || f.name.endsWith('.exe'))
+  const installer = files.find((f) => /\.(pkg|exe|apk)$/.test(f.name))
   const signature = files.find((f) => f.name.endsWith('.release.json'))
   if (files.length !== 2 || !installer || !signature || signature.name !== `${installer.name}.release.json`) {
     error.value = '要一起选安装包和它的 .release.json（同一个名字）'
@@ -135,8 +135,8 @@ function publish() {
       >
         <div class="tile"><LineIcon name="upload" :size="22" /></div>
         <strong>把安装包和它的签名文件拖到这里，或者点这里选择</strong>
-        <span>.pkg 或 .exe，和 scripts/sign-release.mjs 写的同名 .release.json</span>
-        <input type="file" multiple accept=".pkg,.exe,.json" hidden @change="picked" />
+        <span>.pkg、.exe 或 .apk，和 scripts/sign-release.mjs 写的同名 .release.json</span>
+        <input type="file" multiple accept=".pkg,.exe,.apk,.json" hidden @change="picked" />
       </label>
       <div v-if="pending" class="pending">
         <div class="tile"><LineIcon :name="platforms[pending.release.platform]?.icon ?? 'package'" :size="22" /></div>

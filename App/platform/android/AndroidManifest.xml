@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!-- 比邻的 Android 版（App/CMakeLists.txt 的手机版）：Qt 的模板改的，百分号括起来的那几处打包时由 Qt 填。
-     只去连电脑：要上网、看网络状态；局域网里发现附近的电脑要收发 UDP 广播 -->
+     只去连电脑：要上网、看网络状态；局域网里发现附近的电脑要收发 UDP 广播；新版本交给系统装 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.bilindesk.bilin"
     android:installLocation="auto"
@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- 新版本从官网下载，交给系统的安装界面装（Updater） -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- %%INSERT_FEATURES -->
     <supports-screens
         android:anyDensity="true"

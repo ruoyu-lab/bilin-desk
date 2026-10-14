@@ -211,6 +211,11 @@ void Updater::installNow()
 {
     if (!release_ || state_.phase != u"idle")
         return;
+    // 刚才下载好、没装成（installAbandoned）：不用再下载
+    if (QFileInfo(options_.installer).size() == release_->size && fileSha256(options_.installer) == release_->sha256) {
+        downloaded(true);
+        return;
+    }
     qInfo("下载新版本 %s", qUtf8Printable(release_->version));
     setState({release_->version, QStringLiteral("downloading"), 0, {}});
     const QString partial = options_.installer + QStringLiteral(".partial");
@@ -253,6 +258,15 @@ void Updater::downloaded(bool ok)
         setState({release_->version, QStringLiteral("idle"), 0, QStringLiteral("install")});
     }
     // 启动了：安装程序会停掉、换掉后台服务和界面程序
+}
+
+void Updater::installAbandoned()
+{
+    if (state_.phase != u"installing")
+        return;
+    qInfo("新版本 %s 没装（安装界面关了）", qUtf8Printable(release_->version));
+    QFile::remove(recordFile());
+    setState({release_->version, QStringLiteral("idle"), 0, {}});
 }
 
 void Updater::setState(rc::protocol::UpdateState state)

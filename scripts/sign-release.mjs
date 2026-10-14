@@ -40,7 +40,9 @@ function platformOf(file) {
         return 'macos-arm64';
     if (file.endsWith('.exe'))
         return 'windows-x64';
-    console.error('不认识的安装包：要 .pkg（macOS）或 .exe（Windows）');
+    if (file.endsWith('.apk'))
+        return 'android-arm64';
+    console.error('不认识的安装包：要 .pkg（macOS）、.exe（Windows）或 .apk（Android）');
     process.exit(2);
 }
 

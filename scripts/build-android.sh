@@ -1,8 +1,13 @@
 #!/bin/zsh
-# 编 Android 版的 APK（手机版，App/CMakeLists.txt 的 BILIN_MOBILE），用调试密钥签名；带 --install 时装到连着的手机上
-# 并打开。连的是正式的服务器 wss://www.bilindesk.com/ws（和安装包一样）
+# 编 Android 版的 APK（手机版，App/CMakeLists.txt 的 BILIN_MOBILE），用发布的密钥库签名；带 --install 时装到连着的
+# 手机上并打开。连的是正式的服务器 wss://www.bilindesk.com/ws（和安装包一样）
 #
+#   scripts/build-android.sh new-key      第一次：生成签 APK 的密钥库
 #   scripts/build-android.sh [--install]
+#
+# 密钥库在 ~/.bilin/android-release.keystore，密码在旁边的 android-release.password（环境变量 BILIN_ANDROID_KEYSTORE
+# 可以换目录前缀），只在这台电脑上，不进仓库。Android 只让签名一样的 APK 覆盖安装：丢了，装着的手机就收不到新版本
+# （要卸载重装），要备份好。发布到官网的 APK 再用 scripts/sign-release.mjs 签一次（docs/admin.md）
 #
 # 要：Qt 的 Android 版（~/Qt/6.11.2/android_arm64_v8a）、Android SDK 和 NDK、JDK 17 起（Gradle 用）。
 #   QT_ROOT        Qt 的目录，默认 ~/Qt/6.11.2
@@ -17,6 +22,27 @@ ndk="$(ls -d "$sdk"/ndk/* | sort -V | tail -1)"
 export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home)}"
 build="$root/build/android"
 tools="$(ls -d "$sdk"/build-tools/* | sort -V | tail -1)"
+keystore="${BILIN_ANDROID_KEYSTORE:-$HOME/.bilin/android-release}.keystore"
+password="${keystore%.keystore}.password"
+
+if [[ "${1:-}" == "new-key" ]]; then
+    if [[ -f "$keystore" ]]; then
+        echo "已经有密钥库了：$keystore。换了以后装着的手机覆盖装不上新版本" >&2
+        exit 1
+    fi
+    mkdir -p -m 700 "${keystore:h}"
+    (umask 077 && openssl rand -hex 24 > "$password")
+    "$JAVA_HOME/bin/keytool" -genkeypair -keystore "$keystore" -storetype PKCS12 -storepass:file "$password" \
+        -alias bilin -keyalg RSA -keysize 3072 -validity 36500 -dname "CN=Bilin, O=bilindesk.com"
+    chmod 600 "$keystore"
+    echo "密钥库：$keystore"
+    echo "密码：$password（两个都备份好，丢了装着的手机就收不到新版本）"
+    exit 0
+fi
+if [[ ! -f "$keystore" ]]; then
+    echo "没有签 APK 的密钥库（$keystore）：先 scripts/build-android.sh new-key" >&2
+    exit 1
+fi
 
 if [[ ! -f "$build/CMakeCache.txt" ]]; then
     # SDK 要 Android 10（API 29）起
@@ -49,8 +75,7 @@ cmake --build "$build" --target Bilin_prepare_apk_dir
 
 unsigned="$app/android-build/build/outputs/apk/release/android-build-release-unsigned.apk"
 apk="$build/Bilin.apk"
-"$tools/apksigner" sign --ks "$HOME/.android/debug.keystore" --ks-pass pass:android --key-pass pass:android \
-    --out "$apk" "$unsigned"
+"$tools/apksigner" sign --ks "$keystore" --ks-pass "file:$password" --out "$apk" "$unsigned"
 echo "$apk"
 
 if [[ "${1:-}" == "--install" ]]; then

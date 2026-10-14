@@ -28,7 +28,9 @@ class ThisDevice : public QObject
     Q_PROPERTY(bool lanDiscovery READ lanDiscovery WRITE setLanDiscovery NOTIFY changed)
     // 界面程序没开着时也接受我的设备连接（只在后台服务是装好的系统服务时有意义，见 systemService）
     Q_PROPERTY(bool unattended READ unattended WRITE setUnattended NOTIFY changed)
-    // 程序的新版本（rc/protocol.h 的 UpdateState，只有装好的程序有）：服务器上比本机新的版本，没有时为空
+    // 这个程序自己更新：装好的电脑版、Android 版（后台服务发 update 主题）；开发时编的没有
+    Q_PROPERTY(bool updatable READ updatable NOTIFY updateChanged)
+    // 程序的新版本（rc/protocol.h 的 UpdateState，updatable 时才有）：服务器上比本机新的版本，没有时为空
     Q_PROPERTY(QString updateAvailable READ updateAvailable NOTIFY updateChanged)
     // idle | downloading | installing
     Q_PROPERTY(QString updatePhase READ updatePhase NOTIFY updateChanged)
@@ -63,6 +65,7 @@ public:
     // 后台服务是装好的系统服务（rc/system_service.h）
     bool systemService() const;
 
+    bool updatable() const { return updatable_; }
     QString updateAvailable() const { return update_.available; }
     QString updatePhase() const { return update_.phase; }
     double updateProgress() const { return update_.progress; }
@@ -87,4 +90,5 @@ private:
     ServiceClient &service_;
     rc::protocol::DeviceState state_;
     rc::protocol::UpdateState update_;
+    bool updatable_ = false;
 };

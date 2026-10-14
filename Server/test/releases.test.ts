@@ -8,12 +8,12 @@ import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { defaultHubOptions } from '../src/hub.js';
-import { compareVersions, releaseKey, releaseText, Releases, signatureValid } from '../src/releases.js';
+import { compareVersions, releaseKey, releaseText, Releases, signatureValid, type Platform } from '../src/releases.js';
 import { buildServer, UPDATES_PATH } from '../src/server.js';
 import { MemoryAccounts, MemoryBroker, MemoryCodes, MemoryLimiter, MemoryRegistry, MemoryStats } from './memory.js';
 
 // 和 scripts/sign-release.mjs 一样签
-export function signRelease(key: KeyObject, platform: 'macos-arm64' | 'windows-x64', version: string, bytes: Buffer): string {
+export function signRelease(key: KeyObject, platform: Platform, version: string, bytes: Buffer): string {
     const text = releaseText({ platform, version, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
     return sign('sha256', Buffer.from(text), { key, dsaEncoding: 'ieee-p1363' }).toString('base64');
 }
@@ -83,6 +83,17 @@ describe('新版本', () => {
         expect((await app.inject({ url: `${UPDATES_PATH}/windows-x64/latest` })).statusCode).toBe(404);
         expect((await app.inject({ url: `${UPDATES_PATH}/macos-arm64/0.2/latest.json` })).statusCode).toBe(404);
         expect((await app.inject({ url: `${UPDATES_PATH}/macos-arm64/0.2/..%2F..%2Flatest.json` })).statusCode).toBe(404);
+    });
+
+    it('Android 的安装包是 .apk，下载时浏览器认得出', async () => {
+        const bytes = Buffer.from('Android 的安装包 0.2');
+        await releases.publish('android-arm64', '0.2', signRelease(keys.privateKey, 'android-arm64', '0.2', bytes),
+            Readable.from([bytes]));
+        const latest = (await app.inject({ url: `${UPDATES_PATH}/android-arm64/latest` })).json<{ url: string }>();
+        expect(latest.url).toBe(`${UPDATES_PATH}/android-arm64/0.2/Bilin-0.2.apk`);
+        const download = await app.inject({ url: latest.url });
+        expect(download.headers['content-type']).toBe('application/vnd.android.package-archive');
+        expect(download.rawPayload.equals(bytes)).toBe(true);
     });
 
     it('签名不对的不收，也不留下上传了一半的文件', async () => {

@@ -95,9 +95,10 @@ export interface SignedRelease {
   signature: string
 }
 
-export const platforms: Record<string, { name: string; icon: 'apple' | 'windows' }> = {
+export const platforms: Record<string, { name: string; icon: 'apple' | 'windows' | 'phone' }> = {
   'macos-arm64': { name: 'macOS', icon: 'apple' },
   'windows-x64': { name: 'Windows', icon: 'windows' },
+  'android-arm64': { name: 'Android', icon: 'phone' },
 }
 
 export function platformName(platform: string): string {

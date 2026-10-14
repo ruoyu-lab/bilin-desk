@@ -63,6 +63,22 @@ if(rcsdk_label)
 endif()
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${rcsdk_header}")
 
+# Android 上的 OpenSSL：Qt 的加密连接（连正式服务器的 wss://）要它，Qt 不带；核对新版本安装包的签名（rc/release.h）
+# 也用它。用 Android SDK 目录里 KDAB 的 android_openssl（Qt 的文档推荐，Qt Creator 装 Android 开发环境时一起下好），
+# 打进 APK（App/CMakeLists.txt）
+if(ANDROID)
+    set(android_openssl "${ANDROID_SDK_ROOT}/android_openssl")
+    set(android_openssl_abi "${android_openssl}/ssl_3/${CMAKE_ANDROID_ARCH_ABI}")
+    if(NOT EXISTS "${android_openssl_abi}/libssl_3.so")
+        message(FATAL_ERROR "没有 Android 的 OpenSSL（${android_openssl_abi}）：在 Qt Creator 的 Android 设置里装，"
+                            "或者把 https://github.com/KDAB/android_openssl 克隆到 Android SDK 目录下")
+    endif()
+    add_library(android_openssl_crypto SHARED IMPORTED)
+    set_target_properties(android_openssl_crypto PROPERTIES
+        IMPORTED_LOCATION "${android_openssl_abi}/libcrypto_3.so"
+        INTERFACE_INCLUDE_DIRECTORIES "${android_openssl_abi}/include")
+endif()
+
 # 远程控制 SDK（子模块，third_party/README.md）以源码编进程序：静态链接，头文件和库必定同一版本，也不用另外分发动态库
 set(BUILD_SHARED_LIBS OFF)
 # SDK 自带的软件编解码库（VP8/VP9、AV1）不编进来：用 SDK 默认的 H.264，系统的编解码器就够；带上要大约 7 MB，

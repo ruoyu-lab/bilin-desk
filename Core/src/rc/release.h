@@ -8,7 +8,7 @@
 // 一字不差
 namespace rc::release {
 
-// 这台电脑要的安装包：macos-arm64 | windows-x64；别的（还没有安装包）为空
+// 这台设备要的安装包：macos-arm64 | windows-x64 | android-arm64；别的（还没有安装包）为空
 QString platform();
 
 // 签名签的那几行
@@ -17,7 +17,8 @@ QByteArray text(const QString &platform, const QString &version, qint64 size, co
 // 程序里带着的发布公钥（Server/release-key.pub，CMake 读进来）：P-256 未压缩的点，65 字节
 QByteArray publicKey();
 
-// signature 是 P-256 ECDSA（SHA-256）的 r||s，64 字节。各平台用系统的加密库：release_mac.cpp、release_win.cpp
+// signature 是 P-256 ECDSA（SHA-256）的 r||s，64 字节。各平台用系统的加密库：release_mac.cpp、release_win.cpp；
+// Android 用 OpenSSL（release_android.cpp）
 bool signatureValid(const QByteArray &publicKey, const QByteArray &text, const QByteArray &signature);
 
 } // namespace rc::release

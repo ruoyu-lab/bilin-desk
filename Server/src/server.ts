@@ -4,7 +4,7 @@ import websocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance } from 'fastify';
 
 import { CloseCode, Hub, type HubOptions, type HubSources } from './hub.js';
-import { isPlatform, type Releases } from './releases.js';
+import { fileType, isPlatform, type Releases } from './releases.js';
 
 export interface ServerOptions extends HubSources {
     // 测试里关掉
@@ -46,10 +46,12 @@ export async function buildServer(options: ServerOptions): Promise<{ app: Fastif
         app.get<{ Params: { platform: string; version: string; file: string } }>(
             `${UPDATES_PATH}/:platform/:version/:file`, async (request, reply) => {
                 const { platform, version, file } = request.params;
+                if (!isPlatform(platform))
+                    return reply.code(404).send({ error: 'notFound' });
                 const full = await releases.file(platform, version, file);
                 if (!full)
                     return reply.code(404).send({ error: 'notFound' });
-                return reply.type('application/octet-stream').send(createReadStream(full));
+                return reply.type(fileType(platform)).send(createReadStream(full));
             });
     }
 

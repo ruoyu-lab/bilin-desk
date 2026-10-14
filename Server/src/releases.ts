@@ -8,7 +8,7 @@ import { pipeline } from 'node:stream/promises';
 // 程序的新版本（docs/admin.md 的"发布新版本"）。安装包在作者的电脑上用发布密钥签名（scripts/sign-release.mjs），
 // 签的是下面 releaseText 那几行：哪个平台、哪个版本、多大、sha256。程序里带着公钥（Server/release-key.pub），
 // 下载以后自己核对，服务器被人控制了也推不了假的安装包。服务器上传时也核对一遍，签名不对的不收
-export const PLATFORMS = ['macos-arm64', 'windows-x64'] as const;
+export const PLATFORMS = ['macos-arm64', 'windows-x64', 'android-arm64'] as const;
 export type Platform = (typeof PLATFORMS)[number];
 
 export interface Release {
@@ -32,7 +32,13 @@ export class ReleaseError extends Error {
 const FILES: Record<Platform, (version: string) => string> = {
     'macos-arm64': (version) => `Bilin-${version}.pkg`,
     'windows-x64': (version) => `Bilin-Setup-${version}.exe`,
+    'android-arm64': (version) => `Bilin-${version}.apk`,
 };
+
+// 下载时的类型：Android 的浏览器按它认出是安装包，下完点开就能装
+export function fileType(platform: Platform): string {
+    return platform === 'android-arm64' ? 'application/vnd.android.package-archive' : 'application/octet-stream';
+}
 
 export function isPlatform(value: string): value is Platform {
     return (PLATFORMS as readonly string[]).includes(value);

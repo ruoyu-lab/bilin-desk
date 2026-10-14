@@ -2,7 +2,7 @@ import { reactive } from 'vue'
 
 // 现在发布的版本：服务器的 /updates/<平台>/latest（程序检查更新也问它，Server/src/server.ts）。
 // 网页和服务器放在一起，下载按钮直接指向它说的安装包
-export type Platform = 'macos-arm64' | 'windows-x64'
+export type Platform = 'macos-arm64' | 'windows-x64' | 'android-arm64'
 
 export interface Release {
   version: string
@@ -16,6 +16,7 @@ export type ReleaseState = Release | 'loading' | 'unpublished' | 'unreachable'
 export const releases = reactive<Record<Platform, ReleaseState>>({
   'macos-arm64': 'loading',
   'windows-x64': 'loading',
+  'android-arm64': 'loading',
 })
 
 export async function loadReleases(): Promise<void> {

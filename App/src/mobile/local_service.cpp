@@ -4,11 +4,15 @@
 
 #include <rc/peer_protocol.h>
 #include <rc/protocol.h>
+#include <rc/release.h>
 
 #include <rcsdk/rcsdk.hpp>
 
-#include <QCoreApplication>
+#include <QDesktopServices>
 #include <QFileInfo>
+#include <QGuiApplication>
+#include <QUrl>
+#include <QVersionNumber>
 
 namespace {
 
@@ -43,6 +47,29 @@ LocalService::LocalService(const QString &directory, QObject *parent)
             [this](const QString &from, const QString &, const QString &session) {
                 signaling_.declineFromSharer(from, session, QLatin1StringView(rc::peer::NotAccepting));
             });
+#ifdef Q_OS_ANDROID
+    // 新版本：安装包下载到程序自己的目录，经 Qt 的 FileProvider（AndroidManifest.xml 的 qtprovider）交给系统的
+    // 安装界面。手机上程序开着的时间短，一开就问
+    const QString installer = directory + QStringLiteral("/updates/Bilin-update.apk");
+    updateSource_ = std::make_unique<HttpUpdateSource>(HttpUpdateSource::baseFor(QUrl(QStringLiteral(RC_SERVER_URL))));
+    updater_ = std::make_unique<Updater>(
+        Updater::Options{.installer = installer,
+                         .platform = rc::release::platform(),
+                         .version = QVersionNumber::fromString(QCoreApplication::applicationVersion()),
+                         .publicKey = rc::release::publicKey(),
+                         .firstCheckMs = 10 * 1000},
+        *updateSource_, [installer] { return QDesktopServices::openUrl(QUrl::fromLocalFile(installer)); });
+    server_.publish(rc::protocol::UpdateTopic, updater_->state().toJson());
+    connect(updater_.get(), &Updater::stateChanged, this,
+            [this] { server_.publish(rc::protocol::UpdateTopic, updater_->state().toJson()); });
+    connect(&server_, &ControlServer::installUpdateRequested, updater_.get(), &Updater::installNow);
+    connect(&server_, &ControlServer::checkUpdateRequested, updater_.get(), &Updater::checkNow);
+    // 装上了系统会结束本程序；回到程序时还在"安装"，就是在安装界面取消了
+    connect(qApp, &QGuiApplication::applicationStateChanged, updater_.get(), [this](Qt::ApplicationState state) {
+        if (state == Qt::ApplicationActive)
+            updater_->installAbandoned();
+    });
+#endif
 }
 
 bool LocalService::start(const QString &endpoint)
@@ -51,5 +78,7 @@ bool LocalService::start(const QString &endpoint)
         return false;
     lan_.listen();
     link_.start();
+    if (updater_)
+        updater_->start();
     return true;
 }

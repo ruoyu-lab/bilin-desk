@@ -57,7 +57,7 @@ public:
     struct Options
     {
         QString installer; // 下载的安装包放在这里（rc::system_service::updateInstaller），旁边是记录 update.json；
-                           // 那个目录只有 SYSTEM / root 能进
+                           // 那个目录只有 SYSTEM / root 能进（手机上是程序自己的目录）
         QString platform;  // rc::release::platform()
         QVersionNumber version;
         QByteArray publicKey; // rc::release::publicKey()
@@ -74,6 +74,8 @@ public:
     void installNow();
     // 设置里点了"检查更新"
     void checkNow();
+    // 安装是交给系统的安装界面的（Android）：回到程序时还在装，就是那边取消了、没装上
+    void installAbandoned();
     // 这次启动是装完新版本以后的第一次
     bool justUpdated() const { return justUpdated_; }
 
