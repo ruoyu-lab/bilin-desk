@@ -55,21 +55,21 @@ if [[ ! -f "$build/CMakeCache.txt" ]]; then
         -DBUILD_TESTING=OFF \
         -DRC_SERVER_URL=wss://www.bilindesk.com/ws
 fi
-# 程序编好、放进打包目录（Bilin_prepare_apk_dir），打包自己来（下面）
+# 程序编好、放进打包目录（Bilin_prepare_apk_dir），打包自己来（下面）。上次打包放进去的 Qt 的库不会自己去掉：
+# 先清掉。CMakeLists.txt 改过时这一步重新配置，打包设置（版本号这些）也是这时写的
+app="$build/App"
+rm -rf "$app/android-build/libs"
+cmake --build "$build" --target Bilin_prepare_apk_dir
 
 # 打包：Qt 按 QML 用到的模块决定带上哪些库，可它总把整个 App 目录也拿去扫（那里还有电脑版、测试的 QML，
 # 会带进托盘、测试、各种界面风格这些用不到的，APK 多出二十多 MB），CMake 里关不掉。所以用 Qt 生成的打包设置，
 # 去掉 App 目录（手机版的 QML 所在的那几个目录留着），自己调打包工具（和 apk 目标的做法一样）
-app="$build/App"
 python3 - "$app/android-Bilin-deployment-settings.json" "$root/App" > "$app/android-Bilin-deployment-mobile.json" <<'PY'
 import json, sys
 settings = json.load(open(sys.argv[1]))
 settings["qml-root-path"] = [p for p in settings["qml-root-path"] if p != sys.argv[2]]
 json.dump(settings, sys.stdout, indent=1, ensure_ascii=False)
 PY
-# 上次打包放进去的 Qt 的库不会自己去掉：清掉再放程序进去
-rm -rf "$app/android-build/libs"
-cmake --build "$build" --target Bilin_prepare_apk_dir
 "$qt/macos/bin/androiddeployqt" --input "$app/android-Bilin-deployment-mobile.json" --output "$app/android-build" \
     --apk "$app/android-build/Bilin.apk" --builddir "$app" --release
 

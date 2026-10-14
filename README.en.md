@@ -5,16 +5,16 @@
 <h1 align="center">Bilin</h1>
 
 <p align="center">
-  Open-source remote desktop for macOS and Windows.<br>
+  Open-source remote desktop for macOS and Windows, reachable from your Android phone too.<br>
   No passwords between your own computers — helping someone else takes just a one-time code.
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
-  <img src="https://img.shields.io/badge/version-0.1.0--beta-orange.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.1.1--beta-orange.svg" alt="Version">
   <img src="https://img.shields.io/badge/C%2B%2B-20-00599C.svg" alt="C++20">
   <img src="https://img.shields.io/badge/Qt-6.11-41CD52.svg?logo=qt&logoColor=white" alt="Qt 6.11">
-  <img src="https://img.shields.io/badge/platforms-macOS%2014%2B%20%7C%20Windows%2010%2B-lightgrey.svg" alt="Platforms">
+  <img src="https://img.shields.io/badge/platforms-macOS%2014%2B%20%7C%20Windows%2010%2B%20%7C%20Android%2010%2B-lightgrey.svg" alt="Platforms">
   <a href="https://www.bilindesk.com"><img src="https://img.shields.io/badge/website-bilindesk.com-007aff.svg" alt="Website"></a>
 </p>
 
@@ -64,10 +64,11 @@ analytics.
 | --- | --- | --- |
 | macOS | macOS 14 Sonoma or later, Apple silicon | [bilindesk.com](https://www.bilindesk.com/#download) |
 | Windows | Windows 10 / 11, 64-bit | [bilindesk.com](https://www.bilindesk.com/#download) |
+| Android | Android 10 or later, 64-bit; connects to computers, can't be controlled | [bilindesk.com](https://www.bilindesk.com/#download) |
 
 > The installers are not signed with a paid developer certificate yet. On macOS, the first time you open the installer,
 > click "Open Anyway" in System Settings › Privacy & Security. On Windows, when SmartScreen says "Windows protected your
-> PC", click "More info › Run anyway".
+> PC", click "More info › Run anyway". On Android, allow your browser to install unknown apps the first time.
 
 Installed copies check for new versions on their own and offer the update in the sidebar.
 

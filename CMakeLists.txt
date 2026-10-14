@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 # 最低 macOS 14：跟 SDK 一致（它要 ScreenCaptureKit）
 set(CMAKE_OSX_DEPLOYMENT_TARGET 14.0 CACHE STRING "Minimum macOS version")
 
-project(Bilin VERSION 0.1.0 LANGUAGES C CXX)
+project(Bilin VERSION 0.1.1 LANGUAGES C CXX)
 # 版本的阶段：1.0 之前是 beta。界面、安装信息、发布的新版本都写成 0.1.0-beta；比新旧只看数字，所以每次发布数字都要变大。
 # macOS 包里的版本号只能是数字（PROJECT_VERSION）
 set(BILIN_VERSION_LABEL beta)

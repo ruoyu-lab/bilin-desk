@@ -5,16 +5,16 @@
 <h1 align="center">比邻</h1>
 
 <p align="center">
-  开源的远程桌面，macOS 和 Windows 互通。<br>
+  开源的远程桌面，macOS 和 Windows 互通，手机上也能连电脑。<br>
   自己的电脑之间不用密码，帮别人时报一串临时密码就够了。
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
-  <img src="https://img.shields.io/badge/version-0.1.0--beta-orange.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.1.1--beta-orange.svg" alt="Version">
   <img src="https://img.shields.io/badge/C%2B%2B-20-00599C.svg" alt="C++20">
   <img src="https://img.shields.io/badge/Qt-6.11-41CD52.svg?logo=qt&logoColor=white" alt="Qt 6.11">
-  <img src="https://img.shields.io/badge/platforms-macOS%2014%2B%20%7C%20Windows%2010%2B-lightgrey.svg" alt="Platforms">
+  <img src="https://img.shields.io/badge/platforms-macOS%2014%2B%20%7C%20Windows%2010%2B%20%7C%20Android%2010%2B-lightgrey.svg" alt="Platforms">
   <a href="https://www.bilindesk.com"><img src="https://img.shields.io/badge/website-bilindesk.com-007aff.svg" alt="Website"></a>
 </p>
 
@@ -59,9 +59,10 @@
 | --- | --- | --- |
 | macOS | macOS 14 Sonoma 或更新，Apple 芯片 | [bilindesk.com](https://www.bilindesk.com/#download) |
 | Windows | Windows 10 / 11，64 位 | [bilindesk.com](https://www.bilindesk.com/#download) |
+| Android | Android 10 或更新，64 位；只去连电脑，不能被连 | [bilindesk.com](https://www.bilindesk.com/#download) |
 
 > 现在还没有付费的开发者证书：macOS 第一次打开安装包时，在"系统设置 › 隐私与安全性"里点"仍要打开"；
-> Windows 弹出"Windows 已保护你的电脑"时，点"更多信息 › 仍要运行"。
+> Windows 弹出"Windows 已保护你的电脑"时，点"更多信息 › 仍要运行"；Android 第一次装时允许浏览器"安装未知应用"。
 
 装好以后会自己检查新版本，在左侧导航栏提示更新。
 
@@ -120,7 +121,7 @@ third_party/  远程控制 SDK、QWindowKit
 - [会话里的画面](docs/session.md)：分辨率、帧率、编码器、文字更清楚、低延迟模式
 - [网络](docs/network.md)：怎么找到对方、直连和中继、服务器
 - [安装和第一次运行](docs/install-and-first-run.md)：安装包、系统服务、无人值守、授权
-- [手机版](docs/mobile.md)：Android 连电脑（开发中）
+- [手机版](docs/mobile.md)：Android 连电脑
 - [开发](docs/development.md)、[测试](docs/testing.md)、[管理后台](docs/admin.md)、[官网](docs/website.md)
 
 ## 许可
