@@ -15,6 +15,8 @@
          CHANGE_WIFI_MULTICAST_STATE 这类权限之一） -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <!-- 它的通知（Android 13 起要用户允许，第一次连接时问一次） -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- 新版本从官网下载，交给系统的安装界面装（Updater） -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- %%INSERT_FEATURES -->

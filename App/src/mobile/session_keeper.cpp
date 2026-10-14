@@ -2,12 +2,18 @@
 
 #include "session/viewer_sessions.h"
 
+#include <QFuture>
 #include <QGuiApplication>
 #include <QJniObject>
+#include <QSettings>
+#include <QtCore/private/qandroidextras_p.h>
 
 namespace {
 
 constexpr char ServiceClass[] = "com/bilindesk/bilin/SessionService";
+constexpr auto NotificationPermission = QLatin1StringView("android.permission.POST_NOTIFICATIONS");
+// 问过能不能发通知了（只问一次，不管给没给）
+constexpr auto NotificationsAskedKey = QLatin1StringView("mobile/notificationsAsked");
 
 void callService(const char *method)
 {
@@ -30,8 +36,24 @@ SessionKeeper::SessionKeeper(ViewerSessions &sessions, QObject *parent)
 void SessionKeeper::update()
 {
     const bool wanted = !sessions_.isEmpty();
-    if (wanted == serviceRunning_)
+    if (wanted == serviceRunning_ || asking_)
         return;
+    // 先问完再开前台服务：开的时候没允许，之后允许了通知也不会出来
+    if (wanted && shouldAskForNotifications()) {
+        asking_ = true;
+        QSettings().setValue(NotificationsAskedKey, true);
+        QtAndroidPrivate::requestPermission(NotificationPermission).then(this, [this](QtAndroidPrivate::PermissionResult) {
+            asking_ = false;
+            update();
+        });
+        return;
+    }
     serviceRunning_ = wanted;
     callService(wanted ? "start" : "stop");
+}
+
+bool SessionKeeper::shouldAskForNotifications() const
+{
+    return QNativeInterface::QAndroidApplication::sdkVersion() >= 33 && !QSettings().value(NotificationsAskedKey).toBool()
+           && QtAndroidPrivate::checkPermission(NotificationPermission).result() != QtAndroidPrivate::Authorized;
 }
