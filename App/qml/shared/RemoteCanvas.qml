@@ -31,6 +31,9 @@ Rectangle {
     property string touchMode
     readonly property real zoom: video.zoom
     readonly property bool remoteMac: video.remoteMac
+    // 画面上方的状态条（重连中、电源操作的进展）离顶上多远、现在有没有：手机上让开浮在上面的按钮
+    property real statusTop: 12
+    readonly property bool statusShown: topBar.visible
 
     signal closeRequested()
     // 手机：按住不放起了作用（RemoteView）
@@ -110,7 +113,7 @@ Rectangle {
         }
 
         anchors.horizontalCenter: parent.horizontalCenter
-        y: 12
+        y: root.statusTop
         visible: root.showVideo && (root.status === "reconnecting" || phase.length > 0)
         width: Math.min(topLabel.implicitWidth + 24, root.width - 48)
         height: 28

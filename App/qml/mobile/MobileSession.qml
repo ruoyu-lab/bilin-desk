@@ -97,6 +97,8 @@ Item {
         name: root.device.name
         viewOnly: root.viewOnly
         touchMode: root.fingerMode
+        // 状态条在上面那排按钮下面
+        statusTop: 58
         onCloseRequested: root.close()
         // 按住不放出了右键、开始拖：震一下
         onPressedAndHeld: PhoneWindow.pressFeedback()
@@ -110,15 +112,20 @@ Item {
     }
 
     // ---- 左上角：名字、延迟；点开是断开连接和对方电脑的电源 ----
+    // 最宽到右上角那一组前面（横屏、名字长的时候）：名字只显示前面一段
     Pill {
         id: namePill
+        readonly property real rightEdge: panelPill.visible ? panelPill.x
+                                          : toolsPill.visible ? toolsPill.x : root.width - root.SafeArea.margins.right - 2
         x: root.SafeArea.margins.left + 10
         y: root.SafeArea.margins.top + 10
-        width: back.implicitWidth + 24
+        width: Math.min(back.implicitWidth + 24, rightEdge - 8 - x)
 
         RowLayout {
             id: back
-            anchors.centerIn: parent
+            anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
             spacing: 8
             Icon {
                 name: "chevron-right"
@@ -127,7 +134,8 @@ Item {
                 color: "white"
             }
             Text {
-                Layout.maximumWidth: root.width * 0.4
+                Layout.fillWidth: true
+                Layout.maximumWidth: implicitWidth
                 text: root.device.name
                 elide: Text.ElideRight
                 font.pixelSize: 14
@@ -249,6 +257,7 @@ Item {
 
     // 右上角最后一个："…"（连上以后，只看时也有），拉出面板；有没看的消息时带个红点
     Pill {
+        id: panelPill
         visible: root.session !== null
         anchors.right: parent.right
         anchors.rightMargin: root.SafeArea.margins.right + 10 + (root.controlling ? toolsPill.width + 8 : 0)
@@ -277,11 +286,11 @@ Item {
         }
     }
 
-    // ---- 放大了：倍数，点一下复原 ----
+    // ---- 放大了：倍数，点一下复原（上面那排按钮下面，和状态条一个位置，有状态条时不显示） ----
     Pill {
-        visible: canvas.zoom > 1.01
+        visible: canvas.zoom > 1.01 && !canvas.statusShown
         anchors.horizontalCenter: parent.horizontalCenter
-        y: root.SafeArea.margins.top + 10
+        y: root.SafeArea.margins.top + 58
         width: zoomText.implicitWidth + 28
         height: 32
         radius: 16
