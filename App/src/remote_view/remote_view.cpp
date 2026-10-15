@@ -477,7 +477,8 @@ void RemoteView::wheelEvent(QWheelEvent *wheel)
     rcs_input_event event = rcs_input_event_init();
     event.type = RCS_INPUT_WHEEL;
     const int lines = QGuiApplication::styleHints()->wheelScrollLines();
-    event.wheel_x = wheelX_.take(wheel->angleDelta().x(), lines);
+    // Qt 的横向正值是往左，SDK 的是往右
+    event.wheel_x = wheelX_.take(-wheel->angleDelta().x(), lines);
     event.wheel_y = wheelY_.take(wheel->angleDelta().y(), lines);
     if ((event.wheel_x || event.wheel_y) && position(wheel->position(), event, false))
         send(event);
