@@ -1,8 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
-import QtQuick.Dialogs
 import QtQuick.Layouts
-import QtCore
 
 // 设置：最上面是账号卡片（登录着时点进账号页，没登录时去登录），下面"本机"四项、"通用"三项。
 // 不常用的收在点进去的下一页里：账号（昵称、密码、我的设备、退出、注销）、关于比邻（版本、协议、开源声明、卸载）
@@ -13,6 +11,12 @@ Item {
     property bool overTitleBar: false
     // 页面左上角被红绿灯、侧栏开关压住的宽度，标题要让开
     property real leftInset: 0
+    // 各版本自己的：电脑版"本机"里的几行、"通用"里的几行，平板的"远程操作"那一组（放在"本机"后面）
+    property Component machineRows
+    property Component generalRows
+    property Component extraSections
+    // 关于比邻里有没有"卸载比邻"（macOS 上装好的那一份）
+    property bool uninstallable: false
 
     // 点了"卸载比邻"（macOS：没有系统的卸载入口，程序自己给）
     signal uninstallRequested()
@@ -29,13 +33,6 @@ Item {
             if (!Account.signedIn && root.subpage === "account")
                 root.subpage = ""
         }
-    }
-
-    readonly property url downloads: StandardPaths.writableLocation(StandardPaths.DownloadLocation)
-    // 收到的文件存到的文件夹，显示它的名字
-    readonly property string folderName: {
-        const url = AppSettings.downloadFolder.toString()
-        return url.length > 0 ? decodeURIComponent(url.replace(/\/$/, "").split("/").pop()) : qsTr("下载")
     }
 
     SettingsScroll {
@@ -148,35 +145,11 @@ Item {
                     }
                 }
             }
-            SettingsRow {
-                iconName: "link"
-                label: qsTr("允许别人连接本机")
-                AppSwitch {
-                    enabled: ThisDevice.serviceState === "ready"
-                    checked: ThisDevice.acceptIncoming
-                    onToggled: ThisDevice.acceptIncoming = checked
-                }
-            }
-            // 关着时说后果；系统设置里没允许时说明，给个按钮去那里打开
-            SettingsRow {
-                iconName: "power"
-                label: qsTr("开机时自动启动")
-                detail: Autostart.problem === "approval" ? qsTr("系统设置里没允许，开机时不会启动")
-                      : Autostart.problem === "refused" ? qsTr("没改成，可能被系统或安全软件拦下了")
-                      : Autostart.enabled ? "" : qsTr("只有打开程序时才能被连接")
-                RowLayout {
-                    spacing: 10
-                    AppButton {
-                        visible: Autostart.problem === "approval"
-                        text: qsTr("打开系统设置")
-                        onClicked: Autostart.openSystemSettings()
-                    }
-                    AppSwitch {
-                        enabled: Autostart.problem !== "approval"
-                        checked: Autostart.enabled
-                        onToggled: Autostart.enabled = checked
-                    }
-                }
+            // 电脑版：允许别人连接本机、开机时自动启动
+            Loader {
+                Layout.fillWidth: true
+                visible: item !== null
+                sourceComponent: root.machineRows
             }
             SettingsRow {
                 iconName: "radar"
@@ -188,6 +161,12 @@ Item {
                     onToggled: ThisDevice.lanDiscovery = checked
                 }
             }
+        }
+
+        Loader {
+            Layout.fillWidth: true
+            visible: item !== null
+            sourceComponent: root.extraSections
         }
 
         // ---- 通用 ----
@@ -203,12 +182,11 @@ Item {
                     onCurrentIndexChanged: Appearance.scheme = ["system", "light", "dark"][currentIndex]
                 }
             }
-            SettingsRow {
-                iconName: "folder"
-                label: qsTr("收到的文件存到")
-                value: root.folderName
-                navigates: true
-                onClicked: folderPicker.open()
+            // 电脑版：收到的文件存到哪个文件夹
+            Loader {
+                Layout.fillWidth: true
+                visible: item !== null
+                sourceComponent: root.generalRows
             }
             SettingsRow {
                 iconName: "info"
@@ -231,8 +209,7 @@ Item {
     AboutSettings {
         anchors.fill: parent
         visible: root.subpage === "about"
-        // 只有 macOS 上装好的那一份有（开发版本没有）
-        uninstallable: Qt.platform.os === "osx" && Setup.installed
+        uninstallable: root.uninstallable
         overTitleBar: root.overTitleBar
         leftInset: root.leftInset
         onBackRequested: root.subpage = ""
@@ -255,13 +232,5 @@ Item {
         overTitleBar: root.overTitleBar
         leftInset: root.leftInset
         onBackRequested: root.subpage = "about"
-    }
-
-    // 选了系统的"下载"就记成默认，不记具体的路径
-    FolderDialog {
-        id: folderPicker
-        title: qsTr("收到的文件存到")
-        currentFolder: AppSettings.downloadFolder.toString().length > 0 ? AppSettings.downloadFolder : root.downloads
-        onAccepted: AppSettings.downloadFolder = selectedFolder.toString() === root.downloads.toString() ? "" : selectedFolder
     }
 }

@@ -28,6 +28,7 @@
 #endif
 
 #include <QGuiApplication>
+#include <QScreen>
 #include <QQmlApplicationEngine>
 
 // 手机版（Android、iOS）：只去连电脑，不被连。一个窗口（MobileMain.qml），后台服务在本进程里（LocalService）；
@@ -95,6 +96,13 @@ int main(int argc, char *argv[])
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
-    engine.loadFromModule("Bilin", "MobileMain");
+    // 平板（短的那一边至少 600）是电脑版的布局，手机是手机的。电脑上预览时按 BILIN_PREVIEW=tablet 选
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    const QSize screen = QGuiApplication::primaryScreen()->size();
+    const bool tablet = std::min(screen.width(), screen.height()) >= 600;
+#else
+    const bool tablet = qEnvironmentVariable("BILIN_PREVIEW") == u"tablet";
+#endif
+    engine.loadFromModule("Bilin", tablet ? "TabletMain" : "MobileMain");
     return QGuiApplication::exec();
 }

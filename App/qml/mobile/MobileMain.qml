@@ -4,8 +4,8 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
-// 手机版的窗口（main_mobile.cpp）：一个窗口铺满屏幕，四个标签页（概览、设备、最近、设置）。
-// 窄的时候标签在底部，宽的时候（平板横着）在左边的侧栏。连接、账号、关于这些一层层推进来（StackView），
+// 手机的窗口（main_mobile.cpp；平板是 TabletMain）：一个窗口铺满屏幕，四个标签页（概览、设备、最近、设置）。
+// 窄的时候标签在底部，宽的时候（横着）在左边的侧栏。连接、账号、关于这些一层层推进来（StackView），
 // 系统的返回键退回上一层。没登录、也没选过"以后再说"时先到登录页
 ApplicationWindow {
     id: app
@@ -17,11 +17,8 @@ ApplicationWindow {
     flags: Qt.Window | Qt.ExpandedClientAreaHint
 
     readonly property bool wide: width >= 720
-    // 平板：短的那一边至少 600
-    readonly property bool tablet: Math.min(Screen.width, Screen.height) >= 600
-    // 手指怎么操作电脑：设置里选的；没选过时手机是触摸板、平板直接点
-    readonly property string fingerMode: AppSettings.fingerMode.length > 0 ? AppSettings.fingerMode
-                                                                           : tablet ? "direct" : "touchpad"
+    // 手指怎么操作电脑：设置里选的；没选过时手机是触摸板
+    readonly property string fingerMode: AppSettings.fingerMode.length > 0 ? AppSettings.fingerMode : "touchpad"
     property int currentTab: 0
 
     function connectTo(device, viewOnly) {

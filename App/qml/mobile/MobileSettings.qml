@@ -113,30 +113,8 @@ MobilePage {
     }
 
     // ---- 远程操作 ----
-    SettingsSection {
-        title: qsTr("远程操作")
-        footer: root.fingerMode === "touchpad" ? qsTr("触摸板：手指在屏幕上滑动光标，点一下是点击")
-                                               : qsTr("直接点：手指点在哪，就点在电脑屏幕的哪里")
-        SettingsRow {
-            label: qsTr("手指操作方式")
-            SegmentedControl {
-                width: 170
-                model: [qsTr("触摸板"), qsTr("直接点")]
-                currentIndex: root.fingerMode === "touchpad" ? 0 : 1
-                onCurrentIndexChanged: {
-                    const mode = currentIndex === 0 ? "touchpad" : "direct"
-                    if (mode !== root.fingerMode)
-                        AppSettings.fingerMode = mode
-                }
-            }
-        }
-        SettingsRow {
-            label: qsTr("连接时屏幕常亮")
-            AppSwitch {
-                checked: AppSettings.keepScreenOn
-                onToggled: AppSettings.keepScreenOn = checked
-            }
-        }
+    RemoteControlSettings {
+        fingerMode: root.fingerMode
     }
 
     // ---- 通用 ----

@@ -1,8 +1,10 @@
 import QtQuick
 
-// 自定义标题栏区域：拖动移动窗口，双击缩放
+// 自定义标题栏区域：拖动移动窗口，双击缩放（手机、平板上窗口不能拖，不起作用）
 Item {
     id: root
+
+    enabled: !Theme.touch
 
     DragHandler {
         target: null

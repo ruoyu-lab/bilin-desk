@@ -6,6 +6,8 @@ Rectangle {
     id: root
 
     required property BrowseState browse
+    // 顶上多让出的高度（平板：状态栏）
+    property real topInset: 0
     readonly property string accountName: Account.signedIn ? Account.displayName : qsTr("未登录")
 
     color: Theme.sidebar
@@ -21,7 +23,7 @@ Rectangle {
         anchors.fill: parent
         anchors.margins: 10
         // macOS 紧挨着红绿灯那一行；Windows 在标题栏（软件名、侧栏开关）下面
-        anchors.topMargin: Theme.unifiedTitleBar ? Theme.headerHeight - 4 : Theme.headerHeight + 3
+        anchors.topMargin: (Theme.unifiedTitleBar ? Theme.headerHeight - 4 : Theme.headerHeight + 3) + root.topInset
         spacing: 2
 
         NavItem {

@@ -89,6 +89,7 @@ set(app_qml
     qml/components/ToolGroup.qml
     qml/components/TransferRow.qml
     qml/components/UnderlineTab.qml
+    qml/components/WindowDragArea.qml
     qml/shared/AboutSettings.qml
     qml/shared/AccountDialog.qml
     qml/shared/AccountSettings.qml
@@ -104,6 +105,18 @@ set(app_qml
     qml/shared/LoginForm.qml
     qml/shared/device_query.js
     qml/shared/DeviceMenu.qml
+    # 浏览设备（电脑版的主窗口、平板）：侧栏、工具栏、概览、设备列表、设置
+    qml/shared/AccountPopup.qml
+    qml/shared/AddDeviceDialog.qml
+    qml/shared/BrowseState.qml
+    qml/shared/DeviceDetail.qml
+    qml/shared/DeviceRow.qml
+    qml/shared/DeviceTile.qml
+    qml/shared/DevicesPage.qml
+    qml/shared/MainToolbar.qml
+    qml/shared/OverviewPage.qml
+    qml/shared/SettingsPage.qml
+    qml/shared/Sidebar.qml
 )
 # 电脑版才有的：安装、托盘、开机启动、单实例、窗口外框、被别人连（share）
 set(desktop_sources
@@ -140,24 +153,17 @@ set(gpu_frame_sources
     src/remote_view/frame_textures.h
 )
 set(desktop_qml
-    qml/desktop/BrowseState.qml
     qml/desktop/Main.qml
     qml/desktop/auth/LoginArt.qml
     qml/desktop/auth/LoginWindow.qml
     qml/desktop/components/WindowButtons.qml
-    qml/desktop/components/WindowDragArea.qml
     qml/desktop/components/WindowMemory.qml
-    qml/desktop/main/AccountPopup.qml
-    qml/desktop/main/AddDeviceDialog.qml
-    qml/desktop/main/DeviceDetail.qml
-    qml/desktop/main/DeviceRow.qml
-    qml/desktop/main/DeviceTile.qml
-    qml/desktop/main/DevicesPage.qml
-    qml/desktop/main/MainToolbar.qml
+    qml/desktop/main/DownloadFolderRow.qml
+    qml/desktop/main/MachineSettingsRows.qml
     qml/desktop/main/MainWindow.qml
-    qml/desktop/main/OverviewPage.qml
-    qml/desktop/main/SettingsPage.qml
-    qml/desktop/main/Sidebar.qml
+    qml/desktop/main/NotificationsButton.qml
+    qml/desktop/main/PermissionBanner.qml
+    qml/desktop/main/ThisDeviceCard.qml
     qml/desktop/setup/PermissionWindow.qml
     qml/desktop/setup/SetupWindow.qml
     qml/desktop/share/IncomingWindow.qml
@@ -201,6 +207,9 @@ set(mobile_qml
     qml/mobile/MobileDeviceRow.qml
     qml/mobile/MobileLogin.qml
     qml/mobile/MobileSession.qml
+    qml/mobile/RemoteControlSettings.qml
+    # 平板：电脑版的布局（浏览设备那几页和电脑版共用）
+    qml/tablet/TabletMain.qml
     qml/mobile/mobile_format.js
 )
 

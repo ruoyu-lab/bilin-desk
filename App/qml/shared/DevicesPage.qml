@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
-import "../../shared/device_query.js" as DeviceQuery
+import "device_query.js" as DeviceQuery
 
 // 我的设备 / 附近 / 收藏 / 最近：左侧紧凑列表，右侧选中设备的详情
 Item {

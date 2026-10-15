@@ -34,6 +34,7 @@ ApplicationWindow {
 
     Component.onCompleted: {
         WindowChrome.applyTitleBar(window, "unified")
+        WindowChrome.setInteractive(toolbar.tools)
         memory.restore()
     }
     function connect(device, viewOnly) {
@@ -71,6 +72,7 @@ ApplicationWindow {
             width: parent.width
             browse: browse
             rightInset: windowButtons.visible ? windowButtons.width + windowButtons.inset + windowButtons.spacing : 0
+            homeTools: Component { NotificationsButton { toolbar: toolbar } }
             onAddRequested: addDialog.open()
         }
 
@@ -80,6 +82,8 @@ ApplicationWindow {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             visible: browse.view === "home"
+            banner: Component { PermissionBanner {} }
+            thisDevice: Component { ThisDeviceCard {} }
             onConnectRequested: (device, viewOnly) => window.connect(device, viewOnly)
             onDetailsRequested: (listView, key) => browse.showDevice(listView, key)
             onAddRequested: addDialog.open()
@@ -103,6 +107,10 @@ ApplicationWindow {
             anchors.bottom: parent.bottom
             visible: browse.view === "settings"
             overTitleBar: Theme.unifiedTitleBar
+            machineRows: Component { MachineSettingsRows {} }
+            generalRows: Component { DownloadFolderRow {} }
+            // 只有 macOS 上装好的那一份有（开发版本没有）
+            uninstallable: Qt.platform.os === "osx" && Setup.installed
             // 侧栏收起时，红绿灯和侧栏开关压在页面左上角
             leftInset: Theme.unifiedTitleBar
                        ? Math.max(0, sidebarToggle.x + sidebarToggle.width + 12 - Math.max(0, sidebar.x + sidebar.width)) : 0
