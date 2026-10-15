@@ -27,7 +27,7 @@ Item {
 
             SessionTabs {
                 id: tabs
-                session: root.session
+                stage: root.session.stage
                 Layout.maximumWidth: parent.width - tools.width - (windowButtons.visible ? windowButtons.width : 0) - 24
                 Component.onCompleted: WindowChrome.setInteractive(tabs)
             }
@@ -36,7 +36,10 @@ Item {
 
             SessionTools {
                 id: tools
-                session: root.session
+                stage: root.session.stage
+                fullScreenAvailable: true
+                fullScreen: root.session.fullScreen
+                onFullScreenToggled: root.session.toggleFullScreen()
                 Component.onCompleted: WindowChrome.setInteractive(tools)
             }
 

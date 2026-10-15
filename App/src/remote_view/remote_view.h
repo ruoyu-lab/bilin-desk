@@ -20,6 +20,7 @@
 
 class FrameMailbox;
 class QQuickPaintedItem;
+class QTabletEvent;
 
 // 会话窗口里的远程画面（QML 元素）：画观看会话解出的帧，控制时把本机的鼠标、键盘发给对方。
 // GPU 上的帧由 FrameNode 直接画，CPU 上的图像（显卡建不起解码设备时）上传成纹理画。
@@ -94,6 +95,7 @@ protected:
     QSGNode *updatePaintNode(QSGNode *old, UpdatePaintNodeData *) override;
     void itemChange(ItemChange change, const ItemChangeData &value) override;
     bool event(QEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
@@ -127,6 +129,8 @@ private:
     rcsdk::ViewGeometry geometry() const;
     // 条目里的一点 → 对方显示器上的位置；在画面外或黑边上时 false（clamp：贴到边上）
     bool position(QPointF point, rcs_input_event &event, bool clamp) const;
+    // 笔（Apple Pencil、数位板）：对方收得了笔时按笔发，返回 true；不然 false，Qt 把它当鼠标
+    bool pen(QTabletEvent *tablet);
     void send(const rcs_input_event &event);
     // Windows：控制对方、有焦点时截下 Win 键（SystemKeys）
     void updateSystemKeys();

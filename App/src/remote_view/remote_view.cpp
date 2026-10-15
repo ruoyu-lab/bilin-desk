@@ -14,6 +14,7 @@
 #include <QQuickWindow>
 #include <QSGSimpleTextureNode>
 #include <QStyleHints>
+#include <QTabletEvent>
 #include <QTouchEvent>
 #include <QVariantMap>
 
@@ -303,6 +304,8 @@ void RemoteView::itemChange(ItemChange change, const ItemChangeData &value)
 {
     // 窗口隐藏、关掉之前，它的渲染线程不再从 SDK 的线程接活
     if (change == ItemSceneChange && value.window) {
+        // 笔的事件 Qt Quick 不交给条目，只有窗口收得到（pen）
+        value.window->installEventFilter(this);
         connect(value.window, &QQuickWindow::sceneGraphInvalidated, this, [this] {
             if (frames_)
                 frames_->setRenderWindow(nullptr);
@@ -569,6 +572,48 @@ void RemoteView::updateSystemKeys()
         send(event);
     });
 #endif
+}
+
+bool RemoteView::eventFilter(QObject *watched, QEvent *event)
+{
+    switch (event->type()) {
+    case QEvent::TabletPress:
+    case QEvent::TabletMove:
+    case QEvent::TabletRelease:
+        return pen(static_cast<QTabletEvent *>(event));
+    default:
+        return QQuickItem::eventFilter(watched, event);
+    }
+}
+
+// 笔在画面上：对方收得了笔时（rcs_peer_info.input_types）按笔发，画图的程序收得到压力、倾斜；
+// 不然不管，Qt 把它当鼠标
+bool RemoteView::pen(QTabletEvent *tablet)
+{
+    const QPointF point = mapFromScene(tablet->scenePosition());
+    if (!inputEnabled_ || !isVisible() || !contains(point) || !session_
+        || !(session_->peerInputTypes() & (1u << RCS_INPUT_PEN)))
+        return false;
+    tablet->accept(); // 不再变成鼠标
+    rcs_input_event event = rcs_input_event_init();
+    event.type = RCS_INPUT_PEN;
+    if (!position(point, event, true))
+        return true;
+    const bool touching = tablet->type() != QEvent::TabletRelease && (tablet->buttons() & Qt::LeftButton);
+    event.down = touching;
+    event.pressure = touching ? uint32_t(std::clamp(tablet->pressure() * 1024, 1.0, 1024.0)) : 0;
+    event.tilt_x = int32_t(std::clamp(tablet->xTilt(), -90.0, 90.0));
+    event.tilt_y = int32_t(std::clamp(tablet->yTilt(), -90.0, 90.0));
+    event.rotation = uint32_t((int(tablet->rotation()) % 360 + 360) % 360);
+    if (tablet->pointerType() == QPointingDevice::PointerType::Eraser)
+        event.pen |= RCS_PEN_ERASER;
+    send(event);
+    // 抬起来了：对方那里也离开感应范围
+    if (tablet->type() == QEvent::TabletRelease) {
+        event.pen |= RCS_PEN_LEAVE;
+        send(event);
+    }
+    return true;
 }
 
 // 控制时本程序的快捷键也交给对方

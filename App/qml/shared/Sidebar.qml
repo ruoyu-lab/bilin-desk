@@ -8,6 +8,10 @@ Rectangle {
     required property BrowseState browse
     // 顶上多让出的高度（平板：状态栏）
     property real topInset: 0
+    // 平板：回到主界面时还连着几台，有的话最上面一项回到会话
+    property int sessionCount: 0
+
+    signal sessionsRequested()
     readonly property string accountName: Account.signedIn ? Account.displayName : qsTr("未登录")
 
     color: Theme.sidebar
@@ -26,6 +30,14 @@ Rectangle {
         anchors.topMargin: (Theme.unifiedTitleBar ? Theme.headerHeight - 4 : Theme.headerHeight + 3) + root.topInset
         spacing: 2
 
+        NavItem {
+            Layout.fillWidth: true
+            Layout.bottomMargin: 6
+            visible: root.sessionCount > 0
+            iconName: "pointer"
+            text: qsTr("正在连接 · %1").arg(root.sessionCount)
+            onClicked: root.sessionsRequested()
+        }
         NavItem {
             Layout.fillWidth: true
             iconName: "home"

@@ -117,6 +117,13 @@ set(app_qml
     qml/shared/OverviewPage.qml
     qml/shared/SettingsPage.qml
     qml/shared/Sidebar.qml
+    # 会话（电脑版的会话窗口、平板）：几个连接的标签、工具按钮、画面和侧边面板
+    qml/shared/DisplayPicker.qml
+    qml/shared/DisplayThumbnails.qml
+    qml/shared/SessionStage.qml
+    qml/shared/SessionTabs.qml
+    qml/shared/SessionTools.qml
+    qml/shared/SessionView.qml
 )
 # 电脑版才有的：安装、托盘、开机启动、单实例、窗口外框、被别人连（share）
 set(desktop_sources
@@ -169,11 +176,6 @@ set(desktop_qml
     qml/desktop/share/IncomingWindow.qml
     qml/desktop/share/ShareChatWindow.qml
     qml/desktop/session/CompactChrome.qml
-    qml/desktop/session/DisplayPicker.qml
-    qml/desktop/session/DisplayThumbnails.qml
-    qml/desktop/session/SessionTabs.qml
-    qml/desktop/session/SessionTools.qml
-    qml/desktop/session/SessionView.qml
     qml/desktop/session/SessionWindow.qml
 )
 # 手机版（BILIN_MOBILE）：一个窗口、底部标签栏（宽的时候侧栏），后台服务在本进程里
@@ -208,8 +210,10 @@ set(mobile_qml
     qml/mobile/MobileLogin.qml
     qml/mobile/MobileSession.qml
     qml/mobile/RemoteControlSettings.qml
+    qml/mobile/TouchKeyboard.qml
     # 平板：电脑版的布局（浏览设备那几页和电脑版共用）
     qml/tablet/TabletMain.qml
+    qml/tablet/TabletSession.qml
     qml/mobile/mobile_format.js
 )
 

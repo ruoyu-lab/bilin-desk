@@ -3,18 +3,18 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 // 胶囊式会话标签：等宽排列，空间不够时收窄到下限，再不够就横向滚动。
-// 标签可拖动排序，右键打开菜单；标签前的状态点反映连接状态。
+// 标签可拖动排序，右键（触屏上长按）打开菜单；标签前的状态点反映连接状态。
 Rectangle {
     id: root
 
-    required property ApplicationWindow session
+    required property SessionStage stage
 
     readonly property int maxTabWidth: 160
     readonly property int minTabWidth: 96
     readonly property int tabSpacing: 2
     readonly property int arrowWidth: 20
 
-    readonly property int count: session.sessions.count
+    readonly property int count: stage.sessions.count
     readonly property real innerWidth: width - 4
     readonly property bool overflowing: count * minTabWidth + (count - 1) * tabSpacing > innerWidth
     readonly property real stripWidth: overflowing ? innerWidth - arrowWidth * 2 : innerWidth
@@ -41,11 +41,11 @@ Rectangle {
     radius: height / 2
     color: Theme.fill
 
-    onOverflowingChanged: Qt.callLater(() => reveal(session.currentIndex))
+    onOverflowingChanged: Qt.callLater(() => reveal(stage.currentIndex))
 
     Connections {
-        target: root.session
-        function onCurrentIndexChanged() { root.reveal(root.session.currentIndex) }
+        target: root.stage
+        function onCurrentIndexChanged() { root.reveal(root.stage.currentIndex) }
     }
 
     IconButton {
@@ -103,7 +103,7 @@ Rectangle {
         }
 
         Repeater {
-            model: root.session.sessions
+            model: root.stage.sessions
             delegate: AbstractButton {
                 id: tab
                 required property int index
@@ -111,7 +111,7 @@ Rectangle {
                 required property string key
                 readonly property ViewerSession viewer: ViewerSessions.get(key)
                 readonly property string status: viewer ? viewer.status : ""
-                readonly property bool current: index === root.session.currentIndex
+                readonly property bool current: index === root.stage.currentIndex
                 // 组件创建完成后才启用位置动画，避免新标签从左边滑入
                 property bool settled: false
 
@@ -119,13 +119,13 @@ Rectangle {
                 height: 24
                 z: drag.active ? 1 : 0
                 hoverEnabled: true
-                onPressed: root.session.currentIndex = index
+                onPressed: root.stage.currentIndex = index
                 onXChanged: {
                     if (!drag.active)
                         return
                     const target = Math.max(0, Math.min(root.count - 1, Math.round(x / root.slot)))
                     if (target !== index)
-                        root.session.moveSession(index, target)
+                        root.stage.moveSession(index, target)
                 }
                 Component.onCompleted: settled = true
 
@@ -148,7 +148,11 @@ Rectangle {
                 }
                 TapHandler {
                     acceptedButtons: Qt.RightButton
-                    onTapped: root.session.showTabMenu(tab.index)
+                    onTapped: root.stage.showTabMenu(tab.index)
+                }
+                TapHandler {
+                    enabled: Theme.touch
+                    onLongPressed: root.stage.showTabMenu(tab.index)
                 }
 
                 // 用透明度过渡而不是颜色过渡："transparent" 是透明的黑色，插值会经过发黑的中间色
@@ -198,10 +202,11 @@ Rectangle {
                         implicitWidth: 18
                         implicitHeight: 18
                         iconSize: 10
-                        opacity: tab.hovered ? 1 : 0
+                        // 触屏上没有悬停：正在看的那个一直有
+                        opacity: tab.hovered || (Theme.touch && tab.current) ? 1 : 0
                         iconName: "x"
                         text: qsTr("断开")
-                        onClicked: root.session.closeSession(tab.index)
+                        onClicked: root.stage.closeSession(tab.index)
                     }
                 }
             }

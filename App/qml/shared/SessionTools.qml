@@ -2,17 +2,29 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
-// 会话工具按钮：对方的显示器（有几块时） / 控制与仅查看（一个按钮切换） / 快捷键 / 全屏 / 侧边面板 /
-// 电源（断开连接，或者让对方电脑重启、关机、睡眠、注销）
+// 会话工具按钮：（平板：键盘、手指操作方式） / 对方的显示器（有几块时） / 控制与仅查看（一个按钮切换） / 快捷键 /
+// 全屏（电脑版） / 侧边面板 / 电源（断开连接，或者让对方电脑重启、关机、睡眠、注销）
 RowLayout {
     id: root
 
-    required property ApplicationWindow session
+    required property SessionStage stage
+    // 电脑版的会话窗口能全屏
+    property bool fullScreenAvailable: false
+    property bool fullScreen: false
+    // 平板放在最前面的工具（键盘、手指操作方式）
+    property Component leadingTools
 
-    readonly property var view: session.currentView
+    signal fullScreenToggled()
+
+    readonly property var view: stage.currentView
     readonly property bool viewOnly: view !== null && view.viewOnly
 
     spacing: 2
+
+    Loader {
+        visible: item !== null
+        sourceComponent: root.leadingTools
+    }
 
     DisplayPicker {
         id: displayPicker
@@ -34,21 +46,23 @@ RowLayout {
         iconName: root.viewOnly ? "eye" : "pointer"
         text: root.viewOnly ? qsTr("仅查看，点击切换为控制") : qsTr("控制中，点击切换为仅查看")
         active: root.viewOnly
-        onClicked: root.session.setViewOnly(!root.viewOnly)
+        onClicked: root.stage.setViewOnly(!root.viewOnly)
     }
     IconButton {
         compact: !Theme.unifiedTitleBar
         id: keys
-        iconName: "keyboard"
+        // 平板上键盘按钮另有（打字、按键栏），这个用快捷键的图标
+        iconName: Theme.touch ? "command" : "keyboard"
         text: qsTr("发送快捷键")
-        active: root.session.keysMenuOpen
-        onClicked: root.session.showKeysMenu(keys)
+        active: root.stage.keysMenuOpen
+        onClicked: root.stage.showKeysMenu(keys)
     }
     IconButton {
         compact: !Theme.unifiedTitleBar
-        iconName: root.session.fullScreen ? "minimize" : "maximize"
-        text: root.session.fullScreen ? qsTr("退出全屏") : qsTr("全屏")
-        onClicked: root.session.toggleFullScreen()
+        visible: root.fullScreenAvailable
+        iconName: root.fullScreen ? "minimize" : "maximize"
+        text: root.fullScreen ? qsTr("退出全屏") : qsTr("全屏")
+        onClicked: root.fullScreenToggled()
     }
 
     Rectangle {
@@ -62,8 +76,8 @@ RowLayout {
     IconButton {
         compact: !Theme.unifiedTitleBar
         iconName: "panel-right"
-        text: root.session.panelOpen ? qsTr("收起面板") : qsTr("对话、文件与设置")
-        onClicked: root.session.panelOpen = !root.session.panelOpen
+        text: root.stage.panelOpen ? qsTr("收起面板") : qsTr("对话、文件与设置")
+        onClicked: root.stage.panelOpen = !root.stage.panelOpen
 
         // 面板收着时对方说了话
         Rectangle {
@@ -83,7 +97,7 @@ RowLayout {
         iconName: "power"
         text: qsTr("断开连接、重启或关机对方电脑")
         danger: true
-        active: root.session.powerMenuOpen
-        onClicked: root.session.showPowerMenu(power)
+        active: root.stage.powerMenuOpen
+        onClicked: root.stage.showPowerMenu(power)
     }
 }

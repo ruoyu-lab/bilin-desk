@@ -1,6 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 
+// 一个会话：远程画面（RemoteCanvas），右边是侧边面板（对话、文件、设置），对方发来文件时画面下方问收不收。
+// 在电脑版的会话窗口、平板的会话页里（SessionStage）
 Item {
     id: root
 
@@ -10,14 +12,21 @@ Item {
     required property string address
     required property bool viewOnly
     property bool panelOpen: true
+    // 平板：手指怎么操作对方（RemoteView.touchMode）；电脑上为空
+    property string touchMode
 
     readonly property ViewerSession session: ViewerSessions.get(key)
     // 缩放：适应窗口，或者原始大小（一个画面像素对一个屏幕像素）
     property bool nativeSize: false
     // 会话窗口"发送快捷键"菜单：对方系统上的组合键 [{id, label, keys}]
     readonly property var shortcuts: canvas.shortcuts
+    // 平板：放大的倍数、对方是不是 Mac（按键栏上写 ⌘ 还是 Win）
+    readonly property real zoom: canvas.zoom
+    readonly property bool remoteMac: canvas.remoteMac
 
     signal closeRequested()
+    // 平板：按住不放起了作用
+    signal pressedAndHeld()
 
     // shortcuts 里 id 那一项
     function sendShortcut(id) {
@@ -27,6 +36,17 @@ Item {
     // 让对方电脑 "restart" | "shutDown" | "sleep" | "signOut"（右上角电源菜单里确认过了）
     function requestPower(action) {
         session.requestPower(action)
+    }
+
+    // 平板：打的字、按键栏上的键、回到整个画面
+    function sendText(text) {
+        canvas.sendText(text)
+    }
+    function pressKey(key, modifiers) {
+        canvas.pressKey(key, modifiers)
+    }
+    function resetZoom() {
+        canvas.resetZoom()
     }
 
     RowLayout {
@@ -42,7 +62,9 @@ Item {
             viewOnly: root.viewOnly
             nativeSize: root.nativeSize
             remoteCursor: AppSettings.remoteCursor
+            touchMode: root.touchMode
             onCloseRequested: root.closeRequested()
+            onPressedAndHeld: root.pressedAndHeld()
         }
 
         Item {
