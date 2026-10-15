@@ -101,9 +101,12 @@ h1, h2, h3, p {
   background: var(--primary-hover);
 }
 
+/* 高度定死：中文和英文的行高不一样，靠字撑开的话并排的按钮高低不齐 */
 .button.small {
+  box-sizing: border-box;
+  height: 34px;
   font-size: 13px;
-  padding: 8px 15px;
+  padding: 0 15px;
   border-radius: 9px;
 }
 
