@@ -23,15 +23,14 @@ void ConnectionMode::write(QJsonObject &message) const
 {
     message.insert(QStringLiteral("transport"), transport);
     message.insert(QStringLiteral("access"), access);
-    message.insert(QStringLiteral("sdk"), sdk);
+    message.insert(QStringLiteral("sdk"), sdkVersion());
 }
 
 std::optional<ConnectionMode> ConnectionMode::read(const QJsonObject &message)
 {
     ConnectionMode mode{message.value(QLatin1StringView("transport")).toString(),
-                        message.value(QLatin1StringView("access")).toString(),
-                        message.value(QLatin1StringView("sdk")).toString()};
-    if (!isTransport(mode.transport) || !isAccess(mode.access) || mode.sdk.isEmpty())
+                        message.value(QLatin1StringView("access")).toString()};
+    if (!isTransport(mode.transport) || !isAccess(mode.access))
         return std::nullopt;
     return mode;
 }

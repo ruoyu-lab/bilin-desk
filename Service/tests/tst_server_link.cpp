@@ -253,7 +253,7 @@ private slots:
                                                  {QStringLiteral("text"), QStringLiteral("offer")},
                                                  {QStringLiteral("transport"), relay.transport},
                                                  {QStringLiteral("access"), relay.access},
-                                                 {QStringLiteral("sdk"), relay.sdk}}));
+                                                 {QStringLiteral("sdk"), rc::sdkVersion()}}));
 
         QSignalSpy received(&link, &ServerLink::signalReceived);
         QSignalSpy undeliverable(&link, &ServerLink::undeliverable);
@@ -264,7 +264,7 @@ private slots:
                                         {QStringLiteral("text"), QStringLiteral("answer")},
                                         {QStringLiteral("transport"), relay.transport},
                                         {QStringLiteral("access"), relay.access},
-                                        {QStringLiteral("sdk"), relay.sdk}});
+                                        {QStringLiteral("sdk"), rc::sdkVersion()}});
         FakeServer::send(fake.current, {{QStringLiteral("type"), QStringLiteral("undeliverable")},
                                         {QStringLiteral("to"), QStringLiteral("333333333")},
                                         {QStringLiteral("session"), QStringLiteral("s2")},

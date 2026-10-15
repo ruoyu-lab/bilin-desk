@@ -13,9 +13,9 @@
 // 两台机器之间怎么连（docs/network.md）。SDK 要求两端用同一种传输方式，一次运行里不变：
 // 观看端先直连（P2P），打不通再换成中继（TURN）重连一次。
 // 去连的一方怎么证明自己（docs/devices-and-accounts.md），两端也要一样：别人用临时密码，我的设备（同一个账号下的）
-// 只靠设备密钥。两端的 SDK 也得是同一个版本（1.0 以前每个版本之间都不兼容）。每份信令带着这几样
-// （ConnectionMode，rc/server_protocol.h、rc/lan_protocol.h、rc/protocol.h 的 signal），分享端按它选分享会话，
-// SDK 版本不一样的回绝（rc/peer_protocol.h 的 VersionMismatch）
+// 只靠设备密钥。每份信令带着这两样（ConnectionMode，rc/server_protocol.h、rc/lan_protocol.h、rc/protocol.h 的
+// signal），分享端按它选分享会话。两端的网络协议得一样：SDK 握手时自己核对，不一样时去连的一方的会话以
+// RCS_ERROR_UNSUPPORTED 结束（说明里有 "protocol version"）
 namespace rc {
 
 inline constexpr QLatin1StringView DirectTransport{"p2p"};
@@ -31,15 +31,15 @@ bool isAccess(QStringView name);
 // 本程序里的 SDK 的版本，比如 "0.1.0-beta"
 QString sdkVersion();
 
-// 一次连接怎么连，信令里是 "transport"、"access"、"sdk" 几个字段
+// 一次连接怎么连，信令里是 "transport"、"access" 两个字段。写的时候还带着 "sdk"（本机的 SDK 版本）：
+// 程序 0.1.1-beta 和以前的按它回绝版本不一样的（没带的信令它不认，去连的一方只能干等），这些版本都更新掉以后删
 struct ConnectionMode
 {
     QString transport{DirectTransport};
     QString access{PasswordAccess};
-    QString sdk{sdkVersion()}; // 发信令的一方的 SDK 版本
 
     void write(QJsonObject &message) const;
-    // transport、access 都认得、带着 sdk 时才有
+    // transport、access 都认得时才有
     static std::optional<ConnectionMode> read(const QJsonObject &message);
 
     friend bool operator==(const ConnectionMode &, const ConnectionMode &) = default;

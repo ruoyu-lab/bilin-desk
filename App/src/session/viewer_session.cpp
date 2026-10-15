@@ -670,12 +670,17 @@ void ViewerSession::declined(const QString &reason)
     else if (reason == QLatin1StringView(rc::peer::NotReady))
         usePassword(tr("对方电脑还没连上服务器，认不出本机，输入临时密码连接"));
     else if (reason == QLatin1StringView(rc::peer::VersionMismatch))
-        setStatus(QStringLiteral("failed"),
-                  protocol::UpdateState::fromJson(service_.topic(protocol::UpdateTopic)).available.isEmpty()
-                      ? tr("两边的比邻版本不一样，连不上。请对方更新到最新版本再连")
-                      : tr("两边的比邻版本不一样，连不上。本机有新版本，更新以后再连"));
+        versionMismatch();
     else
         setStatus(QStringLiteral("failed"), tr("对方电脑出错了，暂时不能被连接"));
+}
+
+void ViewerSession::versionMismatch()
+{
+    setStatus(QStringLiteral("failed"),
+              protocol::UpdateState::fromJson(service_.topic(protocol::UpdateTopic)).available.isEmpty()
+                  ? tr("两边的比邻版本不一样，连不上。请对方更新到最新版本再连")
+                  : tr("两边的比邻版本不一样，连不上。本机有新版本，更新以后再连"));
 }
 
 void ViewerSession::stateEvent(rcs_state state)
@@ -725,6 +730,9 @@ void ViewerSession::stateEvent(rcs_state state)
             setStatus(QStringLiteral("needPin"), tr("临时密码不对"));
         else if (failure.result == RCS_ERROR_AUTHENTICATION)
             setStatus(QStringLiteral("failed"), tr("和对方的验证没通过"));
+        // 两端的网络协议不一样（SDK 握手时核对的，rc/transport.h）
+        else if (failure.result == RCS_ERROR_UNSUPPORTED && message.contains(u"protocol version"))
+            versionMismatch();
         else if (failure.result == RCS_ERROR_NETWORK && relay_ && status_ == u"connecting")
             setStatus(QStringLiteral("failed"), tr("连不上对方：直连打不通，中继也连不上"));
         else if (failure.result == RCS_ERROR_NETWORK)

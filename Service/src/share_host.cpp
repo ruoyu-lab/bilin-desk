@@ -643,12 +643,6 @@ protocol::ShareState ShareHost::state() const
 void ShareHost::receiveSignal(const QString &from, const QString &name, const QString &session, const QString &text,
                               const rc::ConnectionMode &mode)
 {
-    if (mode.sdk != rc::sdkVersion()) {
-        qInfo("设备 %s 要连本机，它的 SDK 是 %s 版、本机的是 %s 版，连不上，回绝", qUtf8Printable(from),
-              qUtf8Printable(mode.sdk), qUtf8Printable(rc::sdkVersion()));
-        emit declined(from, session, QLatin1StringView(rc::peer::VersionMismatch));
-        return;
-    }
     // 现在不接受连接：经服务器告诉对方为什么，不让它干等
     if (!session_) {
         QString reason = problem_;

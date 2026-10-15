@@ -16,19 +16,17 @@ private slots:
         QVERIFY(!rc::isTransport(u"udp"));
     }
 
-    // 每份信令带着本机的 SDK 版本；没带的不是信令
-    void modeCarriesTheSdkVersion()
+    // 信令写着本机的 SDK 版本（给 0.1.1-beta 和以前的看）；读的时候不要它，transport、access 不认得的不是信令
+    void modeRoundTrip()
     {
-        QVERIFY(!rc::sdkVersion().isEmpty());
         const rc::ConnectionMode relay{rc::RelayTransport, rc::DeviceAccess};
-        QCOMPARE(relay.sdk, rc::sdkVersion());
         QJsonObject message;
         relay.write(message);
+        QCOMPARE(message.value(QLatin1StringView("sdk")).toString(), rc::sdkVersion());
+        QCOMPARE(rc::ConnectionMode::read(message), relay);
+        message.remove(QStringLiteral("sdk"));
         QCOMPARE(rc::ConnectionMode::read(message), relay);
         message.remove(QStringLiteral("access"));
-        QVERIFY(!rc::ConnectionMode::read(message));
-        relay.write(message);
-        message.remove(QStringLiteral("sdk"));
         QVERIFY(!rc::ConnectionMode::read(message));
     }
 

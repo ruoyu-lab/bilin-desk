@@ -14,10 +14,9 @@
 //   {"app": AppTag, "type": "announce", "deviceId", "name", "platform"}；关掉、退出时发一次 leave
 //   {"app", "type": "leave", "deviceId"}。ForgetMs 没听到的不再算在附近
 // - 信令（TCP，SignalingPort，一行一个 JSON，rc/line_channel.h）：去连的一方连到对方的这个端口发 signal
-//   {"type": "signal", "from", "name", "session", "text", "transport", "access", "sdk"}（rc/transport.h），被连的一方
+//   {"type": "signal", "from", "name", "session", "text", "transport", "access"}（rc/transport.h），被连的一方
 //   在同一条连接上回 signal（同样的字段），或者现在不接受连接时回 decline {"type": "decline", "from", "session", "reason"}
 //   （原因见 rc/peer_protocol.h）
-// SDK 要求两端是同一个版本：sdk 和本机的不一样时，被连的一方回绝（rc/peer_protocol.h 的 VersionMismatch）
 namespace rc::lan {
 
 inline constexpr quint16 DiscoveryPort = 47920;

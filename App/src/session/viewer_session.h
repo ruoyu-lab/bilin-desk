@@ -244,6 +244,8 @@ private:
     bool byDevice() const;
     // 对方不认这台设备：改用临时密码，reason 告诉用户为什么
     void usePassword(const QString &reason);
+    // 两边的比邻（SDK）版本不一样：对方回绝的（旧版本），或者 SDK 握手时发现的
+    void versionMismatch();
     rc::IceServers iceServers() const;
     void useTransport(rcsdk::SessionConfig &config, const rc::IceServers &ice) const;
     // 服务器换了凭据：连着的从下一次重连起用新的
