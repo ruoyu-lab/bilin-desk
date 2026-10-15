@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- 比邻的 iOS 版（App/CMakeLists.txt 的手机版）：Qt 的模板改的，标识、版本号这些打包时由 CMake 和 Qt 填（启动画面用
+     Qt 默认的，跟着系统的深浅色）。只去连电脑：要连局域网里的电脑；收到的文件在"文件"App 的"我的 iPad › 比邻"里 -->
+<plist version="1.0">
+<dict>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleName</key>
+    <string>Bilin</string>
+    <key>CFBundleDisplayName</key>
+    <string>比邻</string>
+    <key>CFBundleIdentifier</key>
+    <string>${MACOSX_BUNDLE_GUI_IDENTIFIER}</string>
+    <key>CFBundleExecutable</key>
+    <string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
+    <key>CFBundleVersion</key>
+    <string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${MACOSX_BUNDLE_SHORT_VERSION_STRING}</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>zh_CN</string>
+    <key>CFBundleAllowMixedLocalizations</key>
+    <true/>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>UILaunchStoryboardName</key>
+    <string>@qt_ios_launch_screen_plist_entry@</string>
+    <!-- 不强制方向；iPad 上能分屏 -->
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UIRequiresFullScreen</key>
+    <false/>
+    <!-- iPhone 上也按屏幕的高刷新率画（ProMotion） -->
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>连接同一网络里的电脑。</string>
+    <key>UIFileSharingEnabled</key>
+    <true/>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
+</dict>
+</plist>

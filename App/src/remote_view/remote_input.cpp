@@ -80,16 +80,17 @@ constexpr std::pair<uint16_t, uint8_t> ScanCodes[] = {
     {0xE04B, 80},  {0xE04D, 79},  {0xE04F, 77},  {0xE050, 81},  {0xE051, 78},  {0xE052, 73},  {0xE053, 76},
     {0xE05B, 227}, {0xE05C, 231}, {0xE05D, 101},
 };
-#elif defined(Q_OS_ANDROID)
-// Android：Qt 不给原始键码，只给是哪个键（Qt::Key）。按美式键盘上那个键的位置换；Shift 打出来的符号算它下面那个键
-constexpr std::pair<uint16_t, uint8_t> AndroidSymbols[] = {
+#elif defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+// 手机（Android、iOS）：Qt 不给原始键码，只给是哪个键（Qt::Key）。按美式键盘上那个键的位置换；Shift 打出来的符号算它
+// 下面那个键
+constexpr std::pair<uint16_t, uint8_t> QtKeySymbols[] = {
     {u'-', 45},  {u'_', 45},  {u'=', 46},  {u'+', 46},  {u'[', 47},  {u'{', 47},  {u']', 48},  {u'}', 48},
     {u'\\', 49}, {u'|', 49},  {u';', 51},  {u':', 51},  {u'\'', 52}, {u'"', 52},  {u'`', 53},  {u'~', 53},
     {u',', 54},  {u'<', 54},  {u'.', 55},  {u'>', 55},  {u'/', 56},  {u'?', 56},  {u'!', 30},  {u'@', 31},
     {u'#', 32},  {u'$', 33},  {u'%', 34},  {u'^', 35},  {u'&', 36},  {u'*', 37},  {u'(', 38},  {u')', 39},
 };
 
-uint32_t androidUsage(int key)
+uint32_t qtKeyUsage(int key)
 {
     if (key >= Qt::Key_A && key <= Qt::Key_Z)
         return 4 + (key - Qt::Key_A);
@@ -126,7 +127,7 @@ uint32_t androidUsage(int key)
     case Qt::Key_Shift: return LeftShift;
     case Qt::Key_Alt: return LeftAlt;
     case Qt::Key_Meta: return LeftGui;
-    default: return key < 0x80 ? lookUp(AndroidSymbols, uint32_t(key)) : 0;
+    default: return key < 0x80 ? lookUp(QtKeySymbols, uint32_t(key)) : 0;
     }
 }
 #else
@@ -150,6 +151,20 @@ constexpr std::pair<uint16_t, uint8_t> MacKeyCodes[] = {
 };
 #endif
 
+#ifdef Q_OS_APPLE
+// Command（Gui）和 Control 对换
+uint32_t swapCommandAndControl(uint32_t usage)
+{
+    switch (usage) {
+    case LeftGui: return LeftControl;
+    case LeftControl: return LeftGui;
+    case RightGui: return RightControl;
+    case RightControl: return RightGui;
+    default: return usage;
+    }
+}
+#endif
+
 } // namespace
 
 uint32_t keyUsage(const QKeyEvent &key, bool remoteIsMac)
@@ -161,18 +176,15 @@ uint32_t keyUsage(const QKeyEvent &key, bool remoteIsMac)
     return lookUp(ScanCodes, (scan & 0xff) | ((scan & 0x100) ? 0xE000u : 0u));
 #elif defined(Q_OS_ANDROID)
     Q_UNUSED(remoteIsMac);
-    return androidUsage(key.key());
+    return qtKeyUsage(key.key());
+#elif defined(Q_OS_IOS)
+    // Qt 在苹果系统上把 Command 报成 Key_Control、Control 报成 Key_Meta：这已经是对方不是 Mac 时要的；对方是 Mac
+    // 时换回键本来的样子
+    const uint32_t usage = qtKeyUsage(key.key());
+    return remoteIsMac ? swapCommandAndControl(usage) : usage;
 #else
     const uint32_t usage = lookUp(MacKeyCodes, key.nativeVirtualKey());
-    if (remoteIsMac)
-        return usage;
-    switch (usage) {
-    case LeftGui: return LeftControl;
-    case LeftControl: return LeftGui;
-    case RightGui: return RightControl;
-    case RightControl: return RightGui;
-    default: return usage;
-    }
+    return remoteIsMac ? usage : swapCommandAndControl(usage);
 #endif
 }
 

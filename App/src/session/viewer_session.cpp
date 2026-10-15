@@ -366,15 +366,13 @@ void ViewerSession::open(bool relay)
     view_quality::apply(resolutionChoice_, frameRateChoice_, bitrateChoice_, 0, 0, {}, config.viewRequest());
     request_ = config.viewRequest();
     rc::FileTransfers::configure(config);
+    // 解出的画面直接在显卡上画（FrameNode）；Windows 建不起解码用的 D3D11 设备时（ViewGraphics）用 CPU 上的图像
 #ifdef Q_OS_WIN
     const bool gpuFrames = decodeDevice_ != nullptr;
     if (gpuFrames)
         config.use(rcsdk::gpuDevice(decodeDevice_));
-#elif defined(RC_GPU_FRAMES)
-    const bool gpuFrames = true;
 #else
-    // iOS（和在电脑上预览手机界面）还没接：SDK 从显卡读回来的 CPU 上的图像
-    const bool gpuFrames = false;
+    const bool gpuFrames = true;
 #endif
     // 我的设备：只认它的公钥，它也只认本机的；别人：临时密码
     if (byDevice()) {

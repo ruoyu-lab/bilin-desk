@@ -5,6 +5,7 @@
 
 #include <rcsdk/view_geometry.hpp>
 
+#include <QHash>
 #include <QPointer>
 #include <QQuickItem>
 #include <QTimer>
@@ -176,7 +177,7 @@ private:
     QString touchMode_;
     Gesture gesture_;
     bool touching_ = false;
-    bool touchedSinceHover_ = false; // 手指碰过屏幕，下一次悬停不算（hoverMoveEvent）
+    QHash<int, QPointF> touchPoints_; // 这一次触摸里每个手指最后在哪（hoverMoveEvent）
     QTimer longPress_;
     // 触摸板：光标在编码帧上的位置（0..65535），手指移动时本机先算，不等对方报回来
     double cursorX_ = 32767;

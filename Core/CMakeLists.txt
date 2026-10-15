@@ -51,7 +51,12 @@ qt_add_library(rccore STATIC
     src/rc/ipc/endpoint.cpp
 )
 
-if(APPLE)
+if(IOS)
+    # 手机上没有系统服务（rc/system_service.h）；新版本从 App Store 来，不用核对签名（rc/release.h）
+    target_sources(rccore PRIVATE src/rc/device_name_ios.mm src/rc/download_mark_none.cpp src/rc/user_seal_plain.cpp
+                   src/rc/machine_ios.mm)
+    target_link_libraries(rccore PRIVATE "-framework Foundation" "-framework UIKit" "-framework Security")
+elseif(APPLE)
     target_sources(rccore PRIVATE src/rc/device_name_mac.cpp src/rc/download_mark_mac.mm src/rc/user_seal_plain.cpp
                    src/rc/system_service_mac.cpp src/rc/release_mac.cpp src/rc/machine_mac.cpp)
     target_link_libraries(rccore PRIVATE "-framework CoreFoundation" "-framework SystemConfiguration"
@@ -62,7 +67,7 @@ elseif(WIN32)
     target_link_libraries(rccore PRIVATE crypt32 advapi32 shell32 ole32 bcrypt)
 elseif(ANDROID)
     # 手机上没有系统服务（rc/system_service.h）；核对新版本的签名用 OpenSSL（顶层 CMakeLists.txt）
-    target_sources(rccore PRIVATE src/rc/device_name_android.cpp src/rc/download_mark_android.cpp
+    target_sources(rccore PRIVATE src/rc/device_name_android.cpp src/rc/download_mark_none.cpp
                    src/rc/user_seal_plain.cpp src/rc/machine_android.cpp src/rc/release_android.cpp)
     target_link_libraries(rccore PRIVATE android_openssl_crypto)
 endif()

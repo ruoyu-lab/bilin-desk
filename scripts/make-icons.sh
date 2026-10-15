@@ -2,6 +2,8 @@
 # 从 Logo（App/branding/logo.svg）生成程序图标，生成的文件也放进仓库（编译时不用这些工具）：
 # - App/branding/Bilin.icns：macOS，按苹果的图标规格，方块占 824/1024，四周留白
 # - App/branding/Bilin.ico：Windows，16~256 几种大小，方块铺满
+# - App/platform/ios/Assets.xcassets/AppIcon.appiconset/AppIcon.png：iOS，1024 一张（Xcode 做出别的大小），铺满、
+#   不透明、不要圆角和描边（系统自己切圆角）
 # 用 Qt 自己的 SVG 渲染出图（和程序里显示的一样），ImageMagick 拼 .ico，iconutil 拼 .icns。改了 Logo 再跑一遍
 #
 #   scripts/make-icons.sh
@@ -48,19 +50,20 @@ Window {
 }
 QML
 
+# render <SVG> <输出目录> <大小,大小…>
 render() {
-    "$qt/bin/qml" -platform offscreen "$work/render.qml" -- "$logo" "$1" "$2"
+    "$qt/bin/qml" -platform offscreen "$work/render.qml" -- "$1" "$2" "$3"
 }
 
 # Windows：铺满
 mkdir -p "$work/ico"
-render "$work/ico" 16,20,24,32,40,48,64,256
+render "$logo" "$work/ico" 16,20,24,32,40,48,64,256
 magick "$work/ico/16.png" "$work/ico/20.png" "$work/ico/24.png" "$work/ico/32.png" "$work/ico/40.png" \
     "$work/ico/48.png" "$work/ico/64.png" "$work/ico/256.png" "$root/App/branding/Bilin.ico"
 
 # macOS：方块占 824/1024，四周留白（各个大小都按这个比例）
 mkdir -p "$work/mac" "$work/Bilin.iconset"
-render "$work/mac" 13,26,52,105,206,412,824
+render "$logo" "$work/mac" 13,26,52,105,206,412,824
 for pair in 16:13:icon_16x16 32:26:icon_16x16@2x 32:26:icon_32x32 64:52:icon_32x32@2x 128:105:icon_128x128 \
             256:206:icon_128x128@2x 256:206:icon_256x256 512:412:icon_256x256@2x 512:412:icon_512x512 \
             1024:824:icon_512x512@2x; do
@@ -73,4 +76,11 @@ for pair in 16:13:icon_16x16 32:26:icon_16x16@2x 32:26:icon_32x32 64:52:icon_32x
 done
 iconutil -c icns -o "$root/App/branding/Bilin.icns" "$work/Bilin.iconset"
 
-ls -la "$root/App/branding/Bilin.icns" "$root/App/branding/Bilin.ico"
+# iOS：去掉方块的圆角和描边，铺满，透明的地方填白
+ios_icon="$root/App/platform/ios/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
+sed -e 's/ rx="186"//' -e '/stroke-opacity="0.08"/d' "$logo" > "$work/ios.svg"
+mkdir -p "$work/ios"
+render "$work/ios.svg" "$work/ios" 1024
+magick "$work/ios/1024.png" -background white -alpha remove -alpha off "$ios_icon"
+
+ls -la "$root/App/branding/Bilin.icns" "$root/App/branding/Bilin.ico" "$ios_icon"

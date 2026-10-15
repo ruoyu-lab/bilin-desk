@@ -6,7 +6,8 @@ import QtQuick.Layouts
 // 手机上连着一台电脑：远程画面铺满（RemoteCanvas，和电脑版的会话一样：连接中、输临时密码、出错都在里面），
 // 上面浮着几个按钮：左上角名字和延迟（点开是断开连接、对方电脑的重启关机，PowerMenu），右上角键盘、快捷键、
 // 手指操作方式、"…"；放大了时中间是倍数，点一下复原。系统的返回先问一句再断开。
-// 打字时键盘上面多一排电脑上的键（Esc、Tab、Ctrl……），修饰键点一下按住、打下一个键时一起按。
+// 键盘按钮弹出菜单：打字（系统键盘），或者按键栏（底下一排电脑上的键：Esc、Tab、Ctrl……，不弹系统键盘、
+// 不挡着），按键栏的修饰键点一下按住、打下一个键时一起按。
 // "…"拉出电脑版会话的侧边面板（SidePanel：对话、文件、设置）：竖着从下面拉出来，横着在右边
 Item {
     id: root
@@ -25,8 +26,14 @@ Item {
     signal closed()
 
     readonly property bool controlling: canvas.controlling && canvas.showVideo
-    // 打字：键盘弹出来了（catcher 有焦点）
+    // 打字：系统键盘弹出来了（catcher 有焦点）
     readonly property bool typing: catcher.activeFocus
+    // 按键栏开着
+    property bool keysShown: false
+    // 系统键盘从哪里开始盖住（Android 报的是物理像素）
+    readonly property real keyboardTop: Qt.inputMethod.visible
+        ? Math.min(root.height, Qt.inputMethod.keyboardRectangle.y / (Qt.platform.os === "android" ? Screen.devicePixelRatio : 1))
+        : root.height
     // 按着的修饰键（Control、Alt、Shift、Meta），打下一个键时一起按，按完松开
     property var held: []
 
@@ -38,6 +45,17 @@ Item {
     // 系统的返回（MobileMain）：先问一句，免得手一滑就断了
     function askDisconnect() {
         powerConfirm.openCentered("disconnect")
+    }
+
+    function startTyping() {
+        catcher.forceActiveFocus()
+        Qt.inputMethod.show()
+    }
+
+    function closeKeyboard() {
+        catcher.focus = false
+        Qt.inputMethod.hide()
+        root.keysShown = false
     }
 
     function toggleHeld(modifier) {
@@ -90,8 +108,9 @@ Item {
         anchors.topMargin: root.SafeArea.margins.top
         anchors.leftMargin: root.SafeArea.margins.left
         anchors.rightMargin: root.SafeArea.margins.right
-        // 打字时让开键盘和按键栏
-        anchors.bottomMargin: root.typing ? root.height - keyBar.y : root.SafeArea.margins.bottom
+        // 让开按键栏、系统键盘
+        anchors.bottomMargin: root.keysShown ? root.height - keyBar.y
+                              : root.typing ? root.height - root.keyboardTop : root.SafeArea.margins.bottom
         visible: root.session !== null
         session: root.session
         name: root.device.name
@@ -189,6 +208,23 @@ Item {
         }
     }
 
+
+    // 键盘按钮：打字用系统键盘，或者只要电脑上的那些键
+    AppMenu {
+        id: keyboardMenu
+        AppMenuItem {
+            text: qsTr("打字")
+            hint: qsTr("系统键盘")
+            // 菜单关掉以后再拿焦点（关的时候焦点回到原来的地方）
+            onTriggered: Qt.callLater(root.startTyping)
+        }
+        AppMenuItem {
+            text: qsTr("按键栏")
+            hint: qsTr("Esc、Ctrl、方向键、F1–F12")
+            onTriggered: root.keysShown = true
+        }
+    }
+
     // ---- 右上角：键盘、快捷键、手指操作方式（控制着的时候才有） ----
     Pill {
         id: toolsPill
@@ -204,24 +240,21 @@ Item {
             spacing: 0
 
             Item {
+                id: keyboardButton
                 Layout.preferredWidth: 44
                 Layout.preferredHeight: 40
                 Icon {
                     anchors.centerIn: parent
                     name: "keyboard"
                     size: 20
-                    color: root.typing ? "#0a84ff" : "white"
+                    color: root.typing || root.keysShown ? "#0a84ff" : "white"
                 }
+                // 开着的时候点一下收起
                 TapHandler {
-                    onTapped: {
-                        if (root.typing) {
-                            catcher.focus = false
-                            Qt.inputMethod.hide()
-                        } else {
-                            catcher.forceActiveFocus()
-                            Qt.inputMethod.show()
-                        }
-                    }
+                    onTapped: root.typing || root.keysShown
+                              ? root.closeKeyboard()
+                              : keyboardMenu.popup(keyboardButton, keyboardButton.width - keyboardMenu.width,
+                                                   keyboardButton.height + 8)
                 }
             }
             Item {
@@ -280,7 +313,7 @@ Item {
         }
         TapHandler {
             onTapped: {
-                catcher.focus = false
+                root.closeKeyboard()
                 root.panelOpen = true
             }
         }
@@ -306,20 +339,20 @@ Item {
         }
     }
 
-    // ---- 按键栏：键盘弹出来时在它上面 ----
+    // ---- 按键栏：在底下 ----
     Rectangle {
         id: keyBar
-        visible: root.typing
+        visible: root.keysShown
         width: parent.width
-        height: 48
-        // 键盘盖住的地方从哪里开始（窗口跟着键盘缩小时就是窗口的底边）
-        y: Math.min(root.height, Qt.inputMethod.visible ? Qt.inputMethod.keyboardRectangle.y : root.height) - height
+        height: 48 + root.SafeArea.margins.bottom
+        y: root.height - height
         color: Theme.dark ? "#2c2c2e" : "#d1d3d9"
 
         Flickable {
             anchors.fill: parent
-            anchors.leftMargin: 6
-            anchors.rightMargin: 6
+            anchors.leftMargin: root.SafeArea.margins.left + 6
+            anchors.rightMargin: root.SafeArea.margins.right + 6
+            anchors.bottomMargin: root.SafeArea.margins.bottom
             contentWidth: keys.implicitWidth
             flickableDirection: Flickable.HorizontalFlick
             clip: true

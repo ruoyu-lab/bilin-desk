@@ -4,6 +4,8 @@
 #include "mobile/android_files.h"
 
 #include <QDesktopServices>
+#elif defined(Q_OS_IOS)
+#include "mobile/ios_files.h"
 #endif
 
 #include <QDir>
@@ -23,6 +25,8 @@ QString downloads()
 {
 #ifdef Q_OS_ANDROID
     return android_files::downloads();
+#elif defined(Q_OS_IOS)
+    return ios_files::downloads();
 #else
     return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
 #endif
@@ -67,6 +71,8 @@ void FileTransferList::showInFolder(int id) const
 #elif defined(Q_OS_ANDROID)
     // 手机上没有"在文件夹中显示"：用能打开它的程序打开
     QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+#elif defined(Q_OS_IOS)
+    ios_files::open(path);
 #else
     // "/select," 和路径分成两项：路径里有空格时加了引号，资源管理器也认得
     QProcess::startDetached(QStringLiteral("explorer.exe"), {QStringLiteral("/select,"), path});

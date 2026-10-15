@@ -1,7 +1,7 @@
 # 手机版
 
-手机和平板（先做 Android，iOS 之后）只去连电脑，不被连：iOS 不允许一个程序操作别的程序，Android 要无障碍服务、
-上架审核严，以后再说。代码在 `mobile` 分支上做，测好了再合进 main。
+手机和平板（Android、iPhone 和 iPad）只去连电脑，不被连：iOS 不允许一个程序操作别的程序，Android 要无障碍服务、
+上架审核严，以后再说。
 
 ## 和电脑版的关系
 
@@ -39,15 +39,17 @@
 | 两个手指张开、捏拢 | 放大缩小画面，放大以后拖着移动 | 同左 |
 
 - 放大以后光标走到边上画面跟着移；中间显示倍数，点一下复原
-- 打字用 SDK 的文字输入（`RCS_INPUT_TEXT`，中文也行）；键盘上面一排 Esc、Tab、Ctrl、Alt、Win（对方是 Mac 时 ⌘ ⌥ ⌃）、
-  方向键、F1~F12，修饰键点一下按住，打下一个键时一起按
+- 键盘按钮弹出菜单：打字（系统键盘，用 SDK 的文字输入 `RCS_INPUT_TEXT`，中文也行），或者按键栏（底下一排 Esc、Tab、
+  Ctrl、Alt、Win（对方是 Mac 时 ⌘ ⌥ ⌃）、方向键、F1~F12，不弹系统键盘、不挡着），修饰键点一下按住，打下一个键时一起按
 - 按住不放（右键、开始拖）时震一下（`PhoneWindow.pressFeedback`）；连着的时候屏幕常亮（设置里能关）
-- 蓝牙、USB 的键盘鼠标直接用：键盘按键照电脑上一样发过去（Android 的键码对到 USB 的，`remote_input.cpp`），鼠标是真的
-  光标，不走触摸板那一套
-- 画面：解码器的硬件缓冲区直接做成 OpenGL ES 的外部纹理画（`frame_textures_android.cpp`、`shaders/external_gles.frag`，
-  `RC_GPU_FRAMES`），不读回内存
-- 互传文件：选文件用系统的文件选择（`AndroidFilePicker`，可以多选；选出来的先复制到缓存里再发），不能发文件夹；
-  收到的放在"下载/比邻"（Android 10 是程序自己的目录），点"打开"用别的程序打开
+- 外接的键盘鼠标（蓝牙、USB、iPad 的妙控键盘）直接用：Qt 在手机上只给是哪个键，按美式键盘的位置对到 USB 的键码
+  （`remote_input.cpp`；iPad 的 Command、Control 按对方是不是 Mac 对调，和 Mac 电脑版一样），鼠标是真的光标，不走
+  触摸板那一套
+- 画面：解码出来的帧不读回内存，直接画（Android 做成 OpenGL ES 的外部纹理，`frame_textures_android.cpp`、
+  `shaders/external_gles.frag`；iOS 和 Mac 一样经 Metal，`frame_textures_mac.mm`）
+- 互传文件：选文件用系统的文件选择（Android 是 `AndroidFilePicker`，可以多选），选出来的地址 SDK 读不了，先复制到
+  程序的缓存里再发（`mobile_files.h`），不能发文件夹。收到的 Android 放在"下载/比邻"（Android 10 是程序自己的目录），
+  点"打开"用别的程序打开；iOS 放在"文件"App 的"我的 iPad › 比邻"，点"打开"是快速预览（`ios_files.h`）
 
 ## 切到后台
 
@@ -57,6 +59,9 @@ SDK 自己的线程照样维持连接，界面那边的事（消息、文件的�
 盖住）时会话暂停画面（`rcs_session_pause`，对方也不再给这台手机采集、编码），回来时从关键帧接着；远程声音开着的
 照样听得到（`App/src/mobile/session_keeper.h`）。Android 13 起发通知要用户允许：第一次连接时问一次（只问这一次），
 不给也行，通知栏里看不到这条，连接照样不断。
+
+iOS 不让程序在后台一直跑：SDK 在程序到了后台时自己暂停画面（`rcs_background_config`），切出去一小会儿连接还在，
+时间长了程序被系统挂起，连接断开，回来时重连（我的设备不用密码；别人的电脑临时密码用过就换，要重新输）。
 
 ## 编译、装到手机
 
@@ -73,6 +78,24 @@ scripts/build-android.sh --install  # 再装到 USB 连着的手机上并打开
 APK 用 `~/.bilin/android-release.keystore`（密码在旁边的 `android-release.password`）签名，不进仓库，**要备份**：
 Android 只让签名一样的 APK 覆盖安装，丢了已经装着的手机就收不到新版本，只能卸载重装。以前用调试密钥签的装着的，
 要先卸载（`adb uninstall com.bilindesk.bilin`）。
+
+iOS（iPhone、iPad，iOS 17 起）：要 Xcode（"设置 › 帐户"里登录 Apple ID）和 Qt 的 iOS 版（`~/Qt/6.11.2/ios`）。
+设备第一次装之前打开"设置 › 隐私与安全性 › 开发者模式"，装上以后在"设置 › 通用 › VPN 与设备管理"里信任自己的
+开发者证书：
+
+```sh
+scripts/build-ios.sh            # build/ios/App/Release-iphoneos/Bilin.app
+scripts/build-ios.sh --install  # 再装到 USB 连着的 iPad、iPhone 上并打开
+```
+
+签名用 Xcode 里登录的账号。免费的个人团队签的装上 7 天有效，程序的标识用 `com.bilindesk.bilin.dev`：正式的
+`com.bilindesk.bilin` 留给开发者账号（个人团队登记过的标识，别的团队就用不了了）。iOS 上的不同：
+
+- 局域网里发现附近的电脑靠 UDP 广播，iOS 上要向苹果另外申请组播权限，没有时"附近"是空的；按设备 ID、IP 连不受影响
+  （第一次连局域网地址时系统问能不能用本地网络，`Info.plist` 的 `NSLocalNetworkUsageDescription`）
+- 设备名 iOS 16 起只给"iPad""iPhone"（真名要苹果另批的权限），可以在设置里改；硬件编号没有，第一次用时生成一个存在
+  钥匙串里（`machine_ios.mm`，删掉重装还在）
+- 新版本从 App Store 来，程序里不检查更新
 
 在 Mac 上预览手机的界面（窗口里，尺寸按电脑的）：
 
@@ -91,5 +114,5 @@ cmake --build build/mobile-preview --target Bilin
 
 ## 数据
 
-Android 上的程序数据在程序自己的目录里（`rc::stateDirectory()`），设备令牌和私钥原样存（只有本程序能读，`user_seal_plain.cpp`）；
-设备名是"设置 › 关于手机"里的名字，硬件编号是 ANDROID_ID（重装以后登录同一个账号接回原来的设备 ID）。
+程序数据在程序自己的目录里（`rc::stateDirectory()`），设备令牌和私钥原样存（只有本程序能读，`user_seal_plain.cpp`）。
+Android 的设备名是"设置 › 关于手机"里的名字，硬件编号是 ANDROID_ID（重装以后登录同一个账号接回原来的设备 ID）。

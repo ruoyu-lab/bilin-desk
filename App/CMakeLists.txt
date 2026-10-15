@@ -174,10 +174,13 @@ set(desktop_qml
 set(mobile_sources
     src/mobile/local_service.h
     src/mobile/local_service.cpp
+    src/mobile/mobile_files.h
+    src/mobile/mobile_files.cpp
+    src/mobile/phone_system.h
     src/mobile/phone_window.h
     src/mobile/phone_window.cpp
 )
-# Android 上的互传文件（content:// 地址、存到公共的"下载"），到了后台连接不断
+# Android 上收到的文件存到公共的"下载"、系统的文件选择器，到了后台连接不断
 set(android_sources
     src/mobile/android_files.h
     src/mobile/android_files.cpp
@@ -205,18 +208,27 @@ if(BILIN_MOBILE)
     qt_add_executable(Bilin main_mobile.cpp)
     list(APPEND app_sources ${mobile_sources})
     if(ANDROID)
-        list(APPEND app_sources ${android_sources} ${gpu_frame_sources} src/remote_view/frame_textures_android.cpp)
+        list(APPEND app_sources ${android_sources} src/mobile/phone_system_android.cpp
+             src/remote_view/frame_textures_android.cpp)
         list(APPEND app_qml qml/android/FilePickers.qml)
+    elseif(IOS)
+        list(APPEND app_sources src/mobile/phone_system_ios.mm src/mobile/ios_files.h src/mobile/ios_files.mm
+             src/remote_view/frame_textures_mac.mm)
+        list(APPEND app_qml qml/desktop/session/FilePickers.qml)
     else()
+        # 在 Mac 上预览手机的界面
+        list(APPEND app_sources src/mobile/phone_system_none.cpp src/remote_view/frame_textures_mac.mm)
         list(APPEND app_qml qml/desktop/session/FilePickers.qml)
     endif()
     list(APPEND app_qml ${mobile_qml})
 else()
     find_package(Qt6 REQUIRED COMPONENTS LabsPlatform)
     qt_add_executable(Bilin main.cpp)
-    list(APPEND app_sources ${desktop_sources} ${gpu_frame_sources})
+    list(APPEND app_sources ${desktop_sources})
     list(APPEND app_qml ${desktop_qml} qml/desktop/session/FilePickers.qml)
 endif()
+# 解出的画面直接在显卡上画（FrameNode），各平台把帧做成纹理：frame_textures_mac.mm（macOS、iOS）、_win、_android
+list(APPEND app_sources ${gpu_frame_sources})
 
 set_source_files_properties(qml/common/Theme.qml qml/common/AppSettings.qml
                             PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
@@ -330,22 +342,22 @@ target_link_libraries(Bilin
 )
 
 # 手机版：后台服务的逻辑编进程序里（LocalService），服务器地址也是。Android 打成 APK（platform/android：清单、名字、
-# 图标），版本号 0.1.0 记成 100（每次发布数字变大）
+# 图标），iOS 是 Xcode 工程（platform/ios：Info.plist、图标）
 if(BILIN_MOBILE)
     target_link_libraries(Bilin PRIVATE rcservicecore)
     target_compile_definitions(Bilin PRIVATE RC_SERVER_URL="${RC_SERVER_URL}")
     # 苹果系统上是 .app 包（iOS 必须是；Mac 上预览时也是，不然程序和 QML 模块的目录 Bilin/ 同名）
     set_target_properties(Bilin PROPERTIES MACOSX_BUNDLE TRUE)
+    # 商店里比新旧的那个数（Android 的 versionCode、iOS 的 CFBundleVersion）：0.1.0 记成 100，每次发布数字变大
+    math(EXPR mobile_version_code "${PROJECT_VERSION_MAJOR} * 10000 + ${PROJECT_VERSION_MINOR} * 100 + ${PROJECT_VERSION_PATCH}")
     if(ANDROID)
-        # 解出的画面直接画（frame_textures_android.cpp：EGLImage、外部纹理）；系统的文件选择器要 Qt 的私有接口
+        # 画面做成外部纹理（frame_textures_android.cpp：EGLImage）；系统的文件选择器要 Qt 的私有接口
         #（android_file_picker.cpp，QtAndroidPrivate::startActivity）
-        target_compile_definitions(Bilin PRIVATE RC_GPU_FRAMES)
         target_link_libraries(Bilin PRIVATE EGL GLESv2 android Qt6::CorePrivate)
-        math(EXPR android_version_code "${PROJECT_VERSION_MAJOR} * 10000 + ${PROJECT_VERSION_MINOR} * 100 + ${PROJECT_VERSION_PATCH}")
         set_target_properties(Bilin PROPERTIES
             QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/platform/android"
             QT_ANDROID_VERSION_NAME "${BILIN_VERSION}"
-            QT_ANDROID_VERSION_CODE ${android_version_code}
+            QT_ANDROID_VERSION_CODE ${mobile_version_code}
             QT_ANDROID_MIN_SDK_VERSION 29
             QT_ANDROID_TARGET_SDK_VERSION 35
             # 打包时按 QML 用到的模块决定带上哪些 Qt 的库：只扫编进手机版的 QML（构建目录里的模块，和它们所在的
@@ -364,12 +376,30 @@ if(BILIN_MOBILE)
             BASE "${android_openssl}"
             FILES "${android_openssl}/LICENSE"
         )
+    elseif(IOS)
+        # iPhone、iPad。签名用 Xcode 里登录的账号（开发团队由 Qt 从 Xcode 的设置里找，scripts/build-ios.sh）。
+        # 程序的标识：正式的是 com.bilindesk.bilin；个人团队（免费）签的换一个，正式的留给开发者账号（个人团队登记过的
+        # 标识别的团队就用不了了）
+        set(BILIN_IOS_BUNDLE_ID com.bilindesk.bilin CACHE STRING "iOS 程序的标识")
+        target_link_libraries(Bilin PRIVATE "-framework UIKit" "-framework CoreVideo" "-framework Metal")
+        # 图标（scripts/make-icons.sh 生成）：Xcode 编资源目录时做出各个大小
+        set(ios_assets "${CMAKE_CURRENT_SOURCE_DIR}/platform/ios/Assets.xcassets")
+        target_sources(Bilin PRIVATE "${ios_assets}")
+        set_source_files_properties("${ios_assets}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+        set_target_properties(Bilin PROPERTIES
+            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/platform/ios/Info.plist.in"
+            MACOSX_BUNDLE_GUI_IDENTIFIER "${BILIN_IOS_BUNDLE_ID}"
+            XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${BILIN_IOS_BUNDLE_ID}"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+            MACOSX_BUNDLE_BUNDLE_VERSION "${mobile_version_code}"
+            XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME AppIcon
+        )
+    else()
+        # Mac 上预览：画面经 Metal 画
+        target_link_libraries(Bilin PRIVATE "-framework CoreVideo" "-framework Metal")
     endif()
     return()
 endif()
-
-# 解出的 GPU 画面直接画（gpu_frame_sources）
-target_compile_definitions(Bilin PRIVATE RC_GPU_FRAMES)
 
 # 电脑版只做 macOS 和 Windows
 if(APPLE)

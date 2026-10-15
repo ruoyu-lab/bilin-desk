@@ -1,11 +1,10 @@
 #include "viewer_files.h"
 
-#ifdef Q_OS_ANDROID
-#include "mobile/android_files.h"
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+#include "mobile/mobile_files.h"
 
 #include <QThread>
 
-#include <algorithm>
 #include <memory>
 #endif
 
@@ -20,33 +19,32 @@ ViewerFiles::ViewerFiles(rc::InterruptedTransfers &interrupted, const QString &p
 
 QString ViewerFiles::send(const QList<QUrl> &urls)
 {
-#ifdef Q_OS_ANDROID
-    if (std::any_of(urls.cbegin(), urls.cend(), [](const QUrl &url) { return url.scheme() == u"content"; })) {
-        auto copied = std::make_shared<QStringList>();
-        QThread *copying = QThread::create([urls, copied] {
-            for (const QUrl &url : urls) {
-                const QString path = url.isLocalFile() ? url.toLocalFile() : android_files::copyForSending(url);
-                if (path.isEmpty())
-                    return;
-                copied->append(path);
-            }
-        });
-        connect(copying, &QThread::finished, copying, &QObject::deleteLater);
-        connect(copying, &QThread::finished, this, [this, copied, count = urls.size()] {
-            if (copied->size() == count)
-                files_.send(0, *copied);
-            else
-                emit sendFailed(tr("有的文件读不了"));
-        });
-        copying->start();
-        return {};
-    }
-#endif
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    auto copied = std::make_shared<QStringList>();
+    QThread *copying = QThread::create([urls, copied] {
+        for (const QUrl &url : urls) {
+            const QString path = mobile_files::copyForSending(url);
+            if (path.isEmpty())
+                return;
+            copied->append(path);
+        }
+    });
+    connect(copying, &QThread::finished, copying, &QObject::deleteLater);
+    connect(copying, &QThread::finished, this, [this, copied, count = urls.size()] {
+        if (copied->size() == count)
+            files_.send(0, *copied);
+        else
+            emit sendFailed(tr("有的文件读不了"));
+    });
+    copying->start();
+    return {};
+#else
     QStringList paths;
     if (const QString problem = localPaths(urls, paths); !problem.isEmpty())
         return problem;
     files_.send(0, paths);
     return {};
+#endif
 }
 
 void ViewerFiles::clearCompleted()

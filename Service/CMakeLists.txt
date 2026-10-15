@@ -3,8 +3,6 @@ find_package(Qt6 REQUIRED COMPONENTS Core Network WebSockets)
 
 # 程序的逻辑放在库里，测试也用它
 qt_add_library(rcservicecore STATIC
-    src/app_keeper.h
-    src/app_keeper.cpp
     src/client_rights.h
     src/connection_history.h
     src/connection_history.cpp
@@ -35,7 +33,9 @@ qt_add_library(rcservicecore STATIC
 target_include_directories(rcservicecore PUBLIC src)
 target_link_libraries(rcservicecore PUBLIC rccore Qt6::WebSockets)
 # 本机连接上来的是谁（client_rights.h）
-if(APPLE)
+if(IOS)
+    target_sources(rcservicecore PRIVATE src/client_rights_ios.cpp)
+elseif(APPLE)
     target_sources(rcservicecore PRIVATE src/client_rights_mac.cpp)
     target_link_libraries(rcservicecore PRIVATE "-framework SystemConfiguration" "-framework CoreFoundation")
 elseif(WIN32)
@@ -49,6 +49,9 @@ endif()
 if(BILIN_MOBILE)
     return()
 endif()
+
+# 有人连着时把界面程序拉起来（电脑上界面程序和后台服务是两个程序）
+target_sources(rcservicecore PRIVATE src/app_keeper.h src/app_keeper.cpp)
 
 # 用到 SDK 的部分只在程序里（测试不链接 SDK）
 qt_add_executable(rcservice

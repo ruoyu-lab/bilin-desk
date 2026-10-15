@@ -165,9 +165,9 @@ ColumnLayout {
             text: qsTr("发送文件")
             onClicked: pickers.chooseFiles()
         }
-        // Android 的文件选择器给的是整个文件夹的授权地址，复制不了，先不支持
+        // 手机的文件选择器给的是整个文件夹的授权地址，复制不了，先不支持
         AppButton {
-            visible: Qt.platform.os !== "android"
+            visible: !Theme.touch
             Layout.fillWidth: true
             enabled: root.connected
             iconName: "folder"

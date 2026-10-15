@@ -120,6 +120,7 @@ void ServiceClient::disconnected()
 
 void ServiceClient::launch()
 {
+#if QT_CONFIG(process) // 只有电脑上有（Runner::Beside）：iOS 不能启动别的程序
     const QString program = serviceProgram();
     if (program.isEmpty()) {
         qWarning("程序旁边没有后台服务（%s）", rc::program::Service.data());
@@ -128,6 +129,7 @@ void ServiceClient::launch()
     qInfo("启动后台服务：%s", qUtf8Printable(program));
     if (!QProcess::startDetached(program, {}, QFileInfo(program).absolutePath()))
         qWarning("后台服务启动不了：%s", qUtf8Printable(program));
+#endif
 }
 
 void ServiceClient::received(const QJsonObject &message)

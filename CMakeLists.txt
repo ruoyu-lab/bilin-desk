@@ -1,7 +1,12 @@
 cmake_minimum_required(VERSION 3.25)
 
-# 最低 macOS 14：跟 SDK 一致（它要 ScreenCaptureKit）
-set(CMAKE_OSX_DEPLOYMENT_TARGET 14.0 CACHE STRING "Minimum macOS version")
+# 最低系统，跟 SDK 一致：macOS 14（它要 ScreenCaptureKit），iOS 17（同一年的，VideoToolbox 选硬件解码器）。
+# Qt 的 iOS 工具链到 project() 才说要编什么，所以按 iOS 的 sysroot 认（scripts/build-ios.sh）
+if(CMAKE_OSX_SYSROOT MATCHES "^iphone")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 17.0 CACHE STRING "Minimum iOS version")
+elseif(NOT CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 14.0 CACHE STRING "Minimum macOS version")
+endif()
 
 project(Bilin VERSION 0.1.1 LANGUAGES C CXX)
 # 版本的阶段：1.0 之前是 beta。界面、安装信息、发布的新版本都写成 0.1.0-beta；比新旧只看数字，所以每次发布数字都要变大。

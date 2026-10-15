@@ -4,13 +4,13 @@
 #include "devices/device_directory.h"
 #include "devices/device_wake.h"
 #include "mobile/local_service.h"
+#include "mobile/mobile_files.h"
 #include "remote_view/view_graphics.h"
 #include "service_client.h"
 #include "session/viewer_sessions.h"
 #include "this_device.h"
 
 #include <rc/interrupted_transfers.h>
-#include <rc/ipc/endpoint.h>
 #include <rc/log_file.h>
 #include <rc/paths.h>
 
@@ -19,7 +19,6 @@
 #include <rcsdk/power.h>
 #include <rcsdk/rcsdk.hpp>
 #ifdef Q_OS_ANDROID
-#include "mobile/android_files.h"
 #include "mobile/session_keeper.h"
 
 #include <rcsdk/android.h>
@@ -62,11 +61,14 @@ int main(int argc, char *argv[])
     // 本机的解码器：一开始就在后台列（Android 上第一次要把编解码器挨个试一遍，好几秒），去连的时候就不用等
     LocalCodecs codecs(&app);
 
-    // 本机身份、账号、信令：在本进程里的后台服务，界面经本机连接和它说话（和电脑上一样）
+    // 本机身份、账号、信令：在本进程里的后台服务，界面经本机连接和它说话（和电脑上一样）。连接只在本程序里用
+    //（沙盒里只有它自己），名字短：它是程序临时目录里的一个文件，iOS 上那个目录的路径就有 80 多个字节，
+    // 整个路径不能超过 104 个字节
+    const QString endpoint = QStringLiteral("bilin-service");
     LocalService localService(directory, &app);
-    if (!localService.start(rc::ipc::serviceEndpoint()))
-        qCritical("本机连接听不了：%s", qUtf8Printable(rc::ipc::serviceEndpoint()));
-    ServiceClient service(ServiceClient::Runner::InProcess, rc::ipc::serviceEndpoint());
+    if (!localService.start(endpoint))
+        qCritical("本机连接听不了：%s", qUtf8Printable(endpoint));
+    ServiceClient service(ServiceClient::Runner::InProcess, endpoint);
     ThisDevice thisDevice(service, &app);
     ThisDevice::setInstance(&thisDevice);
     Account account(service, &app);
@@ -79,10 +81,8 @@ int main(int argc, char *argv[])
     ViewGraphics viewGraphics(&app);
     ViewGraphics::setInstance(&viewGraphics);
     rc::InterruptedTransfers transfers(directory + QStringLiteral("/viewer-transfers.json"));
-#ifdef Q_OS_ANDROID
     // 上次为发送复制出来、已经不用接着发的文件删掉
-    android_files::removeStaleCopies(transfers);
-#endif
+    mobile_files::removeStaleCopies(transfers);
     ViewerSessions viewerSessions(service, account, viewGraphics.decodeDevice(), codecs, conversations, transfers,
                                   &app);
     ViewerSessions::setInstance(&viewerSessions);

@@ -1,9 +1,7 @@
 #include "remote_view.h"
 
 #include "frame_mailbox.h"
-#ifdef RC_GPU_FRAMES
 #include "frame_node.h"
-#endif
 #include "viewer_session.h"
 
 #include <QCoreApplication>
@@ -260,7 +258,6 @@ QSGNode *RemoteView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
     const qreal ratio = window()->effectiveDevicePixelRatio();
     QSGNode *node = old;
     if (kind == NodeKind::Frame) {
-#ifdef RC_GPU_FRAMES
         const rcs_gpu_frame_info info = frame.info();
         frameWidth_ = info.width;
         frameHeight_ = info.height;
@@ -271,7 +268,6 @@ QSGNode *RemoteView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
         auto *frameNode = old ? static_cast<FrameNode *>(old) : new FrameNode(window());
         frameNode->update(frame, QRectF(g.x / ratio, g.y / ratio, g.width / ratio, g.height / ratio), source, frames_);
         node = frameNode;
-#endif
     } else {
         frameWidth_ = uint32_t(image.width());
         frameHeight_ = uint32_t(image.height());
@@ -415,15 +411,16 @@ void RemoteView::releaseAll()
 }
 
 // 鼠标悬停移动（控制时才接收）。Qt Quick 在没有移动时也会每帧再报一次悬停（位置是最后一次指针在的地方）。
-// 手机上手指碰过屏幕以后的那一次不算：那是手指抬起的地方，触摸板的光标会跳过去；之后接着的鼠标照常
+// 手机上 Qt Quick 把第一个手指当成指针，按着、抬起的地方都报悬停（两个手指先后抬起就是两处）：落在这次触摸的
+// 手指最后在的地方的不算，不然触摸板的光标会跳过去；真的鼠标、触控板照常
 void RemoteView::hoverMoveEvent(QHoverEvent *hover)
 {
     if (hover->position() == lastHover_)
         return;
     lastHover_ = hover->position();
-    if (touchedSinceHover_) {
-        touchedSinceHover_ = false;
-        return;
+    for (const QPointF &point : std::as_const(touchPoints_)) {
+        if (QLineF(point, hover->position()).length() < 1)
+            return;
     }
     rcs_input_event event = rcs_input_event_init();
     event.type = RCS_INPUT_MOVE;
@@ -643,7 +640,10 @@ void RemoteView::touchEvent(QTouchEvent *event)
         return;
     }
     event->accept();
-    touchedSinceHover_ = true;
+    if (event->type() == QEvent::TouchBegin)
+        touchPoints_.clear();
+    for (const QEventPoint &point : event->points())
+        touchPoints_.insert(point.id(), point.position());
     if (event->type() == QEvent::TouchCancel) {
         if (gesture_.kind == Gesture::Kind::Drag)
             touchButton(RCS_BUTTON_LEFT, false, gesture_.last);
