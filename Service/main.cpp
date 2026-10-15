@@ -30,10 +30,36 @@
 #include <QDateTime>
 #include <QFileInfo>
 #include <QLockFile>
+#include <QNetworkInterface>
 #include <QVersionNumber>
 
 #include <algorithm>
+#include <array>
 #include <memory>
+
+namespace {
+
+// 系统默认走的那块网卡的 IPv4 地址（SDK 列出的网卡，默认的在最前面）：网线、WiFi 都连着时附近的设备连它
+// （LanDiscovery）。没有时为空
+QString defaultAddress()
+{
+    std::array<rcs_network_info, 16> networks{};
+    uint32_t count = 0;
+    if (rcs_list_networks(networks.data(), sizeof(rcs_network_info), uint32_t(networks.size()), &count) != RCS_OK)
+        return {};
+    for (uint32_t i = 0; i < std::min<uint32_t>(count, uint32_t(networks.size())); ++i) {
+        if (!(networks[i].flags & RCS_NETWORK_FLAG_DEFAULT) || !networks[i].ipv4)
+            continue;
+        const QNetworkInterface interface = QNetworkInterface::interfaceFromIndex(int(networks[i].index));
+        for (const QNetworkAddressEntry &entry : interface.addressEntries()) {
+            if (entry.ip().protocol() == QAbstractSocket::IPv4Protocol)
+                return entry.ip().toString();
+        }
+    }
+    return {};
+}
+
+} // namespace
 
 // 后台服务怎么运行（rc/programs.h、rc/system_service.h、docs/install-and-first-run.md）：
 // - 开发版（不带参数）：以当前用户运行，界面程序启动它，只有这个用户的界面能连它
@@ -201,7 +227,7 @@ int main(int argc, char *argv[])
     service_wiring::connectAccount(server, serverLink);
 
     // 局域网：附近的设备（发现），不经服务器的信令
-    LanDiscovery discovery(store, {});
+    LanDiscovery discovery(store, {.defaultAddress = defaultAddress});
     LanSignaling lan(store, {});
     service_wiring::publishNetwork(server, serverLink, discovery);
 

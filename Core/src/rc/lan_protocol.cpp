@@ -2,19 +2,22 @@
 
 #include "rc/device_id.h"
 
+#include <QHostAddress>
 #include <QJsonDocument>
 
 namespace rc::lan {
 
 QByteArray announce(const Presence &presence)
 {
-    const QJsonObject message{
+    QJsonObject message{
         {QStringLiteral("app"), QString(AppTag)},
         {QStringLiteral("type"), QString(Announce)},
         {QStringLiteral("deviceId"), presence.deviceId},
         {QStringLiteral("name"), presence.name},
         {QStringLiteral("platform"), presence.platform},
     };
+    if (!presence.address.isEmpty())
+        message.insert(QStringLiteral("address"), presence.address);
     return QJsonDocument(message).toJson(QJsonDocument::Compact);
 }
 
@@ -44,6 +47,10 @@ std::optional<Presence> parsePresence(const QByteArray &datagram)
         return std::nullopt;
     presence.name = message.value(QLatin1StringView("name")).toString();
     presence.platform = message.value(QLatin1StringView("platform")).toString();
+    // 只认 IPv4 地址，别的当没说
+    const QHostAddress address(message.value(QLatin1StringView("address")).toString());
+    if (address.protocol() == QAbstractSocket::IPv4Protocol)
+        presence.address = address.toString();
     if (presence.name.isEmpty())
         return std::nullopt;
     return presence;

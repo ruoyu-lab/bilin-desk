@@ -90,7 +90,8 @@ void LanDiscovery::announce()
     if (!options_.announce)
         return;
     const auto device = store_.state();
-    announced_ = {device.deviceId, device.deviceName, rc::server::platformName()};
+    announced_ = {device.deviceId, device.deviceName, rc::server::platformName(),
+                  options_.defaultAddress ? options_.defaultAddress() : QString()};
     broadcast(rc::lan::announce(announced_));
 }
 
@@ -127,19 +128,45 @@ void LanDiscovery::receive()
             continue;
         }
         // 只要 IPv4 的样子，不要 ::ffff:a.b.c.d
-        const protocol::NearbyDevice info{presence->deviceId, presence->name, presence->platform,
-                                          QHostAddress(sender.toIPv4Address()).toString()};
+        const QString from = QHostAddress(sender.toIPv4Address()).toString();
         Device &device = devices_[presence->deviceId];
+        device.heard.insert(from, QDeadlineTimer(options_.forgetMs));
+        device.preferred = presence->address;
+        const protocol::NearbyDevice info{presence->deviceId, presence->name, presence->platform, chooseAddress(device, from)};
         changed = changed || device.info != info;
         device.info = info;
-        device.expires = QDeadlineTimer(options_.forgetMs);
     }
     if (changed)
         emit this->changed();
 }
 
+QString LanDiscovery::chooseAddress(const Device &device, const QString &latest)
+{
+    if (device.heard.contains(device.preferred))
+        return device.preferred;
+    if (device.heard.contains(device.info.address))
+        return device.info.address;
+    return latest;
+}
+
 void LanDiscovery::forget()
 {
-    if (devices_.removeIf([](const auto &entry) { return entry.value().expires.hasExpired(); }) > 0)
-        emit changed();
+    bool changed = false;
+    for (auto it = devices_.begin(); it != devices_.end();) {
+        Device &device = it.value();
+        device.heard.removeIf([](const auto &entry) { return entry.value().hasExpired(); });
+        if (device.heard.isEmpty()) {
+            it = devices_.erase(it);
+            changed = true;
+            continue;
+        }
+        // 正在用的地址听不到了：换一个还听得到的
+        if (!device.heard.contains(device.info.address)) {
+            device.info.address = chooseAddress(device, device.heard.cbegin().key());
+            changed = true;
+        }
+        ++it;
+    }
+    if (changed)
+        emit this->changed();
 }

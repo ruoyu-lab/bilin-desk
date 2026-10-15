@@ -9,6 +9,8 @@
 #include <QTimer>
 #include <QUdpSocket>
 
+#include <functional>
+
 class DeviceStore;
 
 // 局域网里附近的设备（rc/lan_protocol.h 的发现）：开着"发现附近的设备"时隔一会儿广播一次本机，
@@ -25,6 +27,9 @@ public:
         int forgetMs = rc::lan::ForgetMs;
         // 告诉附近的设备本机在；手机只听不说：它不被别人连，电脑的"附近"里不该有它
         bool announce = true;
+        // 本机系统默认走的那块网卡的 IPv4 地址，跟着广播出去（rc/lan_protocol.h 的 address）；
+        // 后台服务用 SDK 列网卡（rcs_list_networks），测试里不给
+        std::function<QString()> defaultAddress;
     };
 
     LanDiscovery(DeviceStore &store, Options options, QObject *parent = nullptr);
@@ -39,10 +44,13 @@ signals:
     void changed();
 
 private:
+    // 一台设备每块网卡的地址都可能听到（网线、WiFi 都连着）：都记着，连它说的默认的那个；它没说（旧版本）时
+    // 一直用正在用的那个，直到听不到它了，不在几个地址之间来回换
     struct Device
     {
         rc::protocol::NearbyDevice info;
-        QDeadlineTimer expires;
+        QHash<QString, QDeadlineTimer> heard; // 从哪些地址听到过它，到什么时候算听不到
+        QString preferred;                    // 它说的默认的地址
     };
 
     void update();
@@ -52,6 +60,7 @@ private:
     void broadcast(const QByteArray &datagram);
     void receive();
     void forget();
+    static QString chooseAddress(const Device &device, const QString &latest);
 
     DeviceStore &store_;
     const Options options_;

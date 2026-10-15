@@ -84,6 +84,24 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(discovery.state().devices.size(), 0, 3000);
     }
 
+    // 它说了默认走的那块网卡的地址：听得到从那里发来的就连它，听不到（别的网段）就还是连发来的地址
+    void prefersTheAddressItNames()
+    {
+        QTemporaryDir directory;
+        DeviceStore store(directory.path(), testDeviceKey);
+        const quint16 port = freeUdpPort();
+        LanDiscovery discovery(store, {port, 60000, 3000});
+        QUdpSocket peer;
+        rc::lan::Presence living{QStringLiteral("482915307"), QStringLiteral("客厅电脑"), QStringLiteral("Windows"),
+                                 QStringLiteral("10.9.9.9")};
+        peer.writeDatagram(rc::lan::announce(living), QHostAddress::LocalHost, port);
+        QTRY_COMPARE(discovery.addressOf(living.deviceId), QStringLiteral("127.0.0.1"));
+        living.address = QStringLiteral("127.0.0.1");
+        peer.writeDatagram(rc::lan::announce(living), QHostAddress::LocalHost, port);
+        QTest::qWait(100);
+        QCOMPARE(discovery.addressOf(living.deviceId), QStringLiteral("127.0.0.1"));
+    }
+
     // 手机：只听不说，附近的电脑照样听得到
     void listeningOnlyStillHears()
     {

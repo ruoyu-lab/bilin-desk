@@ -11,8 +11,10 @@
 
 // 局域网里本程序之间的消息，不经服务器：
 // - 发现（UDP 广播，DiscoveryPort）：开着"发现附近的设备"的电脑每 AnnounceMs 往每块网卡的广播地址发一次 announce
-//   {"app": AppTag, "type": "announce", "deviceId", "name", "platform"}；关掉、退出时发一次 leave
-//   {"app", "type": "leave", "deviceId"}。ForgetMs 没听到的不再算在附近
+//   {"app": AppTag, "type": "announce", "deviceId", "name", "platform", "address"}；关掉、退出时发一次 leave
+//   {"app", "type": "leave", "deviceId"}。ForgetMs 没听到的不再算在附近。
+//   一台电脑网线、WiFi 都连着时，从每块网卡的地址都听得到它；address 是它系统默认走的那块网卡的 IPv4 地址
+//  （没有时不带），听得到从这个地址发来的就连它
 // - 信令（TCP，SignalingPort，一行一个 JSON，rc/line_channel.h）：去连的一方连到对方的这个端口发 signal
 //   {"type": "signal", "from", "name", "session", "text", "transport", "access"}（rc/transport.h），被连的一方
 //   在同一条连接上回 signal（同样的字段），或者现在不接受连接时回 decline {"type": "decline", "from", "session", "reason"}
@@ -36,6 +38,7 @@ struct Presence
     QString deviceId;
     QString name;
     QString platform;
+    QString address;
 
     friend bool operator==(const Presence &, const Presence &) = default;
 };

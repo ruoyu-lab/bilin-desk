@@ -18,3 +18,13 @@
 - **显示器的缩略图**：工具栏上的显示器图标点开，每一块一张缩略图，点哪块看哪块。打开时向对方要（`thumbnails`），
   对方用 SDK 的缩略图模块在采集的那台机器上截（装好的 macOS、Windows 上在助手那里），在另一个线程上一块一块截，
   像素压缩后经控制通道发回来（`thumbnail`）
+
+## 键盘
+
+- 按键按它在键盘上的位置发过去（USB 键码，`App/src/remote_view/remote_input.h`），打出什么由对方的键盘布局决定。
+  Mac 连别的电脑时 Command 当 Ctrl 用、Control 当 Win 键用，Command+C 在那边也是复制
+- Windows 上控制对方、画面有焦点时，Win 键由比邻截下来发给对方（`system_keys_win.h`）：Win+V 到了 Mac 上是
+  Command+V，本机不弹剪贴板。Win+L、Ctrl+Alt+Del 系统不让截；Ctrl+Alt+Del 在"发送快捷键"菜单里
+- 不是 Mac 的电脑连 Mac：F1~F12 当 MacBook 键盘顶上那一排用——亮度、调度中心、聚焦搜索、上一首、播放、下一首、
+  静音、音量（F5、F6 照旧是 F 键）。按着修饰键时还是 F 键，像在 Mac 上按着 Fn
+- 正连着本机的那台电脑，不能再反过来去连它（两边的画面互相套着，越套越卡）
