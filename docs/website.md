@@ -18,5 +18,7 @@ npm run preview   # 看构建出来的
 - Logo 用程序的 `App/branding/logo.svg`
 - 下载按钮问服务器现在发布的版本（`/updates/<平台>/latest`，和程序检查更新同一个，见 [admin.md](admin.md)），
   直接指向安装包；网页和服务器在同一个域名下。本机看网页时这些请求转给正式服务器（`vite.config.ts`）。还没发布的平台说"还没有发布"，连不上服务器时说"暂时取不到安装包"
+- 页头的"赞助"（`src/components/SponsorDialog.vue`）：浮窗里写赞助用在哪（服务器、Apple 开发者账号、各平台的客户端）
+  和微信收款码（`src/assets/wechat-pay.jpg`，从收款码图片裁出中间的白色卡片，二维码没动）
 - 构建出来的地址都是相对的，放在服务器的哪个目录下都行
 - TypeScript 用 6：vue-tsc 还不支持 7（7 是原生重写的，没有它要用的接口）

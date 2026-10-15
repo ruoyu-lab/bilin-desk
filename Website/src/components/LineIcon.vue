@@ -4,6 +4,7 @@ export type IconName =
   | 'download' | 'copy' | 'monitor' | 'people' | 'bolt' | 'wifi'
   | 'displays' | 'file' | 'power' | 'shield'
   | 'home' | 'radar' | 'star' | 'clock' | 'settings' | 'search' | 'plus' | 'bell' | 'refresh' | 'apple' | 'windows'
+  | 'heart' | 'server' | 'x'
 
 withDefaults(defineProps<{ name: IconName; size?: number; stroke?: number }>(), { size: 24, stroke: 1.8 })
 
@@ -28,6 +29,9 @@ const paths: Partial<Record<IconName, string[]>> = {
   plus: ['M5 12h14', 'M12 5v14'],
   bell: ['M10.3 21a1.9 1.9 0 0 0 3.4 0', 'M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.6 18 8A6 6 0 0 0 6 8c0 4.6-1.4 6-2.7 7.3'],
   refresh: ['M3 12a9 9 0 0 1 15-6.7L21 8', 'M21 3v5h-5', 'M21 12a9 9 0 0 1-15 6.7L3 16', 'M8 16H3v5'],
+  heart: ['M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z'],
+  server: ['M4 2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z', 'M4 14h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2z', 'M6 6h.01', 'M6 18h.01'],
+  x: ['M18 6 6 18', 'm6 6 12 12'],
 }
 
 // 苹果、Windows 的标志是填充的

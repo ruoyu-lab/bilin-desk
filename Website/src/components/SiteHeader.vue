@@ -1,6 +1,11 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { SOURCE_URL } from '../links'
+import LineIcon from './LineIcon.vue'
 import LogoMark from './LogoMark.vue'
+import SponsorDialog from './SponsorDialog.vue'
+
+const sponsoring = ref(false)
 
 // GitHub 的标志（16×16）
 const github = 'M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z'
@@ -19,12 +24,17 @@ const github = 'M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55
         <a href="./#privacy">隐私安全</a>
         <a href="./#download">下载</a>
       </div>
+      <button class="button small sponsor" aria-label="赞助" @click="sponsoring = true">
+        <LineIcon name="heart" :size="16" :stroke="2" />
+        <span class="label">赞助</span>
+      </button>
       <a :href="SOURCE_URL" class="button small source" aria-label="GitHub 上的源代码">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path :d="github" /></svg>
-        GitHub
+        <span class="label">GitHub</span>
       </a>
       <a href="./#download" class="button primary small">免费下载</a>
     </nav>
+    <SponsorDialog v-model="sponsoring" />
   </header>
 </template>
 
@@ -65,14 +75,29 @@ const github = 'M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55
   color: var(--text);
 }
 
-/* GitHub 在"免费下载"左边，两个一起靠右 */
-.source {
+/* 赞助、GitHub、免费下载挨在一起靠右 */
+.sponsor {
   margin-left: auto;
+  margin-right: -16px;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.source {
   margin-right: -16px;
 }
 
 @media (max-width: 760px) {
   .links {
+    display: none;
+  }
+}
+
+/* 手机上赞助、GitHub 只留图标 */
+@media (max-width: 480px) {
+  .sponsor .label,
+  .source .label {
     display: none;
   }
 }
