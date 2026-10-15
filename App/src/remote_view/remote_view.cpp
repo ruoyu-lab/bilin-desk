@@ -495,6 +495,32 @@ void RemoteView::key(QKeyEvent *key, bool down)
         key->ignore();
         return;
     }
+#ifndef Q_OS_MACOS
+    // 连 Mac：F 键当 MacBook 顶上那一排（Mac 自己的键盘上按 F 键本来就是这样，不用换）
+    if (remoteIsMac() && key->modifiers() == Qt::NoModifier) {
+        if (const auto topRow = remote_input::macTopRow(event.code)) {
+            if (topRow->consumer) {
+                event.code = RCS_KEY_CONSUMER | topRow->consumer;
+                send(event);
+            } else if (down && !event.repeat) {
+                rcs_input_event combo = rcs_input_event_init();
+                combo.type = RCS_INPUT_KEY;
+                for (const uint32_t usage : topRow->keys) {
+                    combo.code = usage;
+                    combo.down = 1;
+                    send(combo);
+                }
+                for (auto usage = std::rbegin(topRow->keys); usage != std::rend(topRow->keys); ++usage) {
+                    combo.code = *usage;
+                    combo.down = 0;
+                    send(combo);
+                }
+            }
+            key->accept();
+            return;
+        }
+    }
+#endif
     send(event);
     key->accept();
 }

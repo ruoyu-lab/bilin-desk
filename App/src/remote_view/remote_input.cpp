@@ -167,6 +167,24 @@ uint32_t swapCommandAndControl(uint32_t usage)
 
 } // namespace
 
+std::optional<MacTopRowKey> macTopRow(uint32_t usage)
+{
+    constexpr uint32_t Up = 82;
+    switch (usage) {
+    case 58: return MacTopRowKey{.consumer = 0x70};                      // F1：亮度 −
+    case 59: return MacTopRowKey{.consumer = 0x6F};                      // F2：亮度 +
+    case 60: return MacTopRowKey{.keys = {LeftControl, Up}};             // F3：调度中心
+    case 61: return MacTopRowKey{.keys = {LeftGui, Space}};              // F4：聚焦搜索
+    case 64: return MacTopRowKey{.consumer = 0xB6};                      // F7：上一首
+    case 65: return MacTopRowKey{.consumer = 0xCD};                      // F8：播放、暂停
+    case 66: return MacTopRowKey{.consumer = 0xB5};                      // F9：下一首
+    case 67: return MacTopRowKey{.consumer = 0xE2};                      // F10：静音
+    case 68: return MacTopRowKey{.consumer = 0xEA};                      // F11：音量 −
+    case 69: return MacTopRowKey{.consumer = 0xE9};                      // F12：音量 +
+    default: return std::nullopt;
+    }
+}
+
 uint32_t keyUsage(const QKeyEvent &key, bool remoteIsMac)
 {
 #ifdef Q_OS_WIN
