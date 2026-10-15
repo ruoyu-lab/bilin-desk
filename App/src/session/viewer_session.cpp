@@ -341,6 +341,13 @@ void ViewerSession::open(bool relay)
         setStatus(QStringLiteral("failed"), tr("后台服务没有在运行"));
         return;
     }
+    // 对方正连着本机：再反过来连它，两边的画面互相套着，越套越卡
+    const auto share = protocol::ShareState::fromJson(service_.topic(protocol::ShareTopic));
+    if (std::any_of(share.viewers.cbegin(), share.viewers.cend(),
+                    [this](const protocol::SharePeer &viewer) { return viewer.deviceId == deviceId_; })) {
+        setStatus(QStringLiteral("failed"), tr("对方正在连着本机，不能反过来连它"));
+        return;
+    }
     // 程序刚打开，本机的解码器还没列好：列好了再连（LocalCodecs），这时先显示正在连接
     waitingForCodecs_ = !codecs_.ready();
     if (waitingForCodecs_) {
