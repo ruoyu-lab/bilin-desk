@@ -58,7 +58,7 @@ uint32_t lookUp(const std::pair<uint16_t, uint8_t> (&table)[N], uint32_t code)
 }
 
 #ifdef Q_OS_WIN
-// 扫描码（第 1 套，WM_KEYDOWN 的 lParam 16..23 位），扩展键加 0xE000（lParam 24 位）
+// 扫描码（第 1 套），扩展键是 0xE0xx（Qt 6.9 起 nativeScanCode 就是这样给的）
 constexpr std::pair<uint16_t, uint8_t> ScanCodes[] = {
     {0x0001, 41},  {0x0002, 30},  {0x0003, 31},  {0x0004, 32},  {0x0005, 33},  {0x0006, 34},  {0x0007, 35},
     {0x0008, 36},  {0x0009, 37},  {0x000A, 38},  {0x000B, 39},  {0x000C, 45},  {0x000D, 46},  {0x000E, 42},
@@ -171,9 +171,7 @@ uint32_t keyUsage(const QKeyEvent &key, bool remoteIsMac)
 {
 #ifdef Q_OS_WIN
     Q_UNUSED(remoteIsMac);
-    // Qt 给的扫描码：低 8 位是码，第 8 位是扩展键
-    const quint32 scan = key.nativeScanCode();
-    return lookUp(ScanCodes, (scan & 0xff) | ((scan & 0x100) ? 0xE000u : 0u));
+    return lookUp(ScanCodes, key.nativeScanCode());
 #elif defined(Q_OS_ANDROID)
     Q_UNUSED(remoteIsMac);
     return qtKeyUsage(key.key());

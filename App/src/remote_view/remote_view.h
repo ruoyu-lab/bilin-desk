@@ -2,6 +2,9 @@
 
 #include "remote_input.h"
 #include "viewer_session.h"
+#ifdef Q_OS_WIN
+#include "system_keys_win.h"
+#endif
 
 #include <rcsdk/view_geometry.hpp>
 
@@ -98,6 +101,7 @@ protected:
     void wheelEvent(QWheelEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
+    void focusInEvent(QFocusEvent *event) override;
     void focusOutEvent(QFocusEvent *event) override;
     void touchEvent(QTouchEvent *event) override;
 
@@ -124,6 +128,8 @@ private:
     // 条目里的一点 → 对方显示器上的位置；在画面外或黑边上时 false（clamp：贴到边上）
     bool position(QPointF point, rcs_input_event &event, bool clamp) const;
     void send(const rcs_input_event &event);
+    // Windows：控制对方、有焦点时截下 Win 键（SystemKeys）
+    void updateSystemKeys();
     void releaseAll();
     void button(QMouseEvent *mouse, bool down);
     void key(QKeyEvent *key, bool down);
@@ -155,6 +161,9 @@ private:
     std::shared_ptr<FrameMailbox> frames_;
     bool nativeSize_ = false;
     bool inputEnabled_ = false;
+#ifdef Q_OS_WIN
+    std::unique_ptr<SystemKeys> systemKeys_;
+#endif
     bool remoteCursor_ = true;
     int panX_ = 0;
     int panY_ = 0;

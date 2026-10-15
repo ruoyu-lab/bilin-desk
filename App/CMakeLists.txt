@@ -409,7 +409,8 @@ if(APPLE)
                           "-framework ServiceManagement")
 elseif(WIN32)
     target_sources(Bilin PRIVATE src/windowchrome.cpp src/dock.cpp src/login_item_win.cpp
-                   src/quit_reason_win.cpp src/remote_view/frame_textures_win.cpp src/setup/setup_win.cpp
+                   src/quit_reason_win.cpp src/remote_view/frame_textures_win.cpp src/remote_view/system_keys_win.h
+                   src/remote_view/system_keys_win.cpp src/setup/setup_win.cpp
                    platform/windows/icon.rc)
     target_link_libraries(Bilin PRIVATE QWKQuick d3d11 advapi32 shell32 ole32)
 else()

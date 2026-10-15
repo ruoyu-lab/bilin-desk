@@ -129,6 +129,7 @@ void RemoteView::setInputEnabled(bool enabled)
         releaseAll();
     inputEnabled_ = enabled;
     setAcceptHoverEvents(enabled);
+    updateSystemKeys();
     emit inputEnabledChanged();
     updateCursor();
 }
@@ -508,12 +509,39 @@ void RemoteView::keyReleaseEvent(QKeyEvent *event)
         key(event, false);
 }
 
+void RemoteView::focusInEvent(QFocusEvent *event)
+{
+    updateSystemKeys();
+    QQuickItem::focusInEvent(event);
+}
+
 // 焦点离开（切到别的窗口、别的标签）：对方那里不能留着按住的键
 void RemoteView::focusOutEvent(QFocusEvent *event)
 {
     if (inputEnabled_)
         releaseAll();
+    updateSystemKeys();
     QQuickItem::focusOutEvent(event);
+}
+
+void RemoteView::updateSystemKeys()
+{
+#ifdef Q_OS_WIN
+    const bool wanted = inputEnabled_ && hasActiveFocus() && touchMode_.isEmpty();
+    if (wanted == bool(systemKeys_))
+        return;
+    if (!wanted) {
+        systemKeys_.reset();
+        return;
+    }
+    systemKeys_ = std::make_unique<SystemKeys>([this](uint32_t usage, bool down) {
+        rcs_input_event event = rcs_input_event_init();
+        event.type = RCS_INPUT_KEY;
+        event.code = usage;
+        event.down = down;
+        send(event);
+    });
+#endif
 }
 
 // 控制时本程序的快捷键也交给对方
