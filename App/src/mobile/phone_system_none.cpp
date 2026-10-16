@@ -15,4 +15,8 @@ void pressFeedback()
 {
 }
 
+void hideHomeIndicator()
+{
+}
+
 } // namespace phone_system

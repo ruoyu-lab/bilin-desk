@@ -31,7 +31,7 @@ Item {
     }
 
     Layout.fillWidth: true
-    implicitHeight: Theme.touch ? (detail.length > 0 ? 64 : 52) : (detail.length > 0 ? 56 : 44)
+    implicitHeight: Theme.phone ? (detail.length > 0 ? 64 : 52) : (detail.length > 0 ? 56 : 44)
 
     Rectangle {
         anchors.fill: parent

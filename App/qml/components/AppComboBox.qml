@@ -7,7 +7,7 @@ ComboBox {
     id: root
 
     textRole: "label"
-    implicitHeight: Theme.touch ? 40 : 30
+    implicitHeight: Theme.phone ? 40 : 30
     leftPadding: 10
     rightPadding: 30
     font.pixelSize: Theme.bodyFont
@@ -40,7 +40,7 @@ ComboBox {
         required property int index
 
         width: ListView.view.width
-        implicitHeight: Theme.touch ? 44 : 30
+        implicitHeight: Theme.phone ? 44 : 30
         leftPadding: 32
         rightPadding: 12
         highlighted: root.highlightedIndex === index

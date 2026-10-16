@@ -30,6 +30,8 @@ class QTabletEvent;
 // - 触摸板：一个手指滑动移光标，点一下是点击（点两下双击），按住不放再拖是按着左键拖，两个手指点一下是右键
 // - 直接点：点在哪就点哪，拖就是按着左键拖，按住不放是右键
 // - 都是：两个手指上下左右滑是滚轮，两个手指张开、捏拢放大缩小画面（放大以后两个手指拖着移动）
+// 接了鼠标、触控板也照常：Android 上就是鼠标；iPad 上移动报成悬停、按下报成触摸，落在指针那里的触摸当鼠标按键。
+// 接了键盘：点一下画面键盘就给对方（正在打字时不抢系统键盘的焦点）
 class RemoteView : public QQuickItem
 {
     Q_OBJECT
@@ -112,10 +114,10 @@ private:
 
     // 手机：手指的一次操作（第一个手指按下到全部抬起）。pending：刚按下，还不知道是点还是拖 | move：触摸板上移光标 |
     // drag：按着左键拖 | twoPending：两个手指，还不知道是缩放还是滚动 | scroll | pinch：缩放、移动画面 |
-    // pan：只看时一个手指移动画面 | done：这一次处理完了（按住不放出了右键）
+    // pan：只看时一个手指移动画面 | done：这一次处理完了（按住不放出了右键） | pointer：iPad 上鼠标按着左键
     struct Gesture
     {
-        enum class Kind { Pending, Move, Drag, TwoPending, Scroll, Pinch, Pan, Done };
+        enum class Kind { Pending, Move, Drag, TwoPending, Scroll, Pinch, Pan, Done, Pointer };
         Kind kind = Kind::Pending;
         QPointF start; // 第一个手指按下的地方（条目坐标）
         QPointF last;  // 上一次一个手指在哪、两个手指的中点
@@ -156,6 +158,8 @@ private:
     // 手机上的输入落在哪：触摸板是光标，直接点是手指（point）
     bool touchTarget(QPointF point, rcs_input_event &event) const;
     void touchButton(uint32_t button, bool down, QPointF point);
+    // iPad 上的鼠标：左键按在 point
+    void pointerButton(bool down, QPointF point);
     void moveCursor(QPointF delta);
     void keepCursorInView();
     // 同步时：画面有没有，界面线程上再通知
@@ -191,6 +195,7 @@ private:
     Gesture gesture_;
     bool touching_ = false;
     QHash<int, QPointF> touchPoints_; // 这一次触摸里每个手指最后在哪（hoverMoveEvent）
+    std::optional<QPointF> pointer_;  // 真的鼠标、触控板的指针最后在哪（不是手指带出来的悬停）
     QTimer longPress_;
     // 触摸板：光标在编码帧上的位置（0..65535），手指移动时本机先算，不等对方报回来
     double cursorX_ = 32767;

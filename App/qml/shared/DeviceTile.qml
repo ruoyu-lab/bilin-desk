@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
-// 概览页的设备块：stacked 为竖排（收藏），否则横排（附近）
+// 概览页的设备块：stacked 为竖排（收藏），否则横排（附近）。点一下就连接，详情在菜单里
 Rectangle {
     id: root
 
@@ -16,19 +16,20 @@ Rectangle {
     radius: 10
     color: hover.hovered ? Theme.cardHover : Theme.card
 
-    HoverHandler { id: hover }
-
-    MouseArea {
-        anchors.fill: parent
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
+    HoverHandler {
+        id: hover
         cursorShape: Qt.PointingHandCursor
-        onClicked: mouse => {
-            if (mouse.button === Qt.RightButton)
-                menu.popup()
-            else
-                root.detailsRequested()
-        }
-        onDoubleClicked: root.connectRequested(false)
+    }
+
+    // 点一下连接；右键（触屏上长按）出菜单：仅查看、详情、收藏……
+    TapHandler {
+        onTapped: root.connectRequested(false)
+        onLongPressed: menu.popup(root, point.position.x, point.position.y)
+    }
+    TapHandler {
+        acceptedButtons: Qt.RightButton
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onTapped: (point, button) => menu.popup(root, point.position.x, point.position.y)
     }
 
     GridLayout {
@@ -48,7 +49,6 @@ Rectangle {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.alignment: root.stacked ? Qt.AlignBottom : Qt.AlignVCenter
-            Layout.rightMargin: root.stacked ? 0 : connect.width
             spacing: 2
 
             Text {
@@ -79,37 +79,11 @@ Rectangle {
         }
     }
 
-    AbstractButton {
-        id: connect
-        anchors.right: parent.right
-        anchors.rightMargin: 10
-        anchors.verticalCenter: root.stacked ? undefined : parent.verticalCenter
-        anchors.top: root.stacked ? parent.top : undefined
-        anchors.topMargin: 10
-        implicitWidth: 48
-        implicitHeight: 26
-        opacity: hover.hovered ? 1 : 0
-        enabled: opacity > 0
-        onClicked: root.connectRequested(false)
-
-        Behavior on opacity { NumberAnimation { duration: 120 } }
-
-        background: Rectangle {
-            radius: 13
-            color: connect.down ? Theme.accentPressed : connect.hovered ? Theme.accentHover : Theme.accent
-        }
-        contentItem: Text {
-            text: qsTr("连接")
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            font.pixelSize: 12
-            color: Theme.accentText
-        }
-    }
-
     DeviceMenu {
         id: menu
         device: root.device
+        details: true
         onConnectRequested: viewOnly => root.connectRequested(viewOnly)
+        onDetailsRequested: root.detailsRequested()
     }
 }

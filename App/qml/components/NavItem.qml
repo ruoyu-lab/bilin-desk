@@ -8,7 +8,7 @@ AbstractButton {
     property string iconName
     property bool current: false
 
-    implicitHeight: Theme.touch ? 44 : 34
+    implicitHeight: Theme.phone ? 44 : 34
     hoverEnabled: true
 
     background: Rectangle {
@@ -21,7 +21,7 @@ AbstractButton {
         Item { Layout.preferredWidth: 2 }
         Icon {
             name: root.iconName
-            size: Theme.touch ? 20 : 17
+            size: Theme.phone ? 20 : 17
             color: Theme.text
         }
         Text {

@@ -53,7 +53,22 @@ Item {
                               os: device.os, viewOnly: viewOnly })
             index = sessions.count - 1
         }
+        select(index)
+    }
+
+    // 换到第 index 个：换走之前存下正在看的那个的缩略图
+    function select(index) {
+        if (index === currentIndex)
+            return
+        if (currentView !== null)
+            currentView.saveThumbnail()
         currentIndex = index
+    }
+
+    // 不看了（关窗口、回到主界面）：存下正在看的那个的缩略图
+    function saveThumbnail() {
+        if (currentView !== null)
+            currentView.saveThumbnail()
     }
 
     // 接收从别的窗口移过来的会话
@@ -82,12 +97,15 @@ Item {
 
     // 关闭标签并断开它的连接
     function closeSession(index) {
+        if (index === currentIndex)
+            saveThumbnail()
         disconnect(sessions.get(index).key)
         removeTab(index)
     }
 
     // 都断开（窗口关掉了）
     function closeAll() {
+        saveThumbnail()
         for (let i = 0; i < sessions.count; ++i)
             disconnect(sessions.get(i).key)
         sessions.clear()
@@ -131,9 +149,10 @@ Item {
         keysMenu.popup(anchor, 0, anchor.height + 8)
     }
 
-    function showTabMenu(index) {
+    // 第 index 个标签的菜单，出在 item 的 (x, y)
+    function showTabMenu(index, item, x, y) {
         tabMenu.target = index
-        tabMenu.popup()
+        tabMenu.popup(item, x, y)
     }
 
     // 电源按钮：断开连接，或者让对方电脑重启、关机、睡眠、注销（先确认）

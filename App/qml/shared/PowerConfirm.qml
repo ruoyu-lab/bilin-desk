@@ -52,7 +52,7 @@ Popup {
             Layout.fillWidth: true
             text: root.current.title.arg(root.name)
             wrapMode: Text.Wrap
-            font.pixelSize: Theme.touch ? 16 : 14
+            font.pixelSize: Theme.phone ? 16 : 14
             font.weight: Font.DemiBold
             color: Theme.text
         }

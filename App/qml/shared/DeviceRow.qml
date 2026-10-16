@@ -20,13 +20,23 @@ Item {
         color: root.selected ? Theme.selection : hover.hovered ? Theme.hover : "transparent"
     }
 
+    // 点一下看详情，点两下连接；右键（触屏上长按）在点的地方出菜单
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: mouse => {
             root.selectRequested()
             if (mouse.button === Qt.RightButton)
-                menu.popup()
+                menu.popup(root, mouse.x, mouse.y)
+        }
+        onPressAndHold: mouse => {
+            // 电脑上按久了松开照样算点了一下
+            if (!Theme.touch) {
+                mouse.accepted = false
+                return
+            }
+            root.selectRequested()
+            menu.popup(root, mouse.x, mouse.y)
         }
         onDoubleClicked: root.connectRequested(false)
     }

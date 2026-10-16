@@ -116,7 +116,7 @@ Item {
 
     component Input: AppTextField {
         Layout.fillWidth: true
-        implicitHeight: Theme.touch ? Theme.fieldHeight : 40
+        implicitHeight: Theme.phone ? Theme.fieldHeight : 40
         onTextEdited: form.error = ""
     }
 
@@ -266,7 +266,7 @@ Item {
 
         AppButton {
             Layout.fillWidth: true
-            implicitHeight: Theme.touch ? Theme.controlHeight : 40
+            implicitHeight: Theme.phone ? Theme.controlHeight : 40
             dark: true
             enabled: !Account.busy
             text: Account.busy ? qsTr("请稍候…")

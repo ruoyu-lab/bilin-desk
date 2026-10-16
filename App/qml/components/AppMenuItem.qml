@@ -11,7 +11,7 @@ MenuItem {
     // 右边浅色的一小段：快捷键这样的
     property string hint
 
-    implicitHeight: Theme.touch ? 44 : 30
+    implicitHeight: Theme.phone ? 44 : 30
     leftPadding: 12
     rightPadding: 12
 

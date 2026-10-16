@@ -1,11 +1,12 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 // 手机上连着一台电脑：远程画面铺满（RemoteCanvas，和电脑版的会话一样：连接中、输临时密码、出错都在里面），
-// 上面浮着几个按钮：左上角名字和延迟（点开是断开连接、对方电脑的重启关机，PowerMenu），右上角键盘、快捷键、
-// 手指操作方式、"…"；放大了时中间是倍数，点一下复原。系统的返回先问一句再断开。
+// 上面浮着几个按钮：左上角名字和延迟（点开是断开连接、对方电脑的重启关机，PowerMenu），右上角显示器（对方有
+// 几块时）、键盘、快捷键、手指操作方式、"…"；放大了时中间是倍数，点一下复原。系统的返回先问一句再断开。
 // 键盘按钮弹出菜单：打字（系统键盘），或者按键栏（底下一排电脑上的键：Esc、Tab、Ctrl……，不弹系统键盘、
 // 不挡着），按键栏的修饰键点一下按住、打下一个键时一起按。
 // "…"拉出电脑版会话的侧边面板（SidePanel：对话、文件、设置）：竖着从下面拉出来，横着在右边
@@ -20,6 +21,11 @@ Item {
     property ViewerSession session: null
     // 侧边面板（SidePanel）要的：开着没有、名字、是不是原始大小（手机上用手指缩放，一直是适应）
     property bool panelOpen: false
+    // 面板关了：按键还给画面
+    onPanelOpenChanged: {
+        if (!panelOpen)
+            canvas.focusInput()
+    }
     readonly property string name: device.name
     property bool nativeSize: false
 
@@ -28,6 +34,8 @@ Item {
     readonly property bool controlling: canvas.controlling && canvas.showVideo
 
     function close() {
+        if (canvas.hasPicture)
+            Devices.saveThumbnail(root.device.key, canvas.picture)
         ViewerSessions.close(root.device.key)
         root.closed()
     }
@@ -168,7 +176,15 @@ Item {
     }
 
 
-    // ---- 右上角：键盘、快捷键、手指操作方式（控制着的时候才有） ----
+    // 对方的几块显示器：一块一张缩略图，点哪块看哪块（同电脑版）
+    DisplayThumbnails {
+        id: displayThumbnails
+        parent: Overlay.overlay
+        displays: root.session !== null ? root.session.displays : null
+        canChoose: root.controlling
+    }
+
+    // ---- 右上角：显示器（对方有几块时）、键盘、快捷键、手指操作方式（控制着的时候才有） ----
     Pill {
         id: toolsPill
         visible: root.controlling
@@ -182,6 +198,21 @@ Item {
             anchors.centerIn: parent
             spacing: 0
 
+            Item {
+                id: displaysButton
+                visible: displayThumbnails.count > 1
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 40
+                Icon {
+                    anchors.centerIn: parent
+                    name: "monitor"
+                    size: 20
+                    color: displayThumbnails.opened ? "#0a84ff" : "white"
+                }
+                TapHandler {
+                    onTapped: displayThumbnails.show(displaysButton)
+                }
+            }
             Item {
                 id: keyboardButton
                 Layout.preferredWidth: 44

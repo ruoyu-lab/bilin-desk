@@ -46,6 +46,10 @@ void setDark(bool dark)
     });
 }
 
+void hideHomeIndicator()
+{
+}
+
 void pressFeedback()
 {
     changeWindow([](const QJniObject &window) {

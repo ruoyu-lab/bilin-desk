@@ -1,7 +1,10 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Effects
 import QtQuick.Layouts
 
+// 设备列表右边的详情：顶上是上次断开时画面的缩略图（没有时是系统的图标），下面名字、连接，设备的信息、备注，
+// 最下面复制地址、重命名、保存或移除
 Item {
     id: root
 
@@ -50,8 +53,37 @@ Item {
             radius: 10
             color: root.style.tint
 
+            readonly property bool hasShot: root.device.thumbnail.toString().length > 0
+
+            Image {
+                id: shot
+                anchors.fill: parent
+                visible: false
+                source: root.device.thumbnail
+                fillMode: Image.PreserveAspectCrop
+                cache: false
+                asynchronous: true
+            }
+            // 缩略图切成和卡片一样的圆角
+            Rectangle {
+                id: shotMask
+                anchors.fill: parent
+                radius: 10
+                visible: false
+                layer.enabled: true
+            }
+            MultiEffect {
+                anchors.fill: parent
+                visible: parent.hasShot && shot.status === Image.Ready
+                source: shot
+                maskEnabled: true
+                maskSource: shotMask
+                opacity: root.device.presenceKnown && !root.device.online ? 0.6 : 1
+            }
+
             Icon {
                 anchors.centerIn: parent
+                visible: !parent.hasShot
                 name: root.style.icon
                 size: 44
                 color: root.style.ink
@@ -168,6 +200,27 @@ Item {
             }
         }
 
+        // 备注：输完（回车、点别处）就存
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 6
+            Text {
+                text: qsTr("备注")
+                font.pixelSize: 12
+                color: Theme.textMuted
+            }
+            AppTextField {
+                Layout.fillWidth: true
+                placeholderText: qsTr("写点什么，比如这台电脑放在哪、谁在用")
+                maximumLength: 200
+                text: root.device.note
+                onEditingFinished: {
+                    Devices.setNote(root.device.key, text)
+                    text = Qt.binding(() => root.device.note)
+                }
+            }
+        }
+
         Item { Layout.fillHeight: true }
 
         RowLayout {
@@ -177,10 +230,72 @@ Item {
                 text: root.device.deviceId ? qsTr("复制设备 ID") : qsTr("复制地址")
                 onClicked: Clipboard.setText(root.device.target)
             }
+            AppButton {
+                id: renameButton
+                text: qsTr("重命名")
+                onClicked: {
+                    renameField.text = root.device.alias
+                    renamePopup.open()
+                }
+            }
             Item { Layout.fillWidth: true }
             AppButton {
                 text: root.device.saved ? qsTr("移除设备") : qsTr("保存设备")
                 onClicked: root.device.saved ? Devices.forget(root.device.key) : Devices.save(root.device.key)
+            }
+        }
+    }
+
+    // 重命名：起的名字只在本机用；清空就用回它自己的名字
+    Popup {
+        id: renamePopup
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: 320
+        padding: 18
+        modal: true
+        background: PopupSurface {}
+        onOpened: renameField.forceActiveFocus()
+
+        function apply() {
+            Devices.rename(root.device.key, renameField.text)
+            close()
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+            Text {
+                text: qsTr("重命名")
+                font.pixelSize: 15
+                font.weight: Font.DemiBold
+                color: Theme.text
+            }
+            AppTextField {
+                id: renameField
+                Layout.fillWidth: true
+                maximumLength: 64
+                placeholderText: root.device.ownName
+                onAccepted: renamePopup.apply()
+            }
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("只在本机显示；不填就用它自己的名字")
+                wrapMode: Text.Wrap
+                font.pixelSize: 12
+                color: Theme.textMuted
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: 8
+                AppButton {
+                    text: qsTr("取消")
+                    onClicked: renamePopup.close()
+                }
+                AppButton {
+                    primary: true
+                    text: qsTr("确定")
+                    onClicked: renamePopup.apply()
+                }
             }
         }
     }

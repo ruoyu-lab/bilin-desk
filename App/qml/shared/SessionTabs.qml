@@ -119,7 +119,7 @@ Rectangle {
                 height: 24
                 z: drag.active ? 1 : 0
                 hoverEnabled: true
-                onPressed: root.stage.currentIndex = index
+                onPressed: root.stage.select(index)
                 onXChanged: {
                     if (!drag.active)
                         return
@@ -146,13 +146,16 @@ Rectangle {
                     xAxis.minimum: 0
                     xAxis.maximum: strip.contentWidth - tab.width
                 }
+                // 右键在点的地方出菜单；手指按住在标签下面出（不让手指挡住）。右键只认鼠标：不然手指点一下也算
                 TapHandler {
                     acceptedButtons: Qt.RightButton
-                    onTapped: root.stage.showTabMenu(tab.index)
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onTapped: (point, button) => root.stage.showTabMenu(tab.index, tab, point.position.x, point.position.y)
                 }
                 TapHandler {
                     enabled: Theme.touch
-                    onLongPressed: root.stage.showTabMenu(tab.index)
+                    acceptedDevices: PointerDevice.TouchScreen
+                    onLongPressed: root.stage.showTabMenu(tab.index, tab, 0, tab.height + 6)
                 }
 
                 // 用透明度过渡而不是颜色过渡："transparent" 是透明的黑色，插值会经过发黑的中间色

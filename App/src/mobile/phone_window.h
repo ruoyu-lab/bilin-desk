@@ -9,6 +9,7 @@
 // - keepAwake：连着电脑时屏幕不自己熄灭（设置里的"连接时屏幕常亮"，MobileSession 管）
 // - dark：状态栏、导航条的图标跟着程序的外观（程序选了深色、手机是浅色时，图标要是白的），MobileMain 管
 // - pressFeedback()：按住不放出了右键、开始拖时手机震一下
+// - hideHomeIndicator()：全屏的平板，iPad 底部的横条不碰时隐去（TabletMain 管）
 class PhoneWindow : public QObject
 {
     Q_OBJECT
@@ -26,6 +27,7 @@ public:
     void setDark(bool dark);
 
     Q_INVOKABLE void pressFeedback();
+    Q_INVOKABLE void hideHomeIndicator();
 
 signals:
     void keepAwakeChanged();

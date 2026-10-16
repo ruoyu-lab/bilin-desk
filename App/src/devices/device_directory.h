@@ -4,6 +4,7 @@
 
 #include <QList>
 #include <QObject>
+#include <QQuickItem>
 #include <QVariantList>
 #include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
@@ -21,7 +22,8 @@ class ServiceClient;
 //
 // 每一项是 { key, deviceId（三位一组，按 IP 地址添加的为空）, ip（知道时）, address（名字下面显示的：
 // IP 或设备 ID）, target（去连时给的：设备 ID 或 IP）, name, os, online, presenceKnown（知不知道在不在线）,
-// mine（我的设备）, favorite, saved, discovered（在附近）, lastSeen（毫秒，0：没连过）, paired }
+// mine（我的设备）, favorite, saved, discovered（在附近）, lastSeen（毫秒，0：没连过）, paired,
+// alias（用户起的名字，没起过为空）, ownName（它自己的名字）, note（备注）, thumbnail（上次断开时画面的缩略图，没有为空）}
 class DeviceDirectory : public QObject
 {
     Q_OBJECT
@@ -50,6 +52,11 @@ public:
     Q_INVOKABLE void forget(const QString &key);
     // 刚去连了它
     Q_INVOKABLE void touch(const QString &key);
+    // 用户起的名字（空：用回它自己的名字）、备注
+    Q_INVOKABLE void rename(const QString &key, const QString &alias);
+    Q_INVOKABLE void setNote(const QString &key, const QString &note);
+    // 断开、切走时：把窗口里 picture（远程画面）那一块截下来，缩小存着，详情页顶上显示
+    Q_INVOKABLE void saveThumbnail(const QString &key, QQuickItem *picture);
 
 signals:
     void changed();
@@ -62,6 +69,7 @@ private:
         QString address;  // 按 IP 地址添加的
         QString alias;    // 用户起的名字
         QString name;     // 上次知道的它自己的名字
+        QString note;     // 用户写的备注
         QString os;
         bool favorite = false;
         bool saved = false;
@@ -69,7 +77,7 @@ private:
 
         QString key() const;
         // 什么都没记的：不用存
-        bool empty() const { return !favorite && !saved && lastSeen == 0 && alias.isEmpty(); }
+        bool empty() const { return !favorite && !saved && lastSeen == 0 && alias.isEmpty() && note.isEmpty(); }
     };
 
     void nearbyChanged();
@@ -80,6 +88,8 @@ private:
     const rc::protocol::NearbyDevice *nearby(const QString &deviceId) const;
     const rc::protocol::AccountDevice *mine(const QString &deviceId) const;
     QVariantMap toVariant(const Entry &entry) const;
+    // key 那一台的缩略图存在哪
+    QString thumbnailFile(const QString &key) const;
     void load();
     void store();
 

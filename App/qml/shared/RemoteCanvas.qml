@@ -30,6 +30,9 @@ Rectangle {
     // 手机：手指怎么操作对方（RemoteView.touchMode）、放大的倍数、对方是不是 Mac（按键栏上写 ⌘ 还是 Win）
     property string touchMode
     readonly property real zoom: video.zoom
+    // 远程画面本身（截缩略图用，Devices.saveThumbnail）、现在有没有画面
+    readonly property Item picture: video
+    readonly property bool hasPicture: showVideo && video.hasFrame
     readonly property bool remoteMac: video.remoteMac
     // 画面上方的状态条（重连中、电源操作的进展）离顶上多远、现在有没有：手机上让开浮在上面的按钮
     property real statusTop: 12
@@ -55,6 +58,12 @@ Rectangle {
         video.resetZoom()
     }
 
+    // 键盘的按键给对方（连上了、又看到画面了、关掉了打字和面板）
+    function focusInput() {
+        if (showVideo && visible)
+            video.forceActiveFocus()
+    }
+
     color: Theme.canvas
 
     function submitPin() {
@@ -70,7 +79,12 @@ Rectangle {
         if (status === "needPin")
             Qt.callLater(() => pin.forceActiveFocus())
         else if (status === "connected")
-            Qt.callLater(() => video.forceActiveFocus())
+            Qt.callLater(focusInput)
+    }
+    // 切回这个标签、从主界面回到会话
+    onVisibleChanged: {
+        if (visible)
+            Qt.callLater(focusInput)
     }
     Component.onCompleted: if (status === "needPin") Qt.callLater(() => pin.forceActiveFocus())
 
@@ -286,7 +300,7 @@ Rectangle {
         Text {
             id: viewOnlyLabel
             anchors.centerIn: parent
-            text: root.session.controlGranted ? qsTr("仅查看") : qsTr("对方只允许查看")
+            text: root.session !== null && root.session.controlGranted ? qsTr("仅查看") : qsTr("对方只允许查看")
             font.pixelSize: 12
             color: "white"
         }

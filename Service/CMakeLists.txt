@@ -76,9 +76,9 @@ if(APPLE)
                    src/agent_gate_mac.cpp)
     target_link_libraries(rcservice PRIVATE "-framework AppKit" "-framework SystemConfiguration")
 else()
-    # 程序图标：任务管理器、服务列表里看得出是它
+    # 程序图标：任务管理器、服务列表里看得出是它；按物理像素运行（platform/windows/service.manifest）
     target_sources(rcservice PRIVATE src/local_displays_win.cpp src/system_mode_win.cpp
-                   ${CMAKE_SOURCE_DIR}/App/platform/windows/icon.rc)
+                   ${CMAKE_SOURCE_DIR}/App/platform/windows/icon.rc platform/windows/service.manifest)
     target_link_libraries(rcservice PRIVATE RemoteControl::Supervisor wtsapi32 userenv advapi32)
 endif()
 target_compile_definitions(rcservice PRIVATE APP_VERSION="${BILIN_VERSION}" RC_SERVER_URL="${RC_SERVER_URL}")

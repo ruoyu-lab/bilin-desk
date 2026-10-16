@@ -9,11 +9,16 @@ import QtQuick.Controls.Basic
 ApplicationWindow {
     id: app
 
-    visible: true
     title: qsTr("比邻")
     color: Theme.bg
-    // 铺到状态栏底下，各页按 SafeArea 让开
+    // 全屏：不要状态栏、Android 的导航条（iPad 底部的横条不碰时隐去，PhoneWindow）。圆角、刘海按 SafeArea 让开
     flags: Qt.Window | Qt.ExpandedClientAreaHint
+    // 电脑上预览平板的界面（BILIN_PREVIEW=tablet）时是普通窗口
+    visibility: Theme.touch ? Window.FullScreen : Window.Windowed
+    onActiveChanged: {
+        if (active)
+            PhoneWindow.hideHomeIndicator()
+    }
 
     property bool sidebarOpen: true
     // 正在看会话（不是主界面）
@@ -39,6 +44,12 @@ ApplicationWindow {
 
     Component.onCompleted: Qt.callLater(decideLogin)
 
+    // 按钮、字用电脑版的大小（不是手机的）
+    Binding {
+        target: Theme
+        property: "tablet"
+        value: true
+    }
     // 状态栏的字跟着程序的外观
     Binding {
         target: PhoneWindow

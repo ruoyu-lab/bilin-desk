@@ -426,6 +426,7 @@ void RemoteView::hoverMoveEvent(QHoverEvent *hover)
         if (QLineF(point, hover->position()).length() < 1)
             return;
     }
+    pointer_ = hover->position();
     rcs_input_event event = rcs_input_event_init();
     event.type = RCS_INPUT_MOVE;
     if (position(hover->position(), event, false))
@@ -747,6 +748,8 @@ void RemoteView::touchEvent(QTouchEvent *event)
     if (event->type() == QEvent::TouchCancel) {
         if (gesture_.kind == Gesture::Kind::Drag)
             touchButton(RCS_BUTTON_LEFT, false, gesture_.last);
+        else if (gesture_.kind == Gesture::Kind::Pointer)
+            pointerButton(false, gesture_.last);
         longPress_.stop();
         touching_ = false;
         return;
@@ -768,16 +771,34 @@ void RemoteView::touchEvent(QTouchEvent *event)
 
 void RemoteView::beginTouch(QPointF point)
 {
+    // 接着的键盘按键给对方；输入框有焦点（打字时的系统键盘、侧边面板的对话）时不抢
+    const QQuickItem *focused = window()->activeFocusItem();
+    if (!focused || !(focused->flags() & ItemAcceptsInputMethod))
+        forceActiveFocus(Qt::MouseFocusReason);
     touching_ = true;
     gesture_ = {};
     gesture_.start = point;
     gesture_.last = point;
+    // iPad 上鼠标按下：落在指针那里，直接按下左键
+    if (inputEnabled_ && pointer_ && QLineF(point, *pointer_).length() < 2) {
+        gesture_.kind = Gesture::Kind::Pointer;
+        pointerButton(true, point);
+        return;
+    }
     longPress_.start();
 }
 
 void RemoteView::oneFinger(QPointF point)
 {
     using Kind = Gesture::Kind;
+    if (gesture_.kind == Kind::Pointer) {
+        gesture_.last = point;
+        rcs_input_event event = rcs_input_event_init();
+        event.type = RCS_INPUT_MOVE;
+        if (position(point, event, true))
+            send(event);
+        return;
+    }
     if (gesture_.kind == Kind::Pending) {
         if (QLineF(point, gesture_.start).length() < TapSlop)
             return;
@@ -876,6 +897,9 @@ void RemoteView::endTouch()
         case Kind::Drag:
             touchButton(RCS_BUTTON_LEFT, false, gesture_.last);
             break;
+        case Kind::Pointer:
+            pointerButton(false, gesture_.last);
+            break;
         default:
             break;
         }
@@ -948,6 +972,16 @@ void RemoteView::touchButton(uint32_t button, bool down, QPointF point)
     event.code = button;
     event.down = down;
     if (touchTarget(point, event))
+        send(event);
+}
+
+void RemoteView::pointerButton(bool down, QPointF point)
+{
+    rcs_input_event event = rcs_input_event_init();
+    event.type = RCS_INPUT_BUTTON;
+    event.code = RCS_BUTTON_LEFT;
+    event.down = down;
+    if (position(point, event, !down))
         send(event);
 }
 

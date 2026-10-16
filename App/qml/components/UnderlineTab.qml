@@ -8,7 +8,7 @@ AbstractButton {
     property string iconName
     property bool current: false
 
-    implicitHeight: Theme.touch ? 48 : 40
+    implicitHeight: Theme.phone ? 48 : 40
     implicitWidth: row.implicitWidth + 4
     hoverEnabled: true
 

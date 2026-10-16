@@ -55,7 +55,10 @@ Item {
                 iconName: "chevron-right"
                 rotation: 180
                 text: qsTr("回到主界面")
-                onClicked: root.backRequested()
+                onClicked: {
+                    stage.saveThumbnail()
+                    root.backRequested()
+                }
             }
 
             SessionTabs {

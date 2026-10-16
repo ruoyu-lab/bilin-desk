@@ -4,7 +4,8 @@ import QtQuick
 
 // 手机、平板上给对方打字、按电脑上的键（MobileSession、TabletSession）：键盘按钮弹出菜单（showMenu），选打字是系统
 // 键盘，选按键栏是底下一排电脑上的键（Esc、Tab、Ctrl……，不弹系统键盘、不挡着）。按键栏的修饰键点一下按住，
-// 打下一个键时一起按。铺满会话页，target 是正在看的那个画面（RemoteCanvas 或 SessionView：sendText、pressKey、remoteMac）
+// 打下一个键时一起按。铺满会话页，target 是正在看的那个画面（RemoteCanvas 或 SessionView：sendText、pressKey、
+// focusInput、remoteMac）。接着键盘时不用这个：点一下画面，按键就给对方（RemoteView）
 Item {
     id: root
 
@@ -33,10 +34,13 @@ Item {
         Qt.inputMethod.show()
     }
 
+    // 收起来：接着的按键（外接键盘）还给画面
     function close() {
         catcher.focus = false
         Qt.inputMethod.hide()
         root.keysShown = false
+        if (root.target !== null)
+            root.target.focusInput()
     }
 
     function toggleHeld(modifier) {

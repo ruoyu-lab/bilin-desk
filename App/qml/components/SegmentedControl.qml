@@ -51,7 +51,7 @@ Rectangle {
                     text: segment.modelData
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
-                    font.pixelSize: Theme.touch ? 14 : 12
+                    font.pixelSize: Theme.phone ? 14 : 12
                     color: segment.current ? Theme.text : Theme.textSecondary
 
                     Behavior on color { ColorAnimation { duration: 150 } }

@@ -7,11 +7,18 @@
 #include <rc/json_file.h>
 #include <rc/server_protocol.h>
 
+#include <QCryptographicHash>
 #include <QDateTime>
+#include <QDir>
+#include <QFileInfo>
 #include <QHostAddress>
+#include <QImage>
 #include <QJSEngine>
 #include <QJsonArray>
+#include <QQuickItem>
+#include <QQuickWindow>
 #include <QSet>
+#include <QUrl>
 
 #include <algorithm>
 
@@ -212,6 +219,56 @@ void DeviceDirectory::touch(const QString &key)
     emit changed();
 }
 
+void DeviceDirectory::rename(const QString &key, const QString &alias)
+{
+    Entry *found = entryFor(key);
+    if (!found || found->alias == alias.trimmed())
+        return;
+    found->alias = alias.trimmed();
+    store();
+    emit changed();
+}
+
+void DeviceDirectory::setNote(const QString &key, const QString &note)
+{
+    Entry *found = entryFor(key);
+    if (!found || found->note == note.trimmed())
+        return;
+    found->note = note.trimmed();
+    store();
+    emit changed();
+}
+
+void DeviceDirectory::saveThumbnail(const QString &key, QQuickItem *picture)
+{
+    QQuickWindow *window = picture ? picture->window() : nullptr;
+    if (!window || !picture->isVisible() || picture->width() < 1 || picture->height() < 1)
+        return;
+    // 窗口这一刻的样子（物理像素），取画面那一块
+    const QImage shot = window->grabWindow();
+    const qreal ratio = window->effectiveDevicePixelRatio();
+    const QRectF area = picture->mapRectToScene(picture->boundingRect());
+    const QRect pixels = QRect(qRound(area.x() * ratio), qRound(area.y() * ratio), qRound(area.width() * ratio),
+                               qRound(area.height() * ratio))
+                         & shot.rect();
+    if (pixels.isEmpty())
+        return;
+    const QString file = thumbnailFile(key);
+    QDir().mkpath(QFileInfo(file).absolutePath());
+    if (!shot.copy(pixels).scaledToWidth(std::min(480, pixels.width()), Qt::SmoothTransformation).save(file, "JPG", 85)) {
+        qWarning("存不了缩略图 %s", qUtf8Printable(file));
+        return;
+    }
+    emit changed();
+}
+
+QString DeviceDirectory::thumbnailFile(const QString &key) const
+{
+    const QByteArray name = QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex().left(16);
+    return QFileInfo(file_).absolutePath() + QStringLiteral("/thumbnails/") + QString::fromLatin1(name)
+           + QStringLiteral(".jpg");
+}
+
 DeviceDirectory::Entry *DeviceDirectory::entry(const QString &key)
 {
     const auto found = std::find_if(entries_.begin(), entries_.end(), [&key](const Entry &e) { return e.key() == key; });
@@ -251,12 +308,19 @@ QVariantMap DeviceDirectory::toVariant(const Entry &entry) const
     const protocol::AccountDevice *own = entry.deviceId.isEmpty() ? nullptr : mine(entry.deviceId);
     const QString deviceId = rc::DeviceId::parse(entry.deviceId).display();
     const QString ip = near ? near->address : entry.address;
-    const QString name = !entry.alias.isEmpty() ? entry.alias
-                       : near                    ? near->name
-                       : own                     ? own->name
-                       : !entry.name.isEmpty()   ? entry.name
-                       : !deviceId.isEmpty()     ? deviceId
-                                                 : entry.address;
+    const QString ownName = near                    ? near->name
+                          : own                     ? own->name
+                          : !entry.name.isEmpty()   ? entry.name
+                          : !deviceId.isEmpty()     ? deviceId
+                                                    : entry.address;
+    const QString name = !entry.alias.isEmpty() ? entry.alias : ownName;
+    // 文件换了地址也跟着变（界面上的图片按地址缓存）
+    const QFileInfo thumbnail(thumbnailFile(entry.key()));
+    QUrl thumbnailUrl;
+    if (thumbnail.exists()) {
+        thumbnailUrl = QUrl::fromLocalFile(thumbnail.absoluteFilePath());
+        thumbnailUrl.setQuery(QString::number(thumbnail.lastModified().toMSecsSinceEpoch()));
+    }
     const QString os = near ? near->platform : own ? own->platform : entry.os;
     return {
         {QStringLiteral("key"), entry.key()},
@@ -274,6 +338,10 @@ QVariantMap DeviceDirectory::toVariant(const Entry &entry) const
         {QStringLiteral("discovered"), near != nullptr},
         {QStringLiteral("lastSeen"), entry.lastSeen},
         {QStringLiteral("paired"), false},
+        {QStringLiteral("alias"), entry.alias},
+        {QStringLiteral("ownName"), ownName},
+        {QStringLiteral("note"), entry.note},
+        {QStringLiteral("thumbnail"), thumbnailUrl},
     };
 }
 
@@ -286,6 +354,7 @@ void DeviceDirectory::load()
         entry.address = json.value(QLatin1StringView("address")).toString();
         entry.alias = json.value(QLatin1StringView("alias")).toString();
         entry.name = json.value(QLatin1StringView("name")).toString();
+        entry.note = json.value(QLatin1StringView("note")).toString();
         entry.os = json.value(QLatin1StringView("os")).toString();
         entry.favorite = json.value(QLatin1StringView("favorite")).toBool();
         entry.saved = json.value(QLatin1StringView("saved")).toBool();
@@ -306,6 +375,7 @@ void DeviceDirectory::store()
             {QStringLiteral("address"), entry.address},
             {QStringLiteral("alias"), entry.alias},
             {QStringLiteral("name"), entry.name},
+            {QStringLiteral("note"), entry.note},
             {QStringLiteral("os"), entry.os},
             {QStringLiteral("favorite"), entry.favorite},
             {QStringLiteral("saved"), entry.saved},

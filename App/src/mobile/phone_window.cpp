@@ -24,3 +24,8 @@ void PhoneWindow::pressFeedback()
 {
     phone_system::pressFeedback();
 }
+
+void PhoneWindow::hideHomeIndicator()
+{
+    phone_system::hideHomeIndicator();
+}
