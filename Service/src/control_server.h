@@ -59,6 +59,7 @@ signals:
     void disconnectRequested(int id);
     void controlRequested(int id, bool control);
     void clipboardRequested(bool clipboard);
+    void wallpaperReceived(const QByteArray &jpeg);
     // permission：rc/protocol.h 的 ScreenPermission | InputPermission
     void permissionRequested(const QString &permission);
     void restartShareRequested();

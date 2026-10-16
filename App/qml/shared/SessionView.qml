@@ -53,12 +53,6 @@ Item {
         canvas.focusInput()
     }
 
-    // 断开、切走之前：这一刻的画面存成设备详情里的缩略图（看得见的时候才截得到）
-    function saveThumbnail() {
-        if (visible && canvas.hasPicture)
-            Devices.saveThumbnail(key, canvas.picture)
-    }
-
     RowLayout {
         anchors.fill: parent
         spacing: 0

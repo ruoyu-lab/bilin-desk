@@ -58,6 +58,15 @@ private slots:
         QVERIFY(!rc::control::parseThumbnail(rc::control::thumbnail(wrong)));
     }
 
+    void wallpaperRoundTrips()
+    {
+        const QByteArray jpeg("\xff\xd8\xff\xe0 picture", 13);
+        QCOMPARE(rc::control::parseWallpaper(rc::control::wallpaper(jpeg)), jpeg);
+        QVERIFY(!rc::control::parseWallpaper(rc::control::wallpaper({})));
+        QVERIFY(!rc::control::parseWallpaper(rc::control::thumbnails()));
+        QVERIFY(!rc::control::parseThumbnail(rc::control::wallpaper(jpeg)));
+    }
+
     // 同一个通道上别的消息不是它们
     void tellsTheKindsApart()
     {

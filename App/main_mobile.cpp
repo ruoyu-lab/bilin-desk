@@ -87,6 +87,7 @@ int main(int argc, char *argv[])
     ViewerSessions viewerSessions(service, account, viewGraphics.decodeDevice(), codecs, conversations, transfers,
                                   &app);
     ViewerSessions::setInstance(&viewerSessions);
+    QObject::connect(&viewerSessions, &ViewerSessions::wallpaperReceived, &devices, &DeviceDirectory::setWallpaper);
 #ifdef Q_OS_ANDROID
     SessionKeeper keeper(viewerSessions, &app);
 #endif

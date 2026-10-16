@@ -29,6 +29,9 @@
 // - 观看端 → 分享端 {"type": "thumbnails"}：要每一块显示器的缩略图
 // - 分享端 → 观看端 {"type": "thumbnail", "id", "width", "height", "pixels"}：一块的。pixels 是 BGRA8 的像素
 //   （一行 width × 4 字节）经 qCompress 压缩再 base64；截不到的那一块不发
+// 桌面的背景（设备详情顶上显示，不带窗口、图标，看不到对方在做什么）：
+// - 分享端 → 观看端 {"type": "wallpaper", "jpeg"}：主显示器的背景图，JPEG 再 base64。连进来时发（界面程序读的，
+//   没开着时没有），换了背景以后下一个连进来的人来时再发给连着的每一个人
 // 两边是同一个版本的程序（SDK 本来就要求两端同一个版本）
 namespace rc::control {
 
@@ -40,6 +43,7 @@ inline constexpr QLatin1StringView Encoders{"encoders"};
 inline constexpr QLatin1StringView LowLatency{"lowLatency"};
 inline constexpr QLatin1StringView Thumbnails{"thumbnails"};
 inline constexpr QLatin1StringView Thumbnail{"thumbnail"};
+inline constexpr QLatin1StringView Wallpaper{"wallpaper"};
 
 // 分享端录不了声音的原因：没有能用的声音设备、没有录声音的授权、别的错
 inline constexpr QLatin1StringView SoundNoDevice{"device"};
@@ -87,6 +91,7 @@ struct DisplayPicture
     friend bool operator==(const DisplayPicture &, const DisplayPicture &) = default;
 };
 QByteArray thumbnail(const DisplayPicture &picture);
+QByteArray wallpaper(const QByteArray &jpeg);
 
 // 不是这种消息时 nullopt
 std::optional<DisplayList> parseDisplays(const QByteArray &message);
@@ -98,5 +103,7 @@ std::optional<bool> parseLowLatency(const QByteArray &message);
 bool isThumbnails(const QByteArray &message);
 // 像素的大小和宽高对不上时也是 nullopt
 std::optional<DisplayPicture> parseThumbnail(const QByteArray &message);
+// 空的也是 nullopt
+std::optional<QByteArray> parseWallpaper(const QByteArray &message);
 
 } // namespace rc::control

@@ -163,6 +163,10 @@ int main(int argc, char *argv[])
     QObject::connect(&server, &ControlServer::disconnectRequested, &host, &Sharing::disconnectViewer);
     QObject::connect(&server, &ControlServer::controlRequested, &host, &Sharing::setControl);
     QObject::connect(&server, &ControlServer::clipboardRequested, &host, &Sharing::setClipboard);
+    // 本机桌面的背景：有人连进来时问界面程序要（后台服务读不到登录的人的背景），发给连着的人
+    QObject::connect(&server, &ControlServer::wallpaperReceived, &host, &Sharing::setWallpaper);
+    QObject::connect(&host, &Sharing::wallpaperWanted, &server,
+                     [&] { server.sendEvent(rc::protocol::WallpaperWanted, {}); });
     QObject::connect(&server, &ControlServer::permissionRequested, &host, &Sharing::requestPermission);
     QObject::connect(&server, &ControlServer::restartShareRequested, &host, &Sharing::restart);
     // 有人连着本机时界面程序要在（本机的人看得到谁在连）：意外没了就拉起来，界面要退出就先断开连着的人

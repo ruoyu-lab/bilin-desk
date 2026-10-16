@@ -112,6 +112,8 @@ public:
     void stopForRestart();
     // 和连着本机的人同步不同步剪贴板（所有人一起）
     void setClipboard(bool clipboard);
+    // 本机桌面的背景（JPEG，界面程序读的）：和上次的不一样时发给连着的每一个人，之后连进来的人一来就发
+    void setWallpaper(const QByteArray &jpeg);
 
     // 数据通道：连着本机的人发来的按通道号交给 handler（在这个对象的线程上），发给连着本机的人 id
     void addChannel(std::uint32_t channel, rc::peer::DataChannels::Handler handler);
@@ -131,6 +133,8 @@ signals:
     void wrongPin();
     // 本机答应了连着的人 viewer，马上就 action（restart | shutDown | sleep | signOut）
     void powerDone(const rc::protocol::SharePeer &viewer, const QString &action);
+    // 有人连进来了：要一张本机桌面的背景（setWallpaper），背景可能换过
+    void wallpaperWanted();
 
 private:
     // SDK 认的路由号 ↔ 哪台设备的哪次连接（宿主自己定，SDK 原样带回）
@@ -240,6 +244,7 @@ private:
     bool inputPermission_ = false;
     bool canControl_ = false; // 分享会话开的时候有没有辅助功能授权
     uint32_t hardwareEncoders_ = 0; // 用显卡编得了的编码格式，(1u << rcs_codec) 的位
+    QByteArray wallpaper_;          // 本机桌面的背景（JPEG），界面程序还没给过时为空
     QTimer permissionTimer_;
     // 运行中出错以后重新开分享会话（runFailed）；等多久，接连出错时翻倍
     QTimer restartTimer_;

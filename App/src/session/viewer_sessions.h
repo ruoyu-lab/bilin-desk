@@ -46,6 +46,8 @@ public:
 signals:
     // 打开、关掉了会话
     void sessionsChanged();
+    // 连着的设备 key（Devices 里的）发来了它桌面的背景（JPEG）
+    void wallpaperReceived(const QString &key, const QByteArray &jpeg);
 
 private:
     void serviceEvent(const QString &name, const QJsonObject &arguments);

@@ -21,6 +21,7 @@ Sharing::Sharing(DeviceStore &store, rc::InterruptedTransfers &transfers, const 
             emit requestFailed(globalPeer(*host, request), reason);
         });
         connect(host, &ShareHost::wrongPin, this, &Sharing::wrongPin);
+        connect(host, &ShareHost::wallpaperWanted, this, &Sharing::wallpaperWanted);
         connect(host, &ShareHost::powerDone, this, [this, host](const protocol::SharePeer &viewer, const QString &action) {
             emit powerDone(globalPeer(*host, viewer), action);
         });
@@ -126,6 +127,12 @@ void Sharing::setClipboard(bool clipboard)
 {
     others_.setClipboard(clipboard);
     mine_.setClipboard(clipboard);
+}
+
+void Sharing::setWallpaper(const QByteArray &jpeg)
+{
+    others_.setWallpaper(jpeg);
+    mine_.setWallpaper(jpeg);
 }
 
 void Sharing::addChannel(std::uint32_t channel, const rc::peer::DataChannels::Handler &handler)

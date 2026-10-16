@@ -151,6 +151,8 @@ set(desktop_sources
     src/share/incoming_history.cpp
     src/single_instance.h
     src/single_instance.cpp
+    src/wallpaper.h
+    src/wallpaper.cpp
     src/windowchrome.h
 )
 # 解出的 GPU 画面直接画（Mac 的 Metal、Windows 的 D3D11 纹理、Android 的硬件缓冲区），各平台的纹理在下面加
@@ -418,13 +420,14 @@ endif()
 # 电脑版只做 macOS 和 Windows
 if(APPLE)
     target_sources(Bilin PRIVATE src/windowchrome_mac.mm src/dock_mac.mm src/login_item_mac.mm
-                   src/quit_reason_mac.mm src/remote_view/frame_textures_mac.mm src/setup/setup_mac.mm)
+                   src/quit_reason_mac.mm src/remote_view/frame_textures_mac.mm src/setup/setup_mac.mm
+                   src/wallpaper_mac.mm)
     target_link_libraries(Bilin PRIVATE "-framework AppKit" "-framework CoreVideo" "-framework Metal"
-                          "-framework ServiceManagement")
+                          "-framework ServiceManagement" "-framework ImageIO" "-framework UniformTypeIdentifiers")
 elseif(WIN32)
     target_sources(Bilin PRIVATE src/windowchrome.cpp src/dock.cpp src/login_item_win.cpp
                    src/quit_reason_win.cpp src/remote_view/frame_textures_win.cpp src/remote_view/system_keys_win.h
-                   src/remote_view/system_keys_win.cpp src/setup/setup_win.cpp
+                   src/remote_view/system_keys_win.cpp src/setup/setup_win.cpp src/wallpaper_win.cpp
                    platform/windows/icon.rc)
     target_link_libraries(Bilin PRIVATE QWKQuick d3d11 advapi32 shell32 ole32)
 else()

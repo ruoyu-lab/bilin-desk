@@ -98,6 +98,8 @@ void ControlServer::handle(qintptr socket, const QJsonObject &message)
                               message.value(QLatin1StringView("value")).toBool());
     else if (command == protocol::SetClipboard)
         emit clipboardRequested(message.value(QLatin1StringView("value")).toBool());
+    else if (command == protocol::SetWallpaper)
+        emit wallpaperReceived(QByteArray::fromBase64(message.value(QLatin1StringView("jpeg")).toString().toLatin1()));
     else if (command == protocol::RequestPermission)
         emit permissionRequested(message.value(QLatin1StringView("permission")).toString());
     else if (command == protocol::RestartShare)

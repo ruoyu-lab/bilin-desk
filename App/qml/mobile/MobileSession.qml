@@ -34,8 +34,6 @@ Item {
     readonly property bool controlling: canvas.controlling && canvas.showVideo
 
     function close() {
-        if (canvas.hasPicture)
-            Devices.saveThumbnail(root.device.key, canvas.picture)
         ViewerSessions.close(root.device.key)
         root.closed()
     }

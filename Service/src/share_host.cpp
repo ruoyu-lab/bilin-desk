@@ -878,6 +878,17 @@ void ShareHost::viewerJoined(int id, quint64 route, const QString &platform, boo
     displays_.viewerJoined(id);
     tellMainViewer();
     sendControl(id, rc::control::encoders(hardwareEncoders_));
+    if (!wallpaper_.isEmpty())
+        sendControl(id, rc::control::wallpaper(wallpaper_));
+    emit wallpaperWanted();
+}
+
+void ShareHost::setWallpaper(const QByteArray &jpeg)
+{
+    if (jpeg == wallpaper_)
+        return;
+    wallpaper_ = jpeg;
+    sendControl(0, rc::control::wallpaper(wallpaper_));
 }
 
 void ShareHost::viewerLeft(int id, bool pathBroke)

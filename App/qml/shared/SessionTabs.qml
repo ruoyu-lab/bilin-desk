@@ -119,7 +119,7 @@ Rectangle {
                 height: 24
                 z: drag.active ? 1 : 0
                 hoverEnabled: true
-                onPressed: root.stage.select(index)
+                onPressed: root.stage.currentIndex = index
                 onXChanged: {
                     if (!drag.active)
                         return

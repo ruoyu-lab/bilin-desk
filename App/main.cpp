@@ -13,6 +13,7 @@
 #include "share/incoming_connections.h"
 #include "single_instance.h"
 #include "this_device.h"
+#include "wallpaper.h"
 
 #include <rc/ipc/endpoint.h>
 #include <rc/log_file.h>
@@ -142,6 +143,8 @@ int main(int argc, char *argv[])
                           systemService ? rc::system_service::endpoint() : rc::ipc::serviceEndpoint());
     ThisDevice thisDevice(service, &app);
     ThisDevice::setInstance(&thisDevice);
+    // 有人连进本机时把本机桌面的背景给他（后台服务要）
+    Wallpaper wallpaper(service, &app);
     // 装好了系统服务时，开机时自动启动的开关也管它在界面程序没开着时接不接受我的设备连接
     if (service.systemService()) {
         autostart.followService([&thisDevice] { return thisDevice.unattended(); },
@@ -180,6 +183,7 @@ int main(int argc, char *argv[])
     ViewerSessions viewerSessions(service, account, viewGraphics.decodeDevice(), codecs, conversations, transfers,
                                   &app);
     ViewerSessions::setInstance(&viewerSessions);
+    QObject::connect(&viewerSessions, &ViewerSessions::wallpaperReceived, &devices, &DeviceDirectory::setWallpaper);
     // 卸载（macOS 在设置里）
     Setup setup(std::nullopt, &app);
     Setup::setInstance(&setup);

@@ -64,6 +64,9 @@ inline constexpr QLatin1StringView ScreenPermission{"screen"};
 inline constexpr QLatin1StringView InputPermission{"input"};
 // 出了错、别人连不上本机时再试一次
 inline constexpr QLatin1StringView RestartShare{"restartShare"};
+// jpeg（base64）：本机桌面的背景图，发给连着本机的人（rc/control_protocol.h 的 wallpaper）。后台服务以 SYSTEM、
+// root 运行，读不到登录的人的背景：有人连进来时它要（WallpaperWanted），界面程序读好发过来
+inline constexpr QLatin1StringView SetWallpaper{"setWallpaper"};
 // email、purpose：往邮箱发验证码（注册、找回密码），发了有 codeSent
 inline constexpr QLatin1StringView SendCode{"sendCode"};
 inline constexpr QLatin1StringView RegisterPurpose{"register"};
@@ -122,6 +125,8 @@ inline constexpr QLatin1StringView Declined{"declined"};
 inline constexpr QLatin1StringView AccountFailed{"accountFailed"};
 // 改密码成了
 inline constexpr QLatin1StringView PasswordChanged{"passwordChanged"};
+// 有人连进本机了：界面程序读一下本机桌面的背景发过来（SetWallpaper）
+inline constexpr QLatin1StringView WallpaperWanted{"wallpaperWanted"};
 // purpose：验证码发到邮箱了
 inline constexpr QLatin1StringView CodeSent{"codeSent"};
 // to、session、reason：信令没送到。reason：offline（设备 to 不在线，或者没有这个 ID）| noServer（本机没连上服务器）

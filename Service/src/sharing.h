@@ -43,6 +43,7 @@ public:
     void disconnectAll();
     void stopForRestart();
     void setClipboard(bool clipboard);
+    void setWallpaper(const QByteArray &jpeg);
     void addChannel(std::uint32_t channel, const rc::peer::DataChannels::Handler &handler);
     rc::peer::SendResult sendData(int id, std::uint32_t channel, const QByteArray &data);
     // 互传文件（rc::FileTransfers 的）
@@ -63,6 +64,7 @@ signals:
     void requestFailed(const rc::protocol::SharePeer &request, const QString &reason);
     void wrongPin();
     void powerDone(const rc::protocol::SharePeer &viewer, const QString &action);
+    void wallpaperWanted();
     // 互传的文件变了；传完了一份
     void transfersChanged();
     void transferCompleted(const rc::Transfer &transfer);

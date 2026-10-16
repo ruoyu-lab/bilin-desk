@@ -235,6 +235,8 @@ signals:
     void cursorChanged();
     void powerChanged();
     void wakeChanged();
+    // 对方桌面的背景（JPEG，rc/control_protocol.h 的 wallpaper）：设备详情顶上显示
+    void wallpaperReceived(const QByteArray &jpeg);
 
 private:
     // relay：经中继

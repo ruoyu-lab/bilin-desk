@@ -101,6 +101,15 @@ QByteArray thumbnail(const DisplayPicture &picture)
     return QJsonDocument(message).toJson(QJsonDocument::Compact);
 }
 
+QByteArray wallpaper(const QByteArray &jpeg)
+{
+    const QJsonObject message{
+        {QStringLiteral("type"), QString(Wallpaper)},
+        {QStringLiteral("jpeg"), QString::fromLatin1(jpeg.toBase64())},
+    };
+    return QJsonDocument(message).toJson(QJsonDocument::Compact);
+}
+
 std::optional<DisplayList> parseDisplays(const QByteArray &message)
 {
     const auto json = parse(message, Displays);
@@ -179,6 +188,17 @@ std::optional<DisplayPicture> parseThumbnail(const QByteArray &message)
     if (picture.width <= 0 || picture.height <= 0 || picture.pixels.size() != qsizetype(picture.width) * picture.height * 4)
         return std::nullopt;
     return picture;
+}
+
+std::optional<QByteArray> parseWallpaper(const QByteArray &message)
+{
+    const auto json = parse(message, Wallpaper);
+    if (!json)
+        return std::nullopt;
+    QByteArray jpeg = QByteArray::fromBase64(json->value(QLatin1StringView("jpeg")).toString().toLatin1());
+    if (jpeg.isEmpty())
+        return std::nullopt;
+    return jpeg;
 }
 
 } // namespace rc::control

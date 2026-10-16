@@ -10,13 +10,12 @@
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QHostAddress>
 #include <QImage>
 #include <QJSEngine>
 #include <QJsonArray>
-#include <QQuickItem>
-#include <QQuickWindow>
 #include <QSet>
 #include <QUrl>
 
@@ -48,6 +47,8 @@ DeviceDirectory::DeviceDirectory(ServiceClient &service, Account &account, QStri
     , file_(std::move(file))
 {
     load();
+    // 0.1.3-beta 存过断开那一刻的画面（看得到对方开着的窗口）：改成桌面背景以后不用了，删掉
+    QDir(QFileInfo(file_).absolutePath() + QStringLiteral("/thumbnails")).removeRecursively();
     connect(&service_, &ServiceClient::topicChanged, this, [this](const QString &topic) {
         if (topic == protocol::NearbyTopic)
             nearbyChanged();
@@ -239,33 +240,29 @@ void DeviceDirectory::setNote(const QString &key, const QString &note)
     emit changed();
 }
 
-void DeviceDirectory::saveThumbnail(const QString &key, QQuickItem *picture)
+void DeviceDirectory::setWallpaper(const QString &key, const QByteArray &jpeg)
 {
-    QQuickWindow *window = picture ? picture->window() : nullptr;
-    if (!window || !picture->isVisible() || picture->width() < 1 || picture->height() < 1)
+    // 对方发来的：是一张图才存，太大的不要
+    constexpr qsizetype MaxBytes = 4 << 20;
+    if (jpeg.size() > MaxBytes || QImage::fromData(jpeg, "JPG").isNull())
         return;
-    // 窗口这一刻的样子（物理像素），取画面那一块
-    const QImage shot = window->grabWindow();
-    const qreal ratio = window->effectiveDevicePixelRatio();
-    const QRectF area = picture->mapRectToScene(picture->boundingRect());
-    const QRect pixels = QRect(qRound(area.x() * ratio), qRound(area.y() * ratio), qRound(area.width() * ratio),
-                               qRound(area.height() * ratio))
-                         & shot.rect();
-    if (pixels.isEmpty())
+    QFile file(wallpaperFile(key));
+    if (file.open(QIODevice::ReadOnly) && file.readAll() == jpeg)
         return;
-    const QString file = thumbnailFile(key);
+    file.close();
     QDir().mkpath(QFileInfo(file).absolutePath());
-    if (!shot.copy(pixels).scaledToWidth(std::min(480, pixels.width()), Qt::SmoothTransformation).save(file, "JPG", 85)) {
-        qWarning("存不了缩略图 %s", qUtf8Printable(file));
+    if (!file.open(QIODevice::WriteOnly) || file.write(jpeg) != jpeg.size()) {
+        qWarning("存不了 %s 的桌面背景：%s", qUtf8Printable(key), qUtf8Printable(file.errorString()));
         return;
     }
+    file.close();
     emit changed();
 }
 
-QString DeviceDirectory::thumbnailFile(const QString &key) const
+QString DeviceDirectory::wallpaperFile(const QString &key) const
 {
     const QByteArray name = QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex().left(16);
-    return QFileInfo(file_).absolutePath() + QStringLiteral("/thumbnails/") + QString::fromLatin1(name)
+    return QFileInfo(file_).absolutePath() + QStringLiteral("/wallpapers/") + QString::fromLatin1(name)
            + QStringLiteral(".jpg");
 }
 
@@ -315,11 +312,11 @@ QVariantMap DeviceDirectory::toVariant(const Entry &entry) const
                                                     : entry.address;
     const QString name = !entry.alias.isEmpty() ? entry.alias : ownName;
     // 文件换了地址也跟着变（界面上的图片按地址缓存）
-    const QFileInfo thumbnail(thumbnailFile(entry.key()));
-    QUrl thumbnailUrl;
-    if (thumbnail.exists()) {
-        thumbnailUrl = QUrl::fromLocalFile(thumbnail.absoluteFilePath());
-        thumbnailUrl.setQuery(QString::number(thumbnail.lastModified().toMSecsSinceEpoch()));
+    const QFileInfo wallpaper(wallpaperFile(entry.key()));
+    QUrl wallpaperUrl;
+    if (wallpaper.exists()) {
+        wallpaperUrl = QUrl::fromLocalFile(wallpaper.absoluteFilePath());
+        wallpaperUrl.setQuery(QString::number(wallpaper.lastModified().toMSecsSinceEpoch()));
     }
     const QString os = near ? near->platform : own ? own->platform : entry.os;
     return {
@@ -341,7 +338,7 @@ QVariantMap DeviceDirectory::toVariant(const Entry &entry) const
         {QStringLiteral("alias"), entry.alias},
         {QStringLiteral("ownName"), ownName},
         {QStringLiteral("note"), entry.note},
-        {QStringLiteral("thumbnail"), thumbnailUrl},
+        {QStringLiteral("wallpaper"), wallpaperUrl},
     };
 }
 

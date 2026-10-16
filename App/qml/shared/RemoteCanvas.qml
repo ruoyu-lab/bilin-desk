@@ -30,9 +30,6 @@ Rectangle {
     // 手机：手指怎么操作对方（RemoteView.touchMode）、放大的倍数、对方是不是 Mac（按键栏上写 ⌘ 还是 Win）
     property string touchMode
     readonly property real zoom: video.zoom
-    // 远程画面本身（截缩略图用，Devices.saveThumbnail）、现在有没有画面
-    readonly property Item picture: video
-    readonly property bool hasPicture: showVideo && video.hasFrame
     readonly property bool remoteMac: video.remoteMac
     // 画面上方的状态条（重连中、电源操作的进展）离顶上多远、现在有没有：手机上让开浮在上面的按钮
     property real statusTop: 12

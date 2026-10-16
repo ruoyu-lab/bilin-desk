@@ -49,6 +49,8 @@ ViewerSession *ViewerSessions::open(const QString &key, const QString &target)
     auto *session = new ViewerSession(target, service_, decodeDevice_, codecs_, *conversations_.get(key), transfers_,
                                       [this](const QString &deviceId) { return account_.publicKey(deviceId); }, this);
     session->setHidden(hidden_);
+    connect(session, &ViewerSession::wallpaperReceived, this,
+            [this, key](const QByteArray &jpeg) { emit wallpaperReceived(key, jpeg); });
     sessions_.insert(key, session);
     emit sessionsChanged();
     return session;

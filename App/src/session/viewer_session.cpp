@@ -97,6 +97,8 @@ ViewerSession::ViewerSession(const QString &target, ServiceClient &service, void
         } else if (const std::optional<QString> sound = rc::control::parseSound(data)) {
             if (audio_.setPeerProblem(*sound))
                 emit optionsChanged();
+        } else if (const std::optional<QByteArray> wallpaper = rc::control::parseWallpaper(data)) {
+            emit wallpaperReceived(*wallpaper);
         } else {
             displays_->received(data);
         }
