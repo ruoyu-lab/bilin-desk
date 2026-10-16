@@ -14,6 +14,10 @@ AbstractButton {
     // 紧凑：放在工具组和搜索框里的小号按钮
     property bool compact: false
     property color activeFill: Theme.selected
+    // 开关一个弹出的东西（菜单、弹出框）：点了发 openRequested，在那里打开它；开着时再点只是关掉（PopupToggle）
+    property alias popup: toggle.popup
+
+    signal openRequested()
     property color iconColor: filled ? Theme.accentText
                             : danger ? Theme.danger
                             : active ? Theme.text : Theme.textSecondary
@@ -22,6 +26,15 @@ AbstractButton {
     implicitHeight: compact && Theme.unifiedTitleBar ? 28 : Theme.titleButtonSize
     hoverEnabled: true
     opacity: enabled ? 1 : 0.4
+    onPressed: toggle.press()
+    onClicked: {
+        if (toggle.popup !== null && toggle.opening)
+            root.openRequested()
+    }
+
+    PopupToggle {
+        id: toggle
+    }
 
     background: Rectangle {
         radius: root.compact ? Theme.radius - 2 : Theme.radius

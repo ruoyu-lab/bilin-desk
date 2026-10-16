@@ -86,7 +86,8 @@ Item {
                             iconName: "keyboard"
                             text: qsTr("键盘")
                             active: keyboard.active
-                            onClicked: keyboard.active ? keyboard.close() : keyboard.showMenu(keyboardButton)
+                            popup: keyboard.menu
+                            onOpenRequested: keyboard.active ? keyboard.close() : keyboard.showMenu(keyboardButton)
                         }
                         // 手指操作方式：触摸板、直接点，点一下换
                         AbstractButton {

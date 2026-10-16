@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Templates as T
 
 // 一个窗口里的几个会话（电脑版的会话窗口 SessionWindow、平板的 TabletSession）：每个连接一个标签，同一时间看一个。
 // 会话本身（和它的对话、互传的文件）在 ViewerSessions 里，按设备各一个；这里记标签和各自的画面（SessionView），
@@ -15,6 +16,9 @@ Item {
 
     readonly property bool keysMenuOpen: keysMenu.visible
     readonly property bool powerMenuOpen: powerMenu.visible || powerConfirm.opened
+    // 工具栏上的按钮开关它们（IconButton.popup）
+    readonly property T.Popup keysPopup: keysMenu
+    readonly property T.Popup powerPopup: powerMenu
 
     // 标签能拆到新窗口（电脑版）
     property bool detachable: false

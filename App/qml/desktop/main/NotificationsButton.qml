@@ -14,7 +14,8 @@ ToolGroup {
         compact: true
         iconName: "bell"
         text: qsTr("通知")
-        onClicked: {
+        popup: notifications
+        onOpenRequested: {
             root.toolbar.placeBelow(notifications, bellButton)
             notifications.open()
         }

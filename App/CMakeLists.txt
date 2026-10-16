@@ -77,6 +77,7 @@ set(app_qml
     qml/components/Icon.qml
     qml/components/Logo.qml
     qml/components/IconButton.qml
+    qml/components/PopupToggle.qml
     qml/components/LegalText.qml
     qml/components/NavItem.qml
     qml/components/PopupSurface.qml

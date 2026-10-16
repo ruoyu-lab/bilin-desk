@@ -461,7 +461,8 @@ QtObject {
                             id: upload
                             iconName: "upload"
                             text: qsTr("发送文件")
-                            onClicked: {
+                            popup: sendMenu
+                            onOpenRequested: {
                                 sendMenu.viewerId = viewer.modelData.id
                                 sendMenu.popup(upload, 0, upload.height + 4)
                             }

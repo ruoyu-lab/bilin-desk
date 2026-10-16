@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Templates as T
 
 // 手机、平板上给对方打字、按电脑上的键（MobileSession、TabletSession）：键盘按钮弹出菜单（showMenu），选打字是系统
 // 键盘，选按键栏是底下一排电脑上的键（Esc、Tab、Ctrl……，不弹系统键盘、不挡着）。按键栏的修饰键点一下按住，
@@ -24,6 +25,9 @@ Item {
     readonly property bool remoteMac: target !== null && target.remoteMac
     // 按着的修饰键（Control、Alt、Shift、Meta），打下一个键时一起按，按完松开
     property var held: []
+
+    // 键盘按钮开关它（IconButton.popup、PopupToggle）
+    readonly property T.Popup menu: keyboardMenu
 
     function showMenu(anchor) {
         keyboardMenu.popup(anchor, anchor.width - keyboardMenu.width, anchor.height + 8)

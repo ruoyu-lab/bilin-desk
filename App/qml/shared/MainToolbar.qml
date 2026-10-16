@@ -65,10 +65,8 @@ Item {
                 text: qsTr("搜索")
                 active: root.browse.search.length > 0 || searchPopup.opened
                 activeFill: Theme.unifiedTitleBar ? Theme.surface : Theme.selected
-                // 按下按钮时浮窗已因"点了外面"关掉，这次点击不再打开（再点一次按钮即关闭）
-                onClicked: {
-                    if (Date.now() - searchPopup.closedAt < 300)
-                        return
+                popup: searchPopup
+                onOpenRequested: {
                     root.placeBelow(searchPopup, searchButton)
                     searchPopup.open()
                 }
@@ -78,7 +76,8 @@ Item {
                 compact: true
                 iconName: "sort"
                 text: qsTr("排序")
-                onClicked: {
+                popup: sortMenu
+                onOpenRequested: {
                     root.placeBelow(sortMenu, sortButton)
                     sortMenu.open()
                 }
@@ -90,7 +89,8 @@ Item {
                 text: qsTr("筛选")
                 active: root.browse.filtering
                 activeFill: Theme.unifiedTitleBar ? Theme.surface : Theme.selected
-                onClicked: {
+                popup: filterMenu
+                onOpenRequested: {
                     root.placeBelow(filterMenu, filterButton)
                     filterMenu.open()
                 }
@@ -112,14 +112,12 @@ Item {
     // 关掉浮窗不清空，按钮保持高亮表示正在筛选
     Popup {
         id: searchPopup
-        property real closedAt: 0
 
         width: 260
         padding: 6
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         background: PopupSurface {}
         onOpened: searchField.focusInput()
-        onClosed: closedAt = Date.now()
 
         contentItem: SearchBox {
             id: searchField

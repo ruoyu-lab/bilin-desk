@@ -143,11 +143,19 @@ Item {
             }
         }
 
+        // 开着时再点是关掉（PopupToggle）
         TapHandler {
+            onPressedChanged: if (pressed) powerToggle.press()
             onTapped: {
+                if (!powerToggle.opening)
+                    return
                 powerMenu.anchor = namePill
                 powerMenu.popup(namePill, 0, namePill.height + 8)
             }
+        }
+        PopupToggle {
+            id: powerToggle
+            popup: powerMenu
         }
     }
 
@@ -214,7 +222,12 @@ Item {
                     color: displayThumbnails.opened ? "#0a84ff" : "white"
                 }
                 TapHandler {
-                    onTapped: displayThumbnails.show(displaysButton)
+                    onPressedChanged: if (pressed) displaysToggle.press()
+                    onTapped: if (displaysToggle.opening) displayThumbnails.show(displaysButton)
+                }
+                PopupToggle {
+                    id: displaysToggle
+                    popup: displayThumbnails
                 }
             }
             Item {
@@ -229,7 +242,17 @@ Item {
                 }
                 // 开着的时候点一下收起
                 TapHandler {
-                    onTapped: keyboard.active ? keyboard.close() : keyboard.showMenu(keyboardButton)
+                    onPressedChanged: if (pressed) keyboardToggle.press()
+                    onTapped: {
+                        if (keyboard.active)
+                            keyboard.close()
+                        else if (keyboardToggle.opening)
+                            keyboard.showMenu(keyboardButton)
+                    }
+                }
+                PopupToggle {
+                    id: keyboardToggle
+                    popup: keyboard.menu
                 }
             }
             Item {
@@ -243,7 +266,15 @@ Item {
                     color: "white"
                 }
                 TapHandler {
-                    onTapped: keysMenu.popup(keysButton, keysButton.width - keysMenu.width, keysButton.height + 8)
+                    onPressedChanged: if (pressed) keysToggle.press()
+                    onTapped: {
+                        if (keysToggle.opening)
+                            keysMenu.popup(keysButton, keysButton.width - keysMenu.width, keysButton.height + 8)
+                    }
+                }
+                PopupToggle {
+                    id: keysToggle
+                    popup: keysMenu
                 }
             }
             Item {

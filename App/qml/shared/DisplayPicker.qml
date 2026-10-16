@@ -22,7 +22,8 @@ RowLayout {
         iconName: "monitor"
         text: qsTr("显示器的缩略图")
         active: thumbnails.opened
-        onClicked: thumbnails.show(thumbnailsButton)
+        popup: thumbnails
+        onOpenRequested: thumbnails.show(thumbnailsButton)
     }
 
     DisplayThumbnails {

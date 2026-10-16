@@ -34,7 +34,7 @@ ApplicationWindow {
 
     Component.onCompleted: {
         WindowChrome.applyTitleBar(window, "unified")
-        WindowChrome.setInteractive(toolbar.tools)
+        WindowChrome.setInteractive(mainToolbar.tools)
         memory.restore()
     }
     function connect(device, viewOnly) {
@@ -68,16 +68,17 @@ ApplicationWindow {
 
         // macOS：统一工具栏那一行；Windows：标题栏那一行，工具排在窗口按钮左边
         MainToolbar {
-            id: toolbar
+            id: mainToolbar
             width: parent.width
             browse: browse
             rightInset: windowButtons.visible ? windowButtons.width + windowButtons.inset + windowButtons.spacing : 0
-            homeTools: Component { NotificationsButton { toolbar: toolbar } }
+            // 组件里的 toolbar 是通知按钮自己的属性，外面的工具栏换个名字认
+            homeTools: Component { NotificationsButton { toolbar: mainToolbar } }
             onAddRequested: addDialog.open()
         }
 
         OverviewPage {
-            anchors.top: toolbar.bottom
+            anchors.top: mainToolbar.bottom
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
@@ -90,7 +91,7 @@ ApplicationWindow {
         }
 
         DevicesPage {
-            anchors.top: toolbar.bottom
+            anchors.top: mainToolbar.bottom
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
@@ -101,7 +102,7 @@ ApplicationWindow {
 
         // macOS：设置从窗口顶端开始，顶上只留 30px 拖动窗口；Windows 在标题栏下面
         SettingsPage {
-            anchors.top: Theme.unifiedTitleBar ? parent.top : toolbar.bottom
+            anchors.top: Theme.unifiedTitleBar ? parent.top : mainToolbar.bottom
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom

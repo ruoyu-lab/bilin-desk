@@ -149,7 +149,17 @@ Rectangle {
                 Layout.fillWidth: true
                 implicitHeight: 40
                 hoverEnabled: true
-                onClicked: accountPopup.open()
+                // 开着时再点是关掉
+                onPressed: accountToggle.press()
+                onClicked: {
+                    if (accountToggle.opening)
+                        accountPopup.open()
+                }
+
+                PopupToggle {
+                    id: accountToggle
+                    popup: accountPopup
+                }
 
                 background: Rectangle {
                     radius: Theme.radius

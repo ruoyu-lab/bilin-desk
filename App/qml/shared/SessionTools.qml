@@ -55,7 +55,8 @@ RowLayout {
         iconName: Theme.touch ? "command" : "keyboard"
         text: qsTr("发送快捷键")
         active: root.stage.keysMenuOpen
-        onClicked: root.stage.showKeysMenu(keys)
+        popup: root.stage.keysPopup
+        onOpenRequested: root.stage.showKeysMenu(keys)
     }
     IconButton {
         compact: !Theme.unifiedTitleBar
@@ -98,6 +99,7 @@ RowLayout {
         text: qsTr("断开连接、重启或关机对方电脑")
         danger: true
         active: root.stage.powerMenuOpen
-        onClicked: root.stage.showPowerMenu(power)
+        popup: root.stage.powerPopup
+        onOpenRequested: root.stage.showPowerMenu(power)
     }
 }
