@@ -19,6 +19,11 @@ ApplicationWindow {
         if (active)
             PhoneWindow.hideHomeIndicator()
     }
+    // 窗口不替内容让开 SafeArea（Qt 默认让，底下横条那里会空着一条）：侧栏、会话铺到底，各自按 SafeArea 让开
+    topPadding: 0
+    leftPadding: 0
+    rightPadding: 0
+    bottomPadding: 0
 
     property bool sidebarOpen: true
     // 正在看会话（不是主界面）
@@ -109,6 +114,7 @@ ApplicationWindow {
                 height: parent.height
                 browse: browse
                 topInset: home.SafeArea.margins.top
+                bottomInset: home.SafeArea.margins.bottom
                 sessionCount: sessions.count
                 onSessionsRequested: app.showingSessions = true
 

@@ -6,8 +6,9 @@ Rectangle {
     id: root
 
     required property BrowseState browse
-    // 顶上多让出的高度（平板：状态栏）
+    // 顶上、底下多让出的高度（平板：状态栏、iPad 底部的横条）
     property real topInset: 0
+    property real bottomInset: 0
     // 平板：回到主界面时还连着几台，有的话最上面一项回到会话
     property int sessionCount: 0
 
@@ -26,6 +27,7 @@ Rectangle {
         id: column
         anchors.fill: parent
         anchors.margins: 10
+        anchors.bottomMargin: 10 + root.bottomInset
         // macOS 紧挨着红绿灯那一行；Windows 在标题栏（软件名、侧栏开关）下面
         anchors.topMargin: (Theme.unifiedTitleBar ? Theme.headerHeight - 4 : Theme.headerHeight + 3) + root.topInset
         spacing: 2
