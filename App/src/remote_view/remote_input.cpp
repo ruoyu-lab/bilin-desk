@@ -204,6 +204,16 @@ uint32_t keyUsage(const QKeyEvent &key, bool remoteIsMac)
 #endif
 }
 
+#ifdef Q_OS_IOS
+uint32_t appleKeyboardUsage(uint32_t usage, bool remoteIsMac)
+{
+    // 键盘那一页 4（A）~231（右 Command）；Globe 键这类苹果自己的不在里面
+    if (usage < 4 || usage > RightGui)
+        return 0;
+    return remoteIsMac ? usage : swapCommandAndControl(usage);
+}
+#endif
+
 uint32_t namedKeyUsage(QStringView name)
 {
     static constexpr std::pair<QLatin1StringView, uint8_t> Named[] = {

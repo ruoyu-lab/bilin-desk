@@ -17,6 +17,12 @@ namespace remote_input {
 // Mac 上的 Command 在不是 Mac 的对方那里当 Ctrl 用（Control 当 Win 键），Command+C 在那边也是复制
 uint32_t keyUsage(const QKeyEvent &key, bool remoteIsMac);
 
+#ifdef Q_OS_IOS
+// iPad、iPhone 接着的键盘：UIKit 给的就是 USB HID 键码（UIKey.keyCode，hardware_keys_ios.mm），和 keyUsage 一样
+// Command 在不是 Mac 的对方那里当 Ctrl 用；不是对方能收的键时为 0
+uint32_t appleKeyboardUsage(uint32_t usage, bool remoteIsMac);
+#endif
+
 // 不是 Mac 的电脑连 Mac：F1~F12 当 MacBook 键盘顶上那一排用（亮度、调度中心、聚焦搜索、播放、音量）。
 // consumer 是媒体键（RCS_KEY_CONSUMER 那一页的用法），不然 keys 是按下去的组合键；Mac 上没有对应的（F5 听写、
 // F6 勿扰）为空，照旧发 F 键。按着修饰键时也照旧发 F 键（像在 Mac 上按着 Fn）

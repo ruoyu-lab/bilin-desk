@@ -156,6 +156,8 @@ Item {
     TextInput {
         id: catcher
         readonly property string sentinel: "​"
+        // 有焦点时接着的键盘的按键也给对方的画面（iPad，RemoteView::keyTarget），不用先收起打字
+        readonly property bool remoteKeys: true
         x: -width - 10
         width: 10
         height: 10

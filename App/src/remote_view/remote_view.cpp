@@ -2,6 +2,9 @@
 
 #include "frame_mailbox.h"
 #include "frame_node.h"
+#ifdef Q_OS_IOS
+#include "hardware_keys.h"
+#endif
 #include "viewer_session.h"
 
 #include <QCoreApplication>
@@ -26,6 +29,9 @@ namespace {
 
 // 本机指针换成了"对方的指针看不见"
 constexpr uint32_t HiddenCursor = std::numeric_limits<uint32_t>::max();
+
+// 最近拿到焦点的画面：打字框有焦点时，接着的键盘的按键给它（RemoteView::keyTarget）
+QPointer<RemoteView> focusedView;
 
 // 手机上的手指（逻辑像素、毫秒）
 constexpr qreal TapSlop = 10;         // 动了不到这么多还算点
@@ -80,6 +86,9 @@ RemoteView::RemoteView(QQuickItem *parent)
     longPress_.setSingleShot(true);
     longPress_.setInterval(LongPressMs);
     connect(&longPress_, &QTimer::timeout, this, &RemoteView::longPressed);
+#ifdef Q_OS_IOS
+    hardware_keys::install();
+#endif
 }
 
 RemoteView::~RemoteView()
@@ -490,18 +499,27 @@ void RemoteView::wheelEvent(QWheelEvent *wheel)
 
 void RemoteView::key(QKeyEvent *key, bool down)
 {
-    rcs_input_event event = rcs_input_event_init();
-    event.type = RCS_INPUT_KEY;
-    event.code = remote_input::keyUsage(*key, remoteIsMac());
-    event.down = down;
-    event.repeat = key->isAutoRepeat();
-    if (!inputEnabled_ || !event.code) {
+    const uint32_t usage = remote_input::keyUsage(*key, remoteIsMac());
+    if (!inputEnabled_ || !usage) {
         key->ignore();
         return;
     }
+    sendKey(usage, down, key->isAutoRepeat(), key->modifiers() == Qt::NoModifier);
+    key->accept();
+}
+
+void RemoteView::sendKey(uint32_t usage, bool down, bool repeat, bool plain)
+{
+    if (!inputEnabled_)
+        return;
+    rcs_input_event event = rcs_input_event_init();
+    event.type = RCS_INPUT_KEY;
+    event.code = usage;
+    event.down = down;
+    event.repeat = repeat;
 #ifndef Q_OS_MACOS
     // 连 Mac：F 键当 MacBook 顶上那一排（Mac 自己的键盘上按 F 键本来就是这样，不用换）
-    if (remoteIsMac() && key->modifiers() == Qt::NoModifier) {
+    if (remoteIsMac() && plain) {
         if (const auto topRow = remote_input::macTopRow(event.code)) {
             if (topRow->consumer) {
                 event.code = RCS_KEY_CONSUMER | topRow->consumer;
@@ -520,13 +538,22 @@ void RemoteView::key(QKeyEvent *key, bool down)
                     send(combo);
                 }
             }
-            key->accept();
             return;
         }
     }
+#else
+    Q_UNUSED(plain);
 #endif
     send(event);
-    key->accept();
+}
+
+RemoteView *RemoteView::keyTarget()
+{
+    QObject *const focused = QGuiApplication::focusObject();
+    RemoteView *view = qobject_cast<RemoteView *>(focused);
+    if (!view && focused && focused->property("remoteKeys").toBool())
+        view = focusedView;
+    return view && view->inputEnabled_ && view->isVisible() ? view : nullptr;
 }
 
 void RemoteView::keyPressEvent(QKeyEvent *event)
@@ -542,6 +569,7 @@ void RemoteView::keyReleaseEvent(QKeyEvent *event)
 
 void RemoteView::focusInEvent(QFocusEvent *event)
 {
+    focusedView = this;
     updateSystemKeys();
     QQuickItem::focusInEvent(event);
 }

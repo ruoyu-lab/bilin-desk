@@ -226,7 +226,8 @@ if(BILIN_MOBILE)
         list(APPEND app_qml qml/android/FilePickers.qml)
     elseif(IOS)
         list(APPEND app_sources src/mobile/phone_system_ios.mm src/mobile/ios_files.h src/mobile/ios_files.mm
-             src/remote_view/frame_textures_mac.mm)
+             src/remote_view/frame_textures_mac.mm src/remote_view/hardware_keys.h
+             src/remote_view/hardware_keys_ios.mm)
         list(APPEND app_qml qml/desktop/session/FilePickers.qml)
     else()
         # 在 Mac 上预览手机的界面

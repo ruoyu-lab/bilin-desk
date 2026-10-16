@@ -81,6 +81,14 @@ public:
     // 回到整个画面放得下
     Q_INVOKABLE void resetZoom();
 
+    // 键盘上的一个键（USB HID 键码）发给对方。plain：没按着修饰键（连 Mac 时 F 键当顶上那一排）
+    void sendKey(uint32_t usage, bool down, bool repeat, bool plain);
+    // 接着的键盘的按键现在给哪个画面（iPad 上不经过 Qt，hardware_keys_ios.mm）：有焦点、在控制的那个；
+    // 它的打字框（TouchKeyboard 里 remoteKeys 为真的那个）有焦点时也给它
+    static RemoteView *keyTarget();
+    // 对方是 Mac（连上以后才知道）
+    bool remoteIsMac() const;
+
 signals:
     void sessionChanged();
     void nativeSizeChanged();
@@ -140,7 +148,6 @@ private:
     void button(QMouseEvent *mouse, bool down);
     void key(QKeyEvent *key, bool down);
     void updateCursor();
-    bool remoteIsMac() const;
     bool touchpad() const;
     // 整个画面放得下时的位置（放大以前）
     rcsdk::ViewGeometry fitGeometry() const;
