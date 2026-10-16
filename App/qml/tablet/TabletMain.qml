@@ -40,7 +40,7 @@ ApplicationWindow {
     // 刚打开时等后台服务把账号的状态给过来，再决定要不要先进登录页（同 MobileMain）
     property bool loginDecided: false
     function decideLogin() {
-        if (loginDecided || ThisDevice.serviceState !== "ready")
+        if (loginDecided || ThisDevice.serviceState !== "ready" || !Account.known)
             return
         loginDecided = true
         if (!Account.signedIn && !AppSettings.mobileLoginSkipped)
@@ -75,6 +75,7 @@ ApplicationWindow {
                 stack.pop()
         }
         function onChanged() {
+            Qt.callLater(app.decideLogin)
             if (Account.signedIn)
                 Account.loginRequested = false
         }

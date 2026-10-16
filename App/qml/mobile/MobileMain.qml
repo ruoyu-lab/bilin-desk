@@ -33,7 +33,7 @@ ApplicationWindow {
     // 刚打开时等后台服务把账号的状态给过来（服务信息先到、账号随后），再决定要不要先进登录页
     property bool loginDecided: false
     function decideLogin() {
-        if (loginDecided || ThisDevice.serviceState !== "ready")
+        if (loginDecided || ThisDevice.serviceState !== "ready" || !Account.known)
             return
         loginDecided = true
         if (!Account.signedIn && !AppSettings.mobileLoginSkipped)
@@ -56,6 +56,7 @@ ApplicationWindow {
     Connections {
         target: Account
         function onChanged() {
+            Qt.callLater(app.decideLogin)
             if (Account.signedIn && stack.currentItem instanceof MobileLogin)
                 stack.pop()
             // 在账号页上退出、注销了
