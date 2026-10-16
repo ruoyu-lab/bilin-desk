@@ -39,7 +39,7 @@ QByteArray jpeg(const Source &source)
         reader.setDecideFormatFromContent(true);
         reader.setAutoTransform(true);
         const QSize size = reader.size();
-        if (size.isValid() && std::max(size.width(), size.height()) > MaxSide)
+        if (size.isValid() && qMax(size.width(), size.height()) > MaxSide)
             reader.setScaledSize(size.scaled(MaxSide, MaxSide, Qt::KeepAspectRatio));
         if (const QImage image = reader.read(); !image.isNull())
             return encode(image);
