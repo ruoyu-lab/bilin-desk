@@ -8,17 +8,18 @@ ApplicationWindow {
 
     property bool sidebarOpen: true
     property int sidebarWidth: 216
-    // 右边内容最窄多宽：窗口缩不到比它窄，侧栏也拖不过去（侧栏收着也算上它，打开时不用撑大窗口）
-    readonly property int contentMinimumWidth: 564
+    // 右边内容最窄多宽：窗口缩不到比它窄，侧栏也拖不过去（侧栏收着也算上它，打开时不用撑大窗口）。
+    // 侧栏是默认的宽时，窗口最小 980 × 660，也是第一次打开时的大小
+    readonly property int contentMinimumWidth: 764
 
     signal sessionRequested(var device, bool viewOnly)
     // 设置里点了"卸载远程控制"（macOS）
     signal uninstallRequested()
 
-    width: 1080
-    height: 700
+    width: 980
+    height: 660
     minimumWidth: sidebarWidth + contentMinimumWidth
-    minimumHeight: 480
+    minimumHeight: 660
     title: qsTr("比邻")
     color: Theme.bg
     flags: Theme.windowFlags

@@ -75,8 +75,8 @@ Item {
                     anchors.fill: parent
                     visible: false
                     source: root.device.wallpaper
+                    // 原图读一次（对方发来的最长 1280 像素）：不跟着卡片的宽重新解码，改窗口大小时不闪
                     fillMode: Image.PreserveAspectCrop
-                    sourceSize.width: width * Screen.devicePixelRatio
                     cache: false
                     asynchronous: true
                 }
