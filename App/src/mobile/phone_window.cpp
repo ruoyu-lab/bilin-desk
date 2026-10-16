@@ -20,6 +20,15 @@ void PhoneWindow::setDark(bool dark)
     emit darkChanged();
 }
 
+void PhoneWindow::setCaptureKeys(bool capture)
+{
+    if (capture == captureKeys_)
+        return;
+    captureKeys_ = capture;
+    phone_system::captureSystemKeys(capture);
+    emit captureKeysChanged();
+}
+
 void PhoneWindow::pressFeedback()
 {
     phone_system::pressFeedback();

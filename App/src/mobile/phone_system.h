@@ -13,5 +13,7 @@ void pressFeedback();
 // 全屏的平板（iPad）：底部的横条不碰时自己隐去（苹果不让彻底去掉），从底边往上划先给程序，再划一下才回桌面。
 // Android 上窗口全屏（Window.FullScreen）时状态栏、导航条已经藏起来了，这里什么都不做
 void hideHomeIndicator();
+// Android：系统自己的快捷键（Win+R、Alt+Tab……）也交给程序（SystemKeys.java）。iOS 没有这样的办法
+void captureSystemKeys(bool capture);
 
 } // namespace phone_system

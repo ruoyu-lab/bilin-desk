@@ -50,6 +50,12 @@ void hideHomeIndicator()
 {
 }
 
+void captureSystemKeys(bool capture)
+{
+    QJniObject::callStaticMethod<void>("com/bilindesk/bilin/SystemKeys", "capture", "(Landroid/app/Activity;Z)V",
+                                       QNativeInterface::QAndroidApplication::context().object(), jboolean(capture));
+}
+
 void pressFeedback()
 {
     changeWindow([](const QJniObject &window) {

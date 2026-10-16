@@ -64,6 +64,12 @@ Item {
         property: "keepAwake"
         value: AppSettings.keepScreenOn && root.session !== null
     }
+    // 控制着的时候接着的键盘按 Win+R、Alt+Tab 也给对方，不给手机
+    Binding {
+        target: PhoneWindow
+        property: "captureKeys"
+        value: root.controlling
+    }
 
     Rectangle {
         anchors.fill: parent

@@ -19,4 +19,8 @@ void hideHomeIndicator()
 {
 }
 
+void captureSystemKeys(bool)
+{
+}
+
 } // namespace phone_system

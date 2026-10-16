@@ -10,6 +10,7 @@
 // - dark：状态栏、导航条的图标跟着程序的外观（程序选了深色、手机是浅色时，图标要是白的），MobileMain 管
 // - pressFeedback()：按住不放出了右键、开始拖时手机震一下
 // - hideHomeIndicator()：全屏的平板，iPad 底部的横条不碰时隐去（TabletMain 管）
+// - captureKeys：控制着电脑时系统的快捷键（Win+R、Alt+Tab……）也发给对方（Android；MobileSession、TabletSession 管）
 class PhoneWindow : public QObject
 {
     Q_OBJECT
@@ -17,6 +18,7 @@ class PhoneWindow : public QObject
     QML_SINGLETON
     Q_PROPERTY(bool keepAwake READ keepAwake WRITE setKeepAwake NOTIFY keepAwakeChanged)
     Q_PROPERTY(bool dark READ dark WRITE setDark NOTIFY darkChanged)
+    Q_PROPERTY(bool captureKeys READ captureKeys WRITE setCaptureKeys NOTIFY captureKeysChanged)
 
 public:
     using QObject::QObject;
@@ -25,6 +27,8 @@ public:
     void setKeepAwake(bool keep);
     bool dark() const { return dark_.value_or(false); }
     void setDark(bool dark);
+    bool captureKeys() const { return captureKeys_; }
+    void setCaptureKeys(bool capture);
 
     Q_INVOKABLE void pressFeedback();
     Q_INVOKABLE void hideHomeIndicator();
@@ -32,9 +36,11 @@ public:
 signals:
     void keepAwakeChanged();
     void darkChanged();
+    void captureKeysChanged();
 
 private:
     bool keepAwake_ = false;
+    bool captureKeys_ = false;
     // 还没设过时不知道系统栏现在是什么样（打开时按手机的浅色、深色，platform/android 的 styles.xml）：第一次一定设
     std::optional<bool> dark_;
 };
