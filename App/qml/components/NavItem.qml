@@ -9,11 +9,11 @@ AbstractButton {
     property bool current: false
 
     implicitHeight: Theme.phone ? 44 : 34
-    hoverEnabled: true
+    hoverEnabled: Theme.hoverEffects
 
     background: Rectangle {
         radius: Theme.radius
-        color: root.current ? Theme.selected : root.hovered ? Theme.hover : "transparent"
+        color: root.current ? Theme.selected : root.hovered || root.down ? Theme.hover : "transparent"
     }
 
     contentItem: RowLayout {

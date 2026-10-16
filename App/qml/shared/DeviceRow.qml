@@ -12,16 +12,20 @@ Item {
 
     implicitHeight: 50
 
-    HoverHandler { id: hover }
+    HoverHandler {
+        id: hover
+        enabled: Theme.hoverEffects
+    }
 
     Rectangle {
         anchors.fill: parent
         radius: Theme.radius
-        color: root.selected ? Theme.selection : hover.hovered ? Theme.hover : "transparent"
+        color: root.selected ? Theme.selection : hover.hovered || area.pressed ? Theme.hover : "transparent"
     }
 
     // 点一下看详情，点两下连接；右键（触屏上长按）在点的地方出菜单
     MouseArea {
+        id: area
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: mouse => {

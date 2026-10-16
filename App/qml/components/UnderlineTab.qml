@@ -10,7 +10,7 @@ AbstractButton {
 
     implicitHeight: Theme.phone ? 48 : 40
     implicitWidth: row.implicitWidth + 4
-    hoverEnabled: true
+    hoverEnabled: Theme.hoverEffects
 
     background: Item {
         Rectangle {

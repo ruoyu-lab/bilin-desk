@@ -24,7 +24,7 @@ AbstractButton {
 
     implicitWidth: compact && Theme.unifiedTitleBar ? 28 : Theme.titleButtonSize
     implicitHeight: compact && Theme.unifiedTitleBar ? 28 : Theme.titleButtonSize
-    hoverEnabled: true
+    hoverEnabled: Theme.hoverEffects
     opacity: enabled ? 1 : 0.4
     onPressed: toggle.press()
     onClicked: {
@@ -40,7 +40,7 @@ AbstractButton {
         radius: root.compact ? Theme.radius - 2 : Theme.radius
         color: root.filled ? (root.down ? Theme.accentPressed : root.hovered ? Theme.accentHover : Theme.accent)
              : root.active ? root.activeFill
-             : root.hovered ? Theme.hover : "transparent"
+             : root.hovered || root.down ? Theme.hover : "transparent"
     }
 
     contentItem: Item {

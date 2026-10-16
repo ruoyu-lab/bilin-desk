@@ -206,6 +206,7 @@ set(mobile_qml
     qml/mobile/MobileTabBar.qml
     qml/mobile/MobileNavRail.qml
     qml/mobile/MobileOverview.qml
+    qml/mobile/MobileDeviceDetail.qml
     qml/mobile/MobileDevices.qml
     qml/mobile/MobileRecent.qml
     qml/mobile/MobileSettings.qml

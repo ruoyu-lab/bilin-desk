@@ -78,6 +78,8 @@ QtObject {
     readonly property bool touch: Qt.platform.os === "android" || Qt.platform.os === "ios"
     // 平板（main_mobile.cpp 按屏幕选了 TabletMain，它设上）：电脑版的布局和尺寸
     property bool tablet: false
+    // 有鼠标的悬停效果：触屏上手指点完会一直留着"悬停"，那里只要按下、选中的样子（Qt 自己的控件默认也是这样）
+    readonly property bool hoverEffects: !touch
     // 手机：手指点的东西做大，按钮、输入框至少 44 高，字也大一号。电脑、平板上照旧
     readonly property bool phone: touch && !tablet
     readonly property int controlHeight: phone ? 44 : 32

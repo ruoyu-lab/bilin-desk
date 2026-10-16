@@ -14,15 +14,17 @@ Rectangle {
     signal connectRequested(bool viewOnly)
 
     radius: 10
-    color: hover.hovered ? Theme.cardHover : Theme.card
+    color: hover.hovered || tap.pressed ? Theme.cardHover : Theme.card
 
     HoverHandler {
         id: hover
+        enabled: Theme.hoverEffects
         cursorShape: Qt.PointingHandCursor
     }
 
     // 点一下连接；右键（触屏上长按）出菜单：仅查看、详情、收藏……
     TapHandler {
+        id: tap
         onTapped: root.connectRequested(false)
         onLongPressed: menu.popup(root, point.position.x, point.position.y)
     }

@@ -50,7 +50,7 @@ Popup {
                 Layout.alignment: Qt.AlignTop
                 text: modelData.name.length > 0 ? modelData.name : qsTr("显示器 %1").arg(index + 1)
                 enabled: root.canChoose
-                hoverEnabled: true
+                hoverEnabled: Theme.hoverEffects
                 // 缩略图四周留 8；下面那行字在缩略图和卡片底边正中间（上下空得一样）
                 leftPadding: 8
                 rightPadding: 8

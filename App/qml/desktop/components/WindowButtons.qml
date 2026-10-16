@@ -27,7 +27,7 @@ Row {
         anchors.verticalCenter: parent.verticalCenter
         width: root.buttonSize
         height: root.buttonSize
-        hoverEnabled: true
+        hoverEnabled: Theme.hoverEffects
 
         background: Rectangle {
             radius: Theme.radius

@@ -263,7 +263,7 @@ Item {
                     y: favoriteGrid.cellY(favoriteRepeater.count)
                     width: favoriteGrid.cellWidth
                     height: favoriteGrid.cellHeight
-                    hoverEnabled: true
+                    hoverEnabled: Theme.hoverEffects
                     onClicked: root.addRequested()
 
                     background: Rectangle {

@@ -7,6 +7,7 @@
 #include <QJSEngine>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QNetworkInterface>
 #include <QTimer>
 
 #include <algorithm>
@@ -67,25 +68,52 @@ bool same(const rcs_power_interface &a, const rcs_power_interface &b)
            && std::strcmp(a.address, b.address) == 0 && std::strcmp(a.broadcast, b.broadcast) == 0;
 }
 
-// 本机的网卡（有 IPv4 地址的）
-QList<rcs_power_interface> localInterfaces()
+// 本机现在的 IPv4 地址（连着的网卡的）。只用来看和它在不在同一个网段：Qt 在各个系统上都拿得到，
+// SDK 的 rcs_power_list_interfaces 在手机上没有（Windows 上还要一会儿，不该在界面线程上问）
+QList<QHostAddress> localAddresses()
 {
-    std::vector<rcs_power_interface> items(RCS_POWER_INTERFACES_MAX);
-    uint32_t count = 0;
-    if (rcs_power_list_interfaces(items.data(), sizeof(rcs_power_interface), uint32_t(items.size()), &count) != RCS_OK)
-        return {};
-    return QList<rcs_power_interface>(items.begin(), items.begin() + std::min<size_t>(count, items.size()));
+    QList<QHostAddress> addresses;
+    for (const QNetworkInterface &network : QNetworkInterface::allInterfaces()) {
+        const QNetworkInterface::InterfaceFlags flags = network.flags();
+        if (!flags.testFlag(QNetworkInterface::IsUp) || !flags.testFlag(QNetworkInterface::IsRunning)
+            || flags.testFlag(QNetworkInterface::IsLoopBack))
+            continue;
+        for (const QNetworkAddressEntry &entry : network.addressEntries()) {
+            if (entry.ip().protocol() == QAbstractSocket::IPv4Protocol)
+                addresses.append(entry.ip());
+        }
+    }
+    return addresses;
 }
 
-// 两个地址在不在 prefix 这个网段里
-bool sameSubnet(const char *a, const char *b, uint32_t prefix)
+// 本机的地址在不在它这块网卡的网段里
+bool inSubnet(const QHostAddress &mine, const rcs_power_interface &target)
 {
-    return QHostAddress(QString::fromLatin1(a)).isInSubnet(QHostAddress(QString::fromLatin1(b)), int(prefix));
+    return mine.isInSubnet(QHostAddress(QString::fromLatin1(target.address)), int(target.prefix_length));
 }
 
 QString digits(const QString &deviceId)
 {
     return rc::DeviceId::parse(deviceId).digits();
+}
+
+// 往每块网卡发一个唤醒包；有一个发出去了就算成（结果是最后一个没发出去的原因）
+rcs_result sendWakes(const QList<rcs_power_interface> &targets)
+{
+    rcs_result failed = RCS_OK;
+    bool sent = false;
+    for (const rcs_power_interface &target : targets) {
+        rcs_power_wake wake = rcs_power_wake_init();
+        std::memcpy(wake.mac, target.mac, 6);
+        wake.address = target.broadcast;
+        if (const rcs_result result = rcs_power_send_wake(&wake); result != RCS_OK) {
+            qWarning("唤醒包没发出去（%s）：%s", macText(target.mac).toLatin1().constData(), rcs_result_message(result));
+            failed = result;
+        } else {
+            sent = true;
+        }
+    }
+    return sent ? RCS_OK : failed;
 }
 
 } // namespace
@@ -139,7 +167,7 @@ QString DeviceWake::problem(const QString &deviceId) const
         return tr("它没有打开网络唤醒");
     if (reachable(deviceId).isEmpty())
         return tr("本机和它不在同一个网络里，叫不醒它");
-    return {};
+    return unsent_.value(digits(deviceId));
 }
 
 bool DeviceWake::wake(const QString &deviceId)
@@ -147,32 +175,36 @@ bool DeviceWake::wake(const QString &deviceId)
     const QList<rcs_power_interface> targets = reachable(deviceId);
     if (targets.isEmpty())
         return false;
-    qInfo("唤醒 %s：往 %lld 块网卡发唤醒包", qUtf8Printable(digits(deviceId)), qlonglong(targets.size()));
-    for (int packet = 0; packet < Packets; ++packet) {
-        QTimer::singleShot(packet * PacketGapMs, this, [targets] {
-            for (const rcs_power_interface &target : targets) {
-                rcs_power_wake wake = rcs_power_wake_init();
-                std::memcpy(wake.mac, target.mac, 6);
-                wake.address = target.broadcast;
-                if (const rcs_result result = rcs_power_send_wake(&wake); result != RCS_OK)
-                    qWarning("唤醒包没发出去（%s）：%s", macText(target.mac).toLatin1().constData(),
-                             rcs_result_message(result));
-            }
-        });
+    const QString key = digits(deviceId);
+    qInfo("唤醒 %s：往 %lld 块网卡发唤醒包", qUtf8Printable(key), qlonglong(targets.size()));
+    // 第一个现在发：系统不让发（iPhone、iPad 没有苹果给的局域网广播权限）就告诉界面，别说"已叫醒"
+    const rcs_result first = sendWakes(targets);
+    const QString unsent = first == RCS_OK ? QString()
+                           : first == RCS_ERROR_PERMISSION_REQUIRED ? tr("系统不让本程序在局域网里发唤醒包")
+                           : tr("唤醒包没发出去：%1").arg(QString::fromUtf8(rcs_result_message(first)));
+    if (unsent != unsent_.value(key)) {
+        if (unsent.isEmpty())
+            unsent_.remove(key);
+        else
+            unsent_.insert(key, unsent);
+        ++revision_;
+        emit changed();
     }
+    if (first != RCS_OK)
+        return false;
+    for (int packet = 1; packet < Packets; ++packet)
+        QTimer::singleShot(packet * PacketGapMs, this, [targets] { sendWakes(targets); });
     return true;
 }
 
 QList<rcs_power_interface> DeviceWake::reachable(const QString &deviceId) const
 {
-    const QList<rcs_power_interface> local = localInterfaces();
+    const QList<QHostAddress> local = localAddresses();
     QList<rcs_power_interface> targets;
     for (const rcs_power_interface &target : devices_.value(digits(deviceId))) {
         if (target.wake == RCS_POWER_WAKE_DISABLED)
             continue;
-        if (std::any_of(local.cbegin(), local.cend(), [&target](const rcs_power_interface &mine) {
-                return sameSubnet(mine.address, target.address, target.prefix_length);
-            }))
+        if (std::any_of(local.cbegin(), local.cend(), [&target](const QHostAddress &mine) { return inSubnet(mine, target); }))
             targets.append(target);
     }
     return targets;

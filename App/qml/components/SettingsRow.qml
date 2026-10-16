@@ -35,7 +35,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        visible: root.navigates && hover.hovered
+        visible: root.navigates && (hover.hovered || tap.pressed)
         radius: Theme.radius
         color: Theme.hover
     }
@@ -112,10 +112,11 @@ Item {
 
     HoverHandler {
         id: hover
-        enabled: root.navigates
+        enabled: root.navigates && Theme.hoverEffects
         cursorShape: Qt.PointingHandCursor
     }
     TapHandler {
+        id: tap
         enabled: root.navigates
         onTapped: root.clicked()
     }

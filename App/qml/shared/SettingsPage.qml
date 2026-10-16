@@ -116,7 +116,7 @@ Item {
 
             HoverHandler {
                 id: accountHover
-                enabled: Account.signedIn
+                enabled: Account.signedIn && Theme.hoverEffects
                 cursorShape: Qt.PointingHandCursor
             }
             TapHandler {

@@ -46,7 +46,7 @@ RowLayout {
             text: modelData.name.length > 0 ? modelData.name : qsTr("显示器 %1").arg(index + 1)
             implicitWidth: Theme.titleButtonSize
             implicitHeight: Theme.titleButtonSize
-            hoverEnabled: true
+            hoverEnabled: Theme.hoverEffects
             enabled: root.canChoose
             onClicked: root.displays.show(index)
 

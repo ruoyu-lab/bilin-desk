@@ -118,7 +118,7 @@ Rectangle {
                 width: root.tabWidth
                 height: 24
                 z: drag.active ? 1 : 0
-                hoverEnabled: true
+                hoverEnabled: Theme.hoverEffects
                 onPressed: root.stage.currentIndex = index
                 onXChanged: {
                     if (!drag.active)

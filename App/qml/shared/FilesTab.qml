@@ -117,7 +117,7 @@ ColumnLayout {
             MouseArea {
                 id: clearArea
                 anchors.fill: parent
-                hoverEnabled: true
+                hoverEnabled: Theme.hoverEffects
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.files.clearCompleted()
             }

@@ -17,7 +17,7 @@ Button {
     implicitHeight: Theme.controlHeight
     leftPadding: 14
     rightPadding: 14
-    hoverEnabled: true
+    hoverEnabled: Theme.hoverEffects
     opacity: enabled ? 1 : 0.4
 
     background: Rectangle {

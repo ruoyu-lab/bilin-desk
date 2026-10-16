@@ -87,7 +87,7 @@ Rectangle {
             visible: ThisDevice.updateAvailable.length > 0
             enabled: phase === "idle"
             implicitHeight: 40
-            hoverEnabled: true
+            hoverEnabled: Theme.hoverEffects
             onClicked: ThisDevice.installUpdate()
 
             background: Rectangle {
@@ -148,7 +148,7 @@ Rectangle {
                 id: account
                 Layout.fillWidth: true
                 implicitHeight: 40
-                hoverEnabled: true
+                hoverEnabled: Theme.hoverEffects
                 // 开着时再点是关掉
                 onPressed: accountToggle.press()
                 onClicked: {

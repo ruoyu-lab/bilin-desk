@@ -53,5 +53,6 @@ private:
 
     QString file_;
     QHash<QString, QList<rcs_power_interface>> devices_;
+    QHash<QString, QString> unsent_; // 上次叫它时唤醒包为什么没发出去（problem() 说）
     int revision_ = 0;
 };
