@@ -81,11 +81,6 @@ Account::Account(ServiceClient &service, QObject *parent)
     });
 }
 
-bool Account::known() const
-{
-    return service_.hasTopic(protocol::AccountTopic);
-}
-
 void Account::setInstance(Account *account)
 {
     instance = account;

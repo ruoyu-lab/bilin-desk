@@ -37,7 +37,7 @@ ApplicationWindow {
         showingSessions = true
     }
 
-    // 刚打开时等后台服务把账号的状态给过来，再决定要不要先进登录页（同 MobileMain）
+    // 刚打开时等服务器说了登没登录，再决定要不要先进登录页（同 MobileMain）
     property bool loginDecided: false
     function decideLogin() {
         if (loginDecided || ThisDevice.serviceState !== "ready" || !Account.known)

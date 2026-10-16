@@ -42,8 +42,6 @@ public:
 
     State state() const { return state_; }
     QJsonObject topic(QLatin1StringView name) const { return topics_.value(name); }
-    // 后台服务发过这个主题没有（刚连上时它一个一个发过来）
-    bool hasTopic(QLatin1StringView name) const { return topics_.contains(name); }
     void send(QLatin1StringView command, const QJsonObject &arguments = {});
 
 signals:

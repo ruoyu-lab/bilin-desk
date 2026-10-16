@@ -30,7 +30,8 @@ ApplicationWindow {
         deviceMenu.open()
     }
 
-    // 刚打开时等后台服务把账号的状态给过来（服务信息先到、账号随后），再决定要不要先进登录页
+    // 刚打开时等服务器说了登没登录（Account.known：后台服务连上服务器才知道），再决定要不要先进登录页。
+    // 没连上服务器就一直不进：登录本来也要服务器
     property bool loginDecided: false
     function decideLogin() {
         if (loginDecided || ThisDevice.serviceState !== "ready" || !Account.known)

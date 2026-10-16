@@ -181,6 +181,7 @@ void ServerLink::received(const QString &text)
     } else if (type == server::Account) {
         const QJsonObject account = message.value(QLatin1StringView("account")).toObject();
         rc::protocol::AccountState state;
+        state.known = true;
         state.signedIn = !account.isEmpty();
         state.email = account.value(QLatin1StringView("email")).toString();
         state.nickname = account.value(QLatin1StringView("nickname")).toString();

@@ -156,6 +156,7 @@ QJsonObject AccountState::toJson() const
     for (const AccountDevice &device : devices)
         array.append(device.toJson());
     return {
+        {QStringLiteral("known"), known},
         {QStringLiteral("signedIn"), signedIn},
         {QStringLiteral("email"), email},
         {QStringLiteral("nickname"), nickname},
@@ -166,6 +167,7 @@ QJsonObject AccountState::toJson() const
 AccountState AccountState::fromJson(const QJsonObject &json)
 {
     AccountState state;
+    state.known = json.value(QLatin1StringView("known")).toBool();
     state.signedIn = json.value(QLatin1StringView("signedIn")).toBool();
     state.email = json.value(QLatin1StringView("email")).toString();
     state.nickname = json.value(QLatin1StringView("nickname")).toString();

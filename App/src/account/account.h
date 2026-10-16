@@ -22,7 +22,7 @@ class Account : public QObject
     QML_SINGLETON
 
     Q_PROPERTY(bool signedIn READ signedIn NOTIFY changed)
-    // 后台服务说过账号的状态了：刚打开时它在"服务准备好了"之后才发，在这之前 signedIn 还不算数
+    // 服务器说过登没登录了：刚打开时后台服务还没连上服务器，在这之前 signedIn 还不算数
     Q_PROPERTY(bool known READ known NOTIFY changed)
     Q_PROPERTY(QString email READ email NOTIFY changed)
     Q_PROPERTY(QString displayName READ displayName NOTIFY changed)
@@ -41,7 +41,7 @@ public:
     static Account *create(QQmlEngine *, QJSEngine *);
 
     bool signedIn() const { return state_.signedIn; }
-    bool known() const;
+    bool known() const { return state_.known; }
     QString email() const { return state_.email; }
     QString displayName() const { return state_.nickname; }
     QVariantList devices() const;

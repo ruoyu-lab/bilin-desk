@@ -246,6 +246,8 @@ struct AccountDevice
 // 本机登录的账号；没登录时 signedIn 为 false，其余都是空的
 struct AccountState
 {
+    // 服务器说过登没登录了：刚启动、还没连上服务器时不知道，signedIn 还不算数
+    bool known = false;
     bool signedIn = false;
     QString email;
     QString nickname;
