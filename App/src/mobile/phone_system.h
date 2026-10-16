@@ -4,6 +4,10 @@
 // 电脑上预览手机的界面时什么都不做（phone_system_none.cpp）
 namespace phone_system {
 
+// 平板（iPad、最窄的一边至少 600dp 的 Android）：电脑版的布局。在建 QGuiApplication 之前就要知道（要先定整体放大），
+// 所以直接问系统，不看 Qt 的屏幕。电脑上预览时按 BILIN_PREVIEW=tablet
+bool tablet();
+
 // 屏幕不自己熄灭
 void keepScreenOn(bool keep);
 // 系统栏（状态栏、Android 的导航条）跟着程序的外观：深色时图标是白的

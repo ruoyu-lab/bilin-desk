@@ -13,8 +13,9 @@ MobilePage {
     // mine | nearby | favorites
     property string scope: "mine"
 
-    signal connectRequested(var device, bool viewOnly)
     signal menuRequested(var device)
+    // 点一下：看它的详情（连接在详情里、按住的菜单里）
+    signal detailsRequested(var device)
 
     readonly property var shown: DeviceQuery.query(Devices.devices, scope, { search: search.text, sort: "name" })
     readonly property var online: shown.filter(d => !d.presenceKnown || d.online)
@@ -77,7 +78,7 @@ MobilePage {
                         width: rows.width
                         device: row.modelData
                         first: row.index === 0
-                        onClicked: root.connectRequested(row.modelData, false)
+                        onClicked: root.detailsRequested(row.modelData)
                         onPressAndHold: root.menuRequested(row.modelData)
                     }
                 }

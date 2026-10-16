@@ -19,6 +19,15 @@ void changeWindow(Change change)
 
 } // namespace
 
+bool tablet()
+{
+    // 系统的资源（不要 Context）：Configuration.smallestScreenWidthDp，Android 自己分手机、平板用的
+    const QJniObject configuration =
+        QJniObject::callStaticObjectMethod("android/content/res/Resources", "getSystem", "()Landroid/content/res/Resources;")
+            .callObjectMethod("getConfiguration", "()Landroid/content/res/Configuration;");
+    return configuration.getField<jint>("smallestScreenWidthDp") >= 600;
+}
+
 void keepScreenOn(bool keep)
 {
     changeWindow([keep](const QJniObject &window) {

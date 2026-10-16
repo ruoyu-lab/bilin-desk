@@ -7,6 +7,11 @@
 
 namespace phone_system {
 
+bool tablet()
+{
+    return UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
+}
+
 void keepScreenOn(bool keep)
 {
     UIApplication.sharedApplication.idleTimerDisabled = keep;

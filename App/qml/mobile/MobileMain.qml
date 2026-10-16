@@ -25,6 +25,10 @@ ApplicationWindow {
         stack.push(sessionPage, { device: device, viewOnly: viewOnly })
     }
 
+    function showDetails(device) {
+        stack.push(detailPage, { key: device.key })
+    }
+
     function showMenu(device) {
         deviceMenu.device = device
         deviceMenu.open()
@@ -116,8 +120,8 @@ ApplicationWindow {
             }
             MobileDevices {
                 bottomInset: home.tabInset
-                onConnectRequested: (device, viewOnly) => app.connectTo(device, viewOnly)
                 onMenuRequested: device => app.showMenu(device)
+                onDetailsRequested: device => app.showDetails(device)
             }
             MobileRecent {
                 bottomInset: home.tabInset
@@ -152,7 +156,7 @@ ApplicationWindow {
         y: Math.round((app.height - height) / 2)
         details: true
         onConnectRequested: viewOnly => app.connectTo(deviceMenu.device, viewOnly)
-        onDetailsRequested: stack.push(detailPage, { key: deviceMenu.device.key })
+        onDetailsRequested: app.showDetails(deviceMenu.device)
     }
 
     Component {

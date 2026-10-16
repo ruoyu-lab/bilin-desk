@@ -5,6 +5,7 @@
 #include "devices/device_wake.h"
 #include "mobile/local_service.h"
 #include "mobile/mobile_files.h"
+#include "mobile/phone_system.h"
 #include "remote_view/view_graphics.h"
 #include "service_client.h"
 #include "session/viewer_sessions.h"
@@ -28,13 +29,18 @@
 #endif
 
 #include <QGuiApplication>
-#include <QScreen>
 #include <QQmlApplicationEngine>
 
 // 手机版（Android、iOS）：只去连电脑，不被连。一个窗口（MobileMain.qml），后台服务在本进程里（LocalService）；
 // 没有安装程序、托盘、开机启动、单实例这些电脑上才有的
 int main(int argc, char *argv[])
 {
+    // 平板是电脑版的布局，整体放大一些（拿在手里离眼睛远，电脑上的大小看着费劲）。只能在建 QGuiApplication 之前定
+    const bool tablet = phone_system::tablet();
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    if (tablet && !qEnvironmentVariableIsSet("QT_SCALE_FACTOR"))
+        qputenv("QT_SCALE_FACTOR", "1.15");
+#endif
     QGuiApplication app(argc, argv);
     QGuiApplication::setOrganizationName(QStringLiteral("Bilin"));
     QGuiApplication::setOrganizationDomain(QStringLiteral("bilindesk.com"));
@@ -97,13 +103,6 @@ int main(int argc, char *argv[])
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
-    // 平板（短的那一边至少 600）是电脑版的布局，手机是手机的。电脑上预览时按 BILIN_PREVIEW=tablet 选
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-    const QSize screen = QGuiApplication::primaryScreen()->size();
-    const bool tablet = std::min(screen.width(), screen.height()) >= 600;
-#else
-    const bool tablet = qEnvironmentVariable("BILIN_PREVIEW") == u"tablet";
-#endif
     engine.loadFromModule("Bilin", tablet ? "TabletMain" : "MobileMain");
     return QGuiApplication::exec();
 }
