@@ -22,7 +22,7 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
     }
 
-    // 点一下连接；右键（触屏上长按）出菜单：仅查看、详情、收藏……
+    // 点一下连接；右键（触屏上长按）出菜单：详情、收藏……（只看在会话的工具栏上切换）
     TapHandler {
         id: tap
         onTapped: root.connectRequested(false)
@@ -85,7 +85,7 @@ Rectangle {
         id: menu
         device: root.device
         details: true
-        onConnectRequested: viewOnly => root.connectRequested(viewOnly)
+        onConnectRequested: root.connectRequested(false)
         onDetailsRequested: root.detailsRequested()
     }
 }

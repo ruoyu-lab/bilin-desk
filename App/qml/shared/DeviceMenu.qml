@@ -8,7 +8,7 @@ AppMenu {
     // 有设备详情的地方（电脑版、平板的概览）多一项"详情"
     property bool details: false
 
-    signal connectRequested(bool viewOnly)
+    signal connectRequested()
     signal detailsRequested()
 
     // 不在线的我的设备、本机叫得醒时（DeviceWake）：先叫醒它
@@ -18,8 +18,7 @@ AppMenu {
                && Wake.problem(device.deviceId).length === 0
     }
 
-    AppMenuItem { text: qsTr("连接"); onTriggered: root.connectRequested(false) }
-    AppMenuItem { text: qsTr("仅查看"); onTriggered: root.connectRequested(true) }
+    AppMenuItem { text: qsTr("连接"); onTriggered: root.connectRequested() }
     AppMenuItem {
         visible: root.wakeable
         height: visible ? implicitHeight : 0

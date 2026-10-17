@@ -148,14 +148,14 @@ ApplicationWindow {
         }
     }
 
-    // 按住一台设备不放：连接、仅查看、详情、收藏、复制地址、移除
+    // 按住一台设备不放：连接、详情、收藏、复制地址、移除
     DeviceMenu {
         id: deviceMenu
         parent: Overlay.overlay
         x: Math.round((app.width - width) / 2)
         y: Math.round((app.height - height) / 2)
         details: true
-        onConnectRequested: viewOnly => app.connectTo(deviceMenu.device, viewOnly)
+        onConnectRequested: app.connectTo(deviceMenu.device, false)
         onDetailsRequested: app.showDetails(deviceMenu.device)
     }
 

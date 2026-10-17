@@ -97,6 +97,6 @@ Item {
     DeviceMenu {
         id: menu
         device: root.device
-        onConnectRequested: viewOnly => root.connectRequested(viewOnly)
+        onConnectRequested: root.connectRequested(false)
     }
 }
