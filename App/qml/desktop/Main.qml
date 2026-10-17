@@ -198,7 +198,7 @@ QtObject {
         // macOS 菜单栏用单色模板图标，随系统的深浅色变化。
         // 托盘的图标加载器不按本文件的位置解析相对路径，也不认 @2x：给完整地址，每个平台一张 PNG，
         // 由系统缩放（macOS 32 像素按 2 倍图显示成 16 点；Windows 64 像素，缩到托盘需要的大小）
-        icon.source: Qt.resolvedUrl(Qt.platform.os === "osx" ? "icons/tray-mac.png" : "icons/tray.png")
+        icon.source: Qt.resolvedUrl(Qt.platform.os === "osx" ? "../icons/tray-mac.png" : "../icons/tray.png")
         icon.mask: Qt.platform.os === "osx"
         tooltip: qsTr("比邻")
         Component.onCompleted: if (!available) console.warn("系统托盘不可用")
