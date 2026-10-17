@@ -36,6 +36,7 @@ QPointer<RemoteView> focusedView;
 // 手机上的手指（逻辑像素、毫秒）
 constexpr qreal TapSlop = 10;         // 动了不到这么多还算点
 constexpr int LongPressMs = 450;      // 按住不放多久算长按
+constexpr int ExitFullScreenHoldMs = 3000; // 全屏时四个以上手指按住多久退出
 constexpr int DoubleTapMs = 350;      // 两下点得这么快、
 constexpr qreal DoubleTapSlop = 28;   // 离得这么近，第二下落在第一下的地方（对方才认成双击）
 constexpr qreal PinchSlop = 24;       // 两个手指的距离变了这么多算缩放
@@ -86,6 +87,12 @@ RemoteView::RemoteView(QQuickItem *parent)
     longPress_.setSingleShot(true);
     longPress_.setInterval(LongPressMs);
     connect(&longPress_, &QTimer::timeout, this, &RemoteView::longPressed);
+    manyFingersHeld_.setSingleShot(true);
+    manyFingersHeld_.setInterval(ExitFullScreenHoldMs);
+    connect(&manyFingersHeld_, &QTimer::timeout, this, [this] {
+        emit pressedAndHeld();
+        emit exitFullScreenRequested();
+    });
 #ifdef Q_OS_IOS
     hardware_keys::install();
 #endif
@@ -547,24 +554,60 @@ void RemoteView::sendKey(uint32_t usage, bool down, bool repeat, bool plain)
     send(event);
 }
 
+RemoteView *RemoteView::focused()
+{
+    QObject *const object = QGuiApplication::focusObject();
+    RemoteView *view = qobject_cast<RemoteView *>(object);
+    if (!view && object && object->property("remoteKeys").toBool())
+        view = focusedView;
+    return view && view->isVisible() ? view : nullptr;
+}
+
 RemoteView *RemoteView::keyTarget()
 {
-    QObject *const focused = QGuiApplication::focusObject();
-    RemoteView *view = qobject_cast<RemoteView *>(focused);
-    if (!view && focused && focused->property("remoteKeys").toBool())
-        view = focusedView;
-    return view && view->inputEnabled_ && view->isVisible() ? view : nullptr;
+    RemoteView *const view = focused();
+    return view && view->inputEnabled_ ? view : nullptr;
 }
 
 void RemoteView::keyPressEvent(QKeyEvent *event)
 {
+    if (fullScreen_ && isExitFullScreenChord(event->key(), event->modifiers())) {
+        event->accept();
+        if (!event->isAutoRepeat()) {
+            exitChordDown_ = true;
+            emit exitFullScreenRequested();
+        }
+        return;
+    }
     key(event, true);
 }
 
 void RemoteView::keyReleaseEvent(QKeyEvent *event)
 {
+    if (exitChordDown_ && event->key() == Qt::Key_F) {
+        event->accept();
+        if (!event->isAutoRepeat())
+            exitChordDown_ = false;
+        return;
+    }
     if (!event->isAutoRepeat())
         key(event, false);
+}
+
+bool RemoteView::isExitFullScreenChord(int key, Qt::KeyboardModifiers modifiers)
+{
+    return key == Qt::Key_F && modifiers.testFlags(Qt::ShiftModifier | Qt::AltModifier)
+           && (modifiers & (Qt::ControlModifier | Qt::MetaModifier));
+}
+
+void RemoteView::setFullScreen(bool fullScreen)
+{
+    if (fullScreen == fullScreen_)
+        return;
+    fullScreen_ = fullScreen;
+    if (!fullScreen)
+        manyFingersHeld_.stop();
+    emit fullScreenChanged();
 }
 
 void RemoteView::focusInEvent(QFocusEvent *event)
@@ -779,6 +822,7 @@ void RemoteView::touchEvent(QTouchEvent *event)
         else if (gesture_.kind == Gesture::Kind::Pointer)
             pointerButton(false, gesture_.last);
         longPress_.stop();
+        manyFingersHeld_.stop();
         touching_ = false;
         return;
     }
@@ -789,6 +833,11 @@ void RemoteView::touchEvent(QTouchEvent *event)
     }
     if (event->type() == QEvent::TouchBegin && !pressed.isEmpty())
         beginTouch(pressed.front());
+    if (pressed.size() >= 3) {
+        manyFingers(pressed.size());
+        return;
+    }
+    manyFingersHeld_.stop();
     if (pressed.size() >= 2)
         twoFingers(pressed.at(0), pressed.at(1));
     else if (pressed.size() == 1)
@@ -951,6 +1000,23 @@ void RemoteView::longPressed()
     gesture_.kind = Gesture::Kind::Done;
     touchButton(RCS_BUTTON_RIGHT, true, gesture_.start);
     touchButton(RCS_BUTTON_RIGHT, false, gesture_.start);
+}
+
+void RemoteView::manyFingers(qsizetype count)
+{
+    using Kind = Gesture::Kind;
+    if (gesture_.kind == Kind::Drag)
+        touchButton(RCS_BUTTON_LEFT, false, gesture_.last);
+    else if (gesture_.kind == Kind::Pointer)
+        pointerButton(false, gesture_.last);
+    longPress_.stop();
+    gesture_.kind = Kind::Done;
+    if (fullScreen_ && count >= 4) {
+        if (!manyFingersHeld_.isActive())
+            manyFingersHeld_.start();
+    } else {
+        manyFingersHeld_.stop();
+    }
 }
 
 void RemoteView::tap(QPointF point)

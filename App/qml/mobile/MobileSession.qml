@@ -6,7 +6,7 @@ import QtQuick.Layouts
 
 // 手机上连着一台电脑：远程画面铺满（RemoteCanvas，和电脑版的会话一样：连接中、输临时密码、出错都在里面），
 // 上面浮着几个按钮：左上角名字和延迟（点开是断开连接、对方电脑的重启关机，PowerMenu），右上角显示器（对方有
-// 几块时）、键盘、快捷键、手指操作方式、"…"；放大了时中间是倍数，点一下复原。系统的返回先问一句再断开。
+// 几块时）、键盘、快捷键、手指操作方式、全屏（只有画面，四个手指按住 3 秒出来）、"…"；放大了时中间是倍数，点一下复原。系统的返回先问一句再断开。
 // 键盘按钮弹出菜单：打字（系统键盘），或者按键栏（底下一排电脑上的键：Esc、Tab、Ctrl……，不弹系统键盘、
 // 不挡着），按键栏的修饰键点一下按住、打下一个键时一起按。
 // "…"拉出电脑版会话的侧边面板（SidePanel：对话、文件、设置）：竖着从下面拉出来，横着在右边
@@ -32,6 +32,25 @@ Item {
     signal closed()
 
     readonly property bool controlling: canvas.controlling && canvas.showVideo
+    // 全屏：只有画面，浮着的按钮、系统的状态栏都藏起来；四个手指按住 3 秒出来（RemoteView.fullScreen）
+    property bool fullScreen: false
+    // 进全屏之前窗口是什么样，出来时回到它
+    property int windowVisibility: Window.AutomaticVisibility
+    onFullScreenChanged: {
+        const window = root.Window.window
+        if (fullScreen) {
+            keyboard.close()
+            windowVisibility = window.visibility
+            window.visibility = Window.FullScreen
+            fullScreenHint.flash()
+        } else {
+            window.visibility = windowVisibility
+        }
+    }
+    Component.onDestruction: {
+        if (fullScreen && root.Window.window)
+            root.Window.window.visibility = windowVisibility
+    }
 
     function close() {
         ViewerSessions.close(root.device.key)
@@ -88,7 +107,9 @@ Item {
         viewOnly: root.viewOnly
         touchMode: root.fingerMode
         // 状态条在上面那排按钮下面
-        statusTop: 58
+        statusTop: root.fullScreen ? 12 : 58
+        fullScreen: root.fullScreen
+        onExitFullScreenRequested: root.fullScreen = false
         onCloseRequested: root.close()
         // 按住不放出了右键、开始拖：震一下
         onPressedAndHeld: PhoneWindow.pressFeedback()
@@ -105,6 +126,7 @@ Item {
     // 最宽到右上角那一组前面（横屏、名字长的时候）：名字只显示前面一段
     Pill {
         id: namePill
+        visible: !root.fullScreen
         readonly property real rightEdge: panelPill.visible ? panelPill.x
                                           : toolsPill.visible ? toolsPill.x : root.width - root.SafeArea.margins.right - 2
         x: root.SafeArea.margins.left + 10
@@ -199,7 +221,7 @@ Item {
     // ---- 右上角：显示器（对方有几块时）、键盘、快捷键、手指操作方式（控制着的时候才有） ----
     Pill {
         id: toolsPill
-        visible: root.controlling
+        visible: root.controlling && !root.fullScreen
         anchors.right: parent.right
         anchors.rightMargin: root.SafeArea.margins.right + 10
         y: root.SafeArea.margins.top + 10
@@ -294,40 +316,65 @@ Item {
         }
     }
 
-    // 右上角最后一个："…"（连上以后，只看时也有），拉出面板；有没看的消息时带个红点
+    // 右上角最后一组（连上以后，只看时也有）：全屏；"…"拉出面板，有没看的消息时带个红点
     Pill {
         id: panelPill
-        visible: root.session !== null
+        visible: root.session !== null && !root.fullScreen
         anchors.right: parent.right
-        anchors.rightMargin: root.SafeArea.margins.right + 10 + (root.controlling ? toolsPill.width + 8 : 0)
+        anchors.rightMargin: root.SafeArea.margins.right + 10 + (toolsPill.visible ? toolsPill.width + 8 : 0)
         y: root.SafeArea.margins.top + 10
-        width: 44
-        Icon {
-            anchors.centerIn: parent
-            name: "panel-right"
-            size: 20
-            color: "white"
+        width: 88
+
+        Item {
+            width: 44
+            height: parent.height
+            Icon {
+                anchors.centerIn: parent
+                name: "maximize"
+                size: 19
+                color: "white"
+            }
+            TapHandler {
+                onTapped: root.fullScreen = true
+            }
         }
-        Rectangle {
-            x: parent.width - 14
-            y: 8
-            width: 8
-            height: 8
-            radius: 4
-            color: Theme.danger
-            visible: root.session !== null && root.session.chat.conversation.unread > 0
-        }
-        TapHandler {
-            onTapped: {
-                keyboard.close()
-                root.panelOpen = true
+        Item {
+            x: 44
+            width: 44
+            height: parent.height
+            Icon {
+                anchors.centerIn: parent
+                name: "panel-right"
+                size: 20
+                color: "white"
+            }
+            Rectangle {
+                x: parent.width - 14
+                y: 8
+                width: 8
+                height: 8
+                radius: 4
+                color: Theme.danger
+                visible: root.session !== null && root.session.chat.conversation.unread > 0
+            }
+            TapHandler {
+                onTapped: {
+                    keyboard.close()
+                    root.panelOpen = true
+                }
             }
         }
     }
 
+    FullScreenHint {
+        id: fullScreenHint
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: root.SafeArea.margins.top + 12
+    }
+
     // ---- 放大了：倍数，点一下复原（上面那排按钮下面，和状态条一个位置，有状态条时不显示） ----
     Pill {
-        visible: canvas.zoom > 1.01 && !canvas.statusShown
+        visible: canvas.zoom > 1.01 && !canvas.statusShown && !root.fullScreen
         anchors.horizontalCenter: parent.horizontalCenter
         y: root.SafeArea.margins.top + 58
         width: zoomText.implicitWidth + 28

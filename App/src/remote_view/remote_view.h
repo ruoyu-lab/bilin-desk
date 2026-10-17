@@ -52,6 +52,9 @@ class RemoteView : public QQuickItem
     Q_PROPERTY(QString touchMode READ touchMode WRITE setTouchMode NOTIFY touchModeChanged)
     // 手机上放大的倍数：1 是整个画面放得下
     Q_PROPERTY(qreal zoom READ zoom NOTIFY zoomChanged)
+    // 全屏（只有画面，别的都藏起来）：Ctrl+Alt+Shift+F（Mac 上 Control、Command 都算）、四个以上手指按住 3 秒
+    // 发 exitFullScreenRequested，这些不发给对方
+    Q_PROPERTY(bool fullScreen READ fullScreen WRITE setFullScreen NOTIFY fullScreenChanged)
 
 public:
     explicit RemoteView(QQuickItem *parent = nullptr);
@@ -88,6 +91,12 @@ public:
     static RemoteView *keyTarget();
     // 对方是 Mac（连上以后才知道）
     bool remoteIsMac() const;
+    bool fullScreen() const { return fullScreen_; }
+    void setFullScreen(bool fullScreen);
+    // 有焦点的画面（或者它的打字框有焦点）：在不在控制都算
+    static RemoteView *focused();
+    // 退出全屏的组合键：F，同时按着 Shift、Alt（Option）和 Control 或 Command
+    static bool isExitFullScreenChord(int key, Qt::KeyboardModifiers modifiers);
 
 signals:
     void sessionChanged();
@@ -100,6 +109,9 @@ signals:
     void zoomChanged();
     // 手机：按住不放起了作用（触摸板开始拖、直接点出了右键），手机震一下
     void pressedAndHeld();
+    void fullScreenChanged();
+    // 全屏时按了退出的组合键、四个以上手指按住了 3 秒
+    void exitFullScreenRequested();
 
 protected:
     QSGNode *updatePaintNode(QSGNode *old, UpdatePaintNodeData *) override;
@@ -160,6 +172,8 @@ private:
     void twoFingers(QPointF a, QPointF b);
     void endTouch();
     void longPressed();
+    // 三个以上手指：不是给对方的操作（按着的键松开），四个以上按住 3 秒退出全屏
+    void manyFingers(qsizetype count);
     void tap(QPointF point);
     void scrollBy(QPointF delta, QPointF at);
     // 手机上的输入落在哪：触摸板是光标，直接点是手指（point）
@@ -204,6 +218,9 @@ private:
     QHash<int, QPointF> touchPoints_; // 这一次触摸里每个手指最后在哪（hoverMoveEvent）
     std::optional<QPointF> pointer_;  // 真的鼠标、触控板的指针最后在哪（不是手指带出来的悬停）
     QTimer longPress_;
+    QTimer manyFingersHeld_; // 四个以上手指按住多久了（全屏时退出）
+    bool fullScreen_ = false;
+    bool exitChordDown_ = false; // 退出全屏的组合键的 F 按着：松开也不发给对方
     // 触摸板：光标在编码帧上的位置（0..65535），手指移动时本机先算，不等对方报回来
     double cursorX_ = 32767;
     double cursorY_ = 32767;

@@ -18,6 +18,13 @@ Item {
     readonly property bool controlling: view !== null && view.session !== null && view.session.controlGranted
                                         && !view.viewOnly
 
+    // 全屏：只有画面（上面那条、按键栏都藏起来），四个手指按住 3 秒出来；回到主界面时也出来
+    property bool fullScreen: false
+    onVisibleChanged: {
+        if (!visible)
+            fullScreen = false
+    }
+
     // 回到主界面；最后一台断开了也是
     signal backRequested()
 
@@ -45,6 +52,7 @@ Item {
 
     Rectangle {
         id: bar
+        visible: !root.fullScreen
         width: parent.width
         height: root.SafeArea.margins.top + Theme.headerHeight
         color: Theme.sidebar
@@ -74,6 +82,12 @@ Item {
             SessionTools {
                 id: tools
                 stage: stage
+                fullScreenAvailable: true
+                fullScreen: root.fullScreen
+                onFullScreenToggled: {
+                    keyboard.close()
+                    root.fullScreen = true
+                }
                 leadingTools: Component {
                     RowLayout {
                         visible: root.controlling
@@ -122,7 +136,7 @@ Item {
 
     SessionStage {
         id: stage
-        anchors.top: bar.bottom
+        anchors.top: root.fullScreen ? parent.top : bar.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
@@ -131,6 +145,8 @@ Item {
         // 让开按键栏、系统键盘
         anchors.bottomMargin: keyboard.active ? keyboard.occupied : root.SafeArea.margins.bottom
         touchMode: root.fingerMode
+        fullScreen: root.fullScreen
+        onExitFullScreenRequested: root.fullScreen = false
         onEmptied: root.backRequested()
         // 按住不放出了右键、开始拖：震一下
         onPressedAndHeld: PhoneWindow.pressFeedback()
@@ -138,7 +154,7 @@ Item {
 
     // 放大了：倍数，点一下复原
     Rectangle {
-        visible: root.view !== null && root.view.zoom > 1.01
+        visible: root.view !== null && root.view.zoom > 1.01 && !root.fullScreen
         anchors.horizontalCenter: stage.horizontalCenter
         y: bar.height + 12
         width: zoomText.implicitWidth + 28

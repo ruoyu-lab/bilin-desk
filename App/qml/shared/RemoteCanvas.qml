@@ -27,6 +27,8 @@ Rectangle {
     // 控制对方：对方允许、自己没选"仅查看"
     readonly property bool controlling: session !== null && session.controlGranted && !viewOnly
 
+    // 全屏（只有画面）：退出的组合键、手势（RemoteView.fullScreen）
+    property bool fullScreen: false
     // 手机：手指怎么操作对方（RemoteView.touchMode）、放大的倍数、对方是不是 Mac（按键栏上写 ⌘ 还是 Win）
     property string touchMode
     readonly property real zoom: video.zoom
@@ -38,6 +40,7 @@ Rectangle {
     signal closeRequested()
     // 手机：按住不放起了作用（RemoteView）
     signal pressedAndHeld()
+    signal exitFullScreenRequested()
 
     // 会话窗口"发送快捷键"菜单
     function sendShortcut(id) {
@@ -95,7 +98,9 @@ Rectangle {
         remoteCursor: root.remoteCursor
         inputEnabled: root.controlling && root.showVideo
         touchMode: root.touchMode
+        fullScreen: root.fullScreen
         onPressedAndHeld: root.pressedAndHeld()
+        onExitFullScreenRequested: root.exitFullScreenRequested()
     }
 
     // 连上了、第一帧还没到

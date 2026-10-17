@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
-// 细标题栏：红绿灯、会话标签和工具共用一条窄栏。全屏时外观不变。
+// 细标题栏：红绿灯、会话标签和工具共用一条窄栏。全屏时藏起来（只有画面，SessionWindow）
 Item {
     id: root
 

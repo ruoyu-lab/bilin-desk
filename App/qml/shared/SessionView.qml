@@ -12,6 +12,8 @@ Item {
     required property string address
     required property bool viewOnly
     property bool panelOpen: true
+    // 全屏：只有画面，侧边面板也收起来（RemoteView.fullScreen）
+    property bool fullScreen: false
     // 平板：手指怎么操作对方（RemoteView.touchMode）；电脑上为空
     property string touchMode
 
@@ -27,6 +29,8 @@ Item {
     signal closeRequested()
     // 平板：按住不放起了作用
     signal pressedAndHeld()
+    // 全屏时按了退出的组合键、做了退出的手势
+    signal exitFullScreenRequested()
 
     // shortcuts 里 id 那一项
     function sendShortcut(id) {
@@ -67,13 +71,15 @@ Item {
             nativeSize: root.nativeSize
             remoteCursor: AppSettings.remoteCursor
             touchMode: root.touchMode
+            fullScreen: root.fullScreen
             onCloseRequested: root.closeRequested()
             onPressedAndHeld: root.pressedAndHeld()
+            onExitFullScreenRequested: root.exitFullScreenRequested()
         }
 
         Item {
             Layout.fillHeight: true
-            Layout.preferredWidth: root.panelOpen ? 300 : 0
+            Layout.preferredWidth: root.panelOpen && !root.fullScreen ? 300 : 0
             clip: true
 
             Behavior on Layout.preferredWidth {

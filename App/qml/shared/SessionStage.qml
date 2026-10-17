@@ -24,6 +24,16 @@ Item {
     property bool detachable: false
     // 手机、平板：手指怎么操作对方（RemoteView.touchMode）；电脑上为空
     property string touchMode
+    // 全屏：只有画面（标签、工具、侧边面板都藏起来）。刚进去时说几秒怎么退出
+    property bool fullScreen: false
+    onFullScreenChanged: {
+        if (!fullScreen)
+            return
+        fullScreenHint.flash()
+        // 退出的组合键要画面收得到
+        if (currentView !== null)
+            currentView.focusInput()
+    }
 
     // 请求把某个会话移到新窗口，由窗口管理者负责创建
     signal detachRequested(int index)
@@ -31,6 +41,8 @@ Item {
     signal emptied()
     // 平板：按住不放起了作用（RemoteView）
     signal pressedAndHeld()
+    // 全屏时按了退出的组合键、做了退出的手势
+    signal exitFullScreenRequested()
 
     function indexOfDevice(key) {
         for (let i = 0; i < sessions.count; ++i) {
@@ -154,9 +166,17 @@ Item {
             visible: index === root.currentIndex
             panelOpen: root.panelOpen
             touchMode: root.touchMode
+            fullScreen: root.fullScreen
             onCloseRequested: root.closeSession(index)
             onPressedAndHeld: root.pressedAndHeld()
+            onExitFullScreenRequested: root.exitFullScreenRequested()
         }
+    }
+
+    FullScreenHint {
+        id: fullScreenHint
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: 16
     }
 
     // 对方系统上的组合键（连上以后按对方是 Mac 还是 Windows）

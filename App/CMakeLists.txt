@@ -98,6 +98,7 @@ set(app_qml
     qml/shared/LicensesPage.qml
     qml/shared/RemoteCanvas.qml
     qml/shared/ChatTab.qml
+    qml/shared/FullScreenHint.qml
     qml/shared/FilesTab.qml
     qml/shared/SettingsTab.qml
     qml/shared/SidePanel.qml

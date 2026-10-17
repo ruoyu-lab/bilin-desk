@@ -77,10 +77,13 @@ ApplicationWindow {
     onFullScreenChanged: WindowChrome.setToolbarVisible(win, !fullScreen)
     onClosing: sessionStage.closeAll()
 
+    // 全屏只有画面：标签、工具都藏起来，按 Ctrl+Alt+Shift+F 出来（RemoteView.fullScreen）
     SessionStage {
         id: sessionStage
         anchors.fill: parent
-        anchors.topMargin: win.compactBarHeight
+        anchors.topMargin: win.fullScreen ? 0 : win.compactBarHeight
+        fullScreen: win.fullScreen
+        onExitFullScreenRequested: win.showNormal()
         detachable: true
         onDetachRequested: index => win.detachRequested(index)
         onEmptied: win.close()
@@ -88,6 +91,14 @@ ApplicationWindow {
 
     CompactChrome {
         anchors.fill: parent
+        visible: !win.fullScreen
         session: win
+    }
+
+    // 焦点不在画面上时（画面收着组合键时它先拿到，这里收不到）也出得来：Mac 上 Ctrl 是 Command、Meta 是 Control
+    Shortcut {
+        enabled: win.fullScreen
+        sequences: ["Ctrl+Alt+Shift+F", "Meta+Alt+Shift+F"]
+        onActivated: win.showNormal()
     }
 }

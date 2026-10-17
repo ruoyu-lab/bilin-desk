@@ -8,7 +8,7 @@ RowLayout {
     id: root
 
     required property SessionStage stage
-    // 电脑版的会话窗口能全屏
+    // 能全屏（只有画面，按快捷键、手势出来）：电脑版的会话窗口、平板
     property bool fullScreenAvailable: false
     property bool fullScreen: false
     // 平板放在最前面的工具（键盘、手指操作方式）

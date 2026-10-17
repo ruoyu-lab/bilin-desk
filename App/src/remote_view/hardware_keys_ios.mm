@@ -17,6 +17,7 @@ namespace {
 constexpr int RepeatDelayMs = 500;
 constexpr int RepeatIntervalMs = 33;
 constexpr uint32_t CapsLock = 57;
+constexpr long KeyF = 9;
 constexpr uint32_t FirstModifier = 224; // 左 Control ~ 右 Command：224~231
 
 // 按下的键发给了哪个画面：松开也给它（中途焦点换了也是）
@@ -69,6 +70,16 @@ bool handle(UIPressesEvent *event)
         const long code = key.keyCode;
         switch (press.phase) {
         case UIPressPhaseBegan: {
+            // 全屏时退出的组合键（RemoteView::isExitFullScreenChord）：不发给对方，松开也不发
+            const UIKeyModifierFlags flags = key.modifierFlags;
+            if (RemoteView *const full = RemoteView::focused(); full && full->fullScreen() && code == KeyF
+                && (flags & UIKeyModifierShift) && (flags & UIKeyModifierAlternate)
+                && (flags & (UIKeyModifierControl | UIKeyModifierCommand))) {
+                pressed.insert(code, Pressed{});
+                emit full->exitFullScreenRequested();
+                handled = true;
+                break;
+            }
             RemoteView *const view = RemoteView::keyTarget();
             if (view == nullptr)
                 break;
