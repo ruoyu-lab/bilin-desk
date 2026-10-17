@@ -9,6 +9,8 @@ Settings {
 
     // 会话窗口里上次的选择：侧边面板开着没有、剪贴板同步、远程声音
     property bool sessionPanelOpen: false
+    // 设备列表右边详情拖到的宽（DevicesPage）
+    property int deviceDetailWidth: 460
     property bool clipboardSync: true
     property bool remoteAudio: true
 

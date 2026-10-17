@@ -12,6 +12,9 @@ Item {
 
     signal connectRequested(bool viewOnly)
 
+    // 最窄多宽：最下面那排按钮（复制、重命名、保存）挤不到一起（DevicesPage 拖宽窄时用）
+    readonly property real minimumWidth: actions.implicitWidth + 40
+
     readonly property var style: Theme.osStyle(device.os)
     // 网络唤醒（Wake）：叫不醒时为什么；我的设备才有
     readonly property string wakeProblem: {
@@ -165,10 +168,6 @@ Item {
                     }
                 }
                 AppButton {
-                    text: qsTr("仅查看")
-                    onClicked: root.connectRequested(true)
-                }
-                AppButton {
                     primary: true
                     text: qsTr("连接")
                     onClicked: root.connectRequested(false)
@@ -220,6 +219,7 @@ Item {
             Item { Layout.fillHeight: true }
 
             RowLayout {
+                id: actions
                 spacing: 8
                 AppButton {
                     iconName: "copy"

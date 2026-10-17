@@ -11,8 +11,21 @@ AppMenu {
     signal connectRequested(bool viewOnly)
     signal detailsRequested()
 
+    // 不在线的我的设备、本机叫得醒时（DeviceWake）：先叫醒它
+    readonly property bool wakeable: {
+        Wake.revision
+        return device.mine === true && device.presenceKnown === true && !device.online && !!device.deviceId
+               && Wake.problem(device.deviceId).length === 0
+    }
+
     AppMenuItem { text: qsTr("连接"); onTriggered: root.connectRequested(false) }
     AppMenuItem { text: qsTr("仅查看"); onTriggered: root.connectRequested(true) }
+    AppMenuItem {
+        visible: root.wakeable
+        height: visible ? implicitHeight : 0
+        text: qsTr("唤醒")
+        onTriggered: Wake.wake(root.device.deviceId)
+    }
     AppMenuItem {
         // 菜单里藏起来的一项也占着地方：高度跟着清零
         visible: root.details

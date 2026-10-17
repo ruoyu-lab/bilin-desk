@@ -35,16 +35,23 @@ Item {
         return first
     }
 
+    // 右边详情的宽：拖到的（记着，AppSettings），不窄过最下面那排按钮挤不下的宽，左边列表至少留 ListMinimum
+    readonly property int listMinimum: 220
+    readonly property real detailMinimum: detailLoader.item ? (detailLoader.item as DeviceDetail).minimumWidth : 300
+    function clampDetail(width) {
+        return Math.max(detailMinimum, Math.min(width, row.width - handle.width - listMinimum))
+    }
+
     RowLayout {
+        id: row
         anchors.fill: parent
         anchors.leftMargin: 12
         anchors.rightMargin: 12
         anchors.bottomMargin: 12
-        spacing: 12
+        spacing: 0
 
         Item {
-            Layout.preferredWidth: 260
-            Layout.fillWidth: !root.browse.detailOpen
+            Layout.fillWidth: true
             Layout.fillHeight: true
 
             Flickable {
@@ -110,14 +117,37 @@ Item {
             }
         }
 
+        // 列表和详情中间的空隙：按住左右拖改详情的宽，只有指针变成左右箭头
+        MouseArea {
+            id: handle
+            property real pressX
+            property real pressWidth
+
+            Layout.preferredWidth: 12
+            Layout.fillHeight: true
+            visible: root.browse.detailOpen
+            cursorShape: Qt.SizeHorCursor
+            preventStealing: true
+            onPressed: mouse => {
+                pressX = mapToItem(null, mouse.x, 0).x
+                pressWidth = detail.width
+            }
+            onPositionChanged: mouse => {
+                const delta = pressX - mapToItem(null, mouse.x, 0).x
+                AppSettings.deviceDetailWidth = Math.round(root.clampDetail(pressWidth + delta))
+            }
+        }
+
         Rectangle {
-            Layout.fillWidth: true
+            id: detail
+            Layout.preferredWidth: root.clampDetail(AppSettings.deviceDetailWidth)
             Layout.fillHeight: true
             visible: root.browse.detailOpen
             radius: Theme.cardRadius
             color: Theme.card
 
             Loader {
+                id: detailLoader
                 anchors.fill: parent
                 active: root.selected !== null
                 sourceComponent: DeviceDetail {
