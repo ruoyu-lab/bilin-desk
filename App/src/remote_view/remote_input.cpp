@@ -19,6 +19,8 @@ constexpr uint32_t KeyR = 21;
 constexpr uint32_t KeyS = 22;
 constexpr uint32_t Key5 = 34;
 constexpr uint32_t Escape = 41;
+constexpr uint32_t F11 = 68;
+constexpr uint32_t Up = 82;
 constexpr uint32_t Tab = 43;
 constexpr uint32_t Space = 44;
 constexpr uint32_t LeftControl = 224;
@@ -34,6 +36,9 @@ constexpr Shortcut MacShortcuts[] = {
     {"forceQuit", QT_TRANSLATE_NOOP("RemoteView", "强制退出应用"), "⌥⌘Esc", {LeftAlt, LeftGui, Escape}},
     {"screenshot", QT_TRANSLATE_NOOP("RemoteView", "截屏"), "⇧⌘5", {LeftShift, LeftGui, Key5}},
     {"lock", QT_TRANSLATE_NOOP("RemoteView", "锁定屏幕"), "⌃⌘Q", {LeftControl, LeftGui, KeyQ}},
+    // MacBook 顶上那一排的功能（F1~F12 原样发，这两个从这里发）
+    {"missionControl", QT_TRANSLATE_NOOP("RemoteView", "调度中心"), "⌃↑", {LeftControl, Up}},
+    {"showDesktop", QT_TRANSLATE_NOOP("RemoteView", "显示桌面"), "F11", {F11}},
 };
 
 constexpr Shortcut WindowsShortcuts[] = {
@@ -75,10 +80,9 @@ constexpr std::pair<uint16_t, uint8_t> ScanCodes[] = {
     {0x0057, 68},  {0x0058, 69},  {0x0059, 103}, {0x0064, 104}, {0x0065, 105}, {0x0066, 106}, {0x0067, 107},
     {0x0068, 108}, {0x0069, 109}, {0x006A, 110}, {0x006B, 111}, {0x006C, 112}, {0x006D, 113}, {0x006E, 114},
     {0x0070, 136}, {0x0071, 145}, {0x0072, 144}, {0x0073, 135}, {0x0076, 115}, {0x0079, 138}, {0x007B, 139},
-    {0x007D, 137}, {0x007E, 133}, {0xE01C, 88},  {0xE01D, 228}, {0xE020, 127}, {0xE02E, 129}, {0xE030, 128},
-    {0xE035, 84},  {0xE037, 70},  {0xE038, 230}, {0xE045, 83},  {0xE047, 74},  {0xE048, 82},  {0xE049, 75},
-    {0xE04B, 80},  {0xE04D, 79},  {0xE04F, 77},  {0xE050, 81},  {0xE051, 78},  {0xE052, 73},  {0xE053, 76},
-    {0xE05B, 227}, {0xE05C, 231}, {0xE05D, 101},
+    {0x007D, 137}, {0x007E, 133}, {0xE01C, 88},  {0xE01D, 228}, {0xE035, 84},  {0xE037, 70},  {0xE038, 230},
+    {0xE045, 83},  {0xE047, 74},  {0xE048, 82},  {0xE049, 75},  {0xE04B, 80},  {0xE04D, 79},  {0xE04F, 77},
+    {0xE050, 81},  {0xE051, 78},  {0xE052, 73},  {0xE053, 76},  {0xE05B, 227}, {0xE05C, 231}, {0xE05D, 101},
 };
 #elif defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
 // 手机（Android、iOS）：Qt 不给原始键码，只给是哪个键（Qt::Key）。按美式键盘上那个键的位置换；Shift 打出来的符号算它
@@ -167,24 +171,6 @@ uint32_t swapCommandAndControl(uint32_t usage)
 
 } // namespace
 
-std::optional<MacTopRowKey> macTopRow(uint32_t usage)
-{
-    constexpr uint32_t Up = 82;
-    switch (usage) {
-    case 58: return MacTopRowKey{.consumer = 0x70};                      // F1：亮度 −
-    case 59: return MacTopRowKey{.consumer = 0x6F};                      // F2：亮度 +
-    case 60: return MacTopRowKey{.keys = {LeftControl, Up}};             // F3：调度中心
-    case 61: return MacTopRowKey{.keys = {LeftGui, Space}};              // F4：聚焦搜索
-    case 64: return MacTopRowKey{.consumer = 0xB6};                      // F7：上一首
-    case 65: return MacTopRowKey{.consumer = 0xCD};                      // F8：播放、暂停
-    case 66: return MacTopRowKey{.consumer = 0xB5};                      // F9：下一首
-    case 67: return MacTopRowKey{.consumer = 0xE2};                      // F10：静音
-    case 68: return MacTopRowKey{.consumer = 0xEA};                      // F11：音量 −
-    case 69: return MacTopRowKey{.consumer = 0xE9};                      // F12：音量 +
-    default: return std::nullopt;
-    }
-}
-
 uint32_t keyUsage(const QKeyEvent &key, bool remoteIsMac)
 {
 #ifdef Q_OS_WIN
@@ -207,8 +193,10 @@ uint32_t keyUsage(const QKeyEvent &key, bool remoteIsMac)
 #ifdef Q_OS_IOS
 uint32_t appleKeyboardUsage(uint32_t usage, bool remoteIsMac)
 {
-    // 键盘那一页 4（A）~231（右 Command）；Globe 键这类苹果自己的不在里面
-    if (usage < 4 || usage > RightGui)
+    // 键盘那一页 4（A）~231（右 Command）；Globe 键这类苹果自己的不在里面。静音、音量留在本机
+    constexpr uint32_t Mute = 127;
+    constexpr uint32_t VolumeDown = 129;
+    if (usage < 4 || usage > RightGui || (usage >= Mute && usage <= VolumeDown))
         return 0;
     return remoteIsMac ? usage : swapCommandAndControl(usage);
 }

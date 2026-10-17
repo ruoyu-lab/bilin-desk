@@ -84,8 +84,8 @@ public:
     // 回到整个画面放得下
     Q_INVOKABLE void resetZoom();
 
-    // 键盘上的一个键（USB HID 键码）发给对方。plain：没按着修饰键（连 Mac 时 F 键当顶上那一排）
-    void sendKey(uint32_t usage, bool down, bool repeat, bool plain);
+    // 键盘上的一个键（USB HID 键码）发给对方
+    void sendKey(uint32_t usage, bool down, bool repeat);
     // 接着的键盘的按键现在给哪个画面（iPad 上不经过 Qt，hardware_keys_ios.mm）：有焦点、在控制的那个；
     // 它的打字框（TouchKeyboard 里 remoteKeys 为真的那个）有焦点时也给它
     static RemoteView *keyTarget();

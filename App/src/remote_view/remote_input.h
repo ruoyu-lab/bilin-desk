@@ -13,7 +13,8 @@ class QKeyEvent;
 namespace remote_input {
 
 // 按下的键 → USB HID 键盘用法（rcs_input_event.code）：按键在键盘上的位置，打出什么由对方的键盘布局决定。
-// 取自系统给的原始键码（Windows 的扫描码、macOS 的虚拟键码）；不是对方能收的键时为 0。
+// 取自系统给的原始键码（Windows 的扫描码、macOS 的虚拟键码）；不是对方能收的键时为 0。F1~F12 原样发（像这把键盘
+// 插在对方电脑上）；静音、音量这些媒体键为 0，留在本机（对方的声音在本机放）。
 // Mac 上的 Command 在不是 Mac 的对方那里当 Ctrl 用（Control 当 Win 键），Command+C 在那边也是复制
 uint32_t keyUsage(const QKeyEvent &key, bool remoteIsMac);
 
@@ -22,16 +23,6 @@ uint32_t keyUsage(const QKeyEvent &key, bool remoteIsMac);
 // Command 在不是 Mac 的对方那里当 Ctrl 用；不是对方能收的键时为 0
 uint32_t appleKeyboardUsage(uint32_t usage, bool remoteIsMac);
 #endif
-
-// 不是 Mac 的电脑连 Mac：F1~F12 当 MacBook 键盘顶上那一排用（亮度、调度中心、聚焦搜索、播放、音量）。
-// consumer 是媒体键（RCS_KEY_CONSUMER 那一页的用法），不然 keys 是按下去的组合键；Mac 上没有对应的（F5 听写、
-// F6 勿扰）为空，照旧发 F 键。按着修饰键时也照旧发 F 键（像在 Mac 上按着 Fn）
-struct MacTopRowKey
-{
-    uint32_t consumer = 0;
-    uint32_t keys[2] = {};
-};
-std::optional<MacTopRowKey> macTopRow(uint32_t usage);
 
 // 鼠标键 → RCS_BUTTON_*；SDK 不转发的键为 0
 uint32_t button(Qt::MouseButton button);

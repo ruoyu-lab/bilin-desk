@@ -25,7 +25,6 @@ struct Pressed
 {
     QPointer<RemoteView> view;
     uint32_t usage = 0; // 发出去的（Command、Control 对换以后）
-    bool plain = false;
 };
 
 QHash<long, Pressed> pressed; // 按 UIKey.keyCode
@@ -46,7 +45,7 @@ void repeatKey()
         repeatTimer->stop();
         return;
     }
-    it->view->sendKey(it->usage, true, true, it->plain);
+    it->view->sendKey(it->usage, true, true);
     repeatTimer->start(RepeatIntervalMs);
 }
 
@@ -56,7 +55,7 @@ void release(long code)
     if (code == repeating)
         repeatTimer->stop();
     if (key.view)
-        key.view->sendKey(key.usage, false, false, key.plain);
+        key.view->sendKey(key.usage, false, false);
 }
 
 // 这个事件里的键都发给对方了：不再交给 UIKit（Qt、输入法）
@@ -86,11 +85,8 @@ bool handle(UIPressesEvent *event)
             const uint32_t usage = remote_input::appleKeyboardUsage(uint32_t(code), view->remoteIsMac());
             if (!usage)
                 break;
-            constexpr UIKeyModifierFlags modifiers =
-                UIKeyModifierShift | UIKeyModifierControl | UIKeyModifierAlternate | UIKeyModifierCommand;
-            const Pressed down{view, usage, !(key.modifierFlags & modifiers)};
-            pressed.insert(code, down);
-            view->sendKey(usage, true, false, down.plain);
+            pressed.insert(code, Pressed{view, usage});
+            view->sendKey(usage, true, false);
             if (usage != CapsLock && usage < FirstModifier)
                 startRepeat(code);
             handled = true;
