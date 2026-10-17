@@ -74,6 +74,13 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationName(QStringLiteral("BilinService"));
     QCoreApplication::setApplicationVersion(QStringLiteral(APP_VERSION));
     const QStringList arguments = QCoreApplication::arguments();
+    // SDK 的日志也进本程序的日志（service.log；系统服务的看护者进 system-service.log）
+    rcsdk::setLogCallback(RCS_LOG_INFO, [](const rcs_log_record &record) {
+        if (record.level <= RCS_LOG_WARNING)
+            qWarning("[sdk %s] %s", record.module, record.message);
+        else
+            qInfo("[sdk %s] %s", record.module, record.message);
+    });
 #ifdef Q_OS_WIN
     if (arguments.contains(rc::program::SystemServiceArgument))
         return system_mode::runSystemService();
@@ -114,13 +121,6 @@ int main(int argc, char *argv[])
     info.program = QCoreApplication::applicationFilePath();
     info.modified = QFileInfo(info.program).lastModified().toMSecsSinceEpoch();
     qInfo("后台服务启动：%s", qUtf8Printable(info.program));
-    // SDK 的日志也进 service.log
-    rcsdk::setLogCallback(RCS_LOG_INFO, [](const rcs_log_record &record) {
-        if (record.level <= RCS_LOG_WARNING)
-            qWarning("[sdk %s] %s", record.module, record.message);
-        else
-            qInfo("[sdk %s] %s", record.module, record.message);
-    });
     // SDK 的模块在任何会话之前注册：剪贴板、互传文件、保持唤醒（macOS 装好时机器那一半在助手里，助手也注册）
     rcsdk::registerModule(*rcs_clipboard_module());
     rcsdk::registerModule(*rcs_file_transfer_module());
