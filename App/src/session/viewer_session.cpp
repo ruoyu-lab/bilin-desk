@@ -25,6 +25,49 @@ namespace protocol = rc::protocol;
 
 namespace {
 
+// 反色的指针（Windows 的十字、文字输入的竖线这类黑白光标）SDK 只能画成纯黑，在深色的地方看不见（截图时变暗的屏幕、
+// 深色的编辑器）。不透明的地方全是黑的：外面描一圈白边（像 Mac 自己的指针），图大一圈，热点跟着挪
+ViewerSession::CursorShape outlinedIfBlack(const QImage &image, QPoint hotspot)
+{
+    const auto opaque = [&image](int x, int y) {
+        return x >= 0 && y >= 0 && x < image.width() && y < image.height() && qAlpha(image.pixel(x, y)) > 0;
+    };
+    bool any = false;
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            const QRgb pixel = image.pixel(x, y);
+            if (qAlpha(pixel) == 0)
+                continue;
+            if (qRed(pixel) || qGreen(pixel) || qBlue(pixel))
+                return {image, hotspot};
+            any = true;
+        }
+    }
+    if (!any)
+        return {image, hotspot};
+    // 新图的 (x, y) 是原图的 (x - 1, y - 1)：它旁边一圈（含自己）有不透明的就描白
+    const auto nearOpaque = [&opaque](int x, int y) {
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                if (opaque(x + dx, y + dy))
+                    return true;
+            }
+        }
+        return false;
+    };
+    QImage outlined(image.width() + 2, image.height() + 2, QImage::Format_ARGB32);
+    outlined.fill(Qt::transparent);
+    for (int y = 0; y < outlined.height(); ++y) {
+        for (int x = 0; x < outlined.width(); ++x) {
+            if (opaque(x - 1, y - 1))
+                outlined.setPixel(x, y, image.pixel(x - 1, y - 1));
+            else if (nearOpaque(x - 1, y - 1))
+                outlined.setPixel(x, y, qRgba(255, 255, 255, 255));
+        }
+    }
+    return {outlined, hotspot + QPoint(1, 1)};
+}
+
 // 对方不接受连接时会回绝；一直不回答多半是路上丢了
 constexpr int AnswerMs = 15000;
 // 有中继可以改走时，直连的连通检查等多久：通的路一两秒就找到，不用等 SDK 默认的 15 秒才知道不通
@@ -469,7 +512,7 @@ void ViewerSession::open(bool relay)
             std::optional<CursorShape> shape;
             if (const rcs_cursor_shape *s = pointer.shape) {
                 const QImage pixels(s->pixels, int(s->width), int(s->height), int(s->stride_bytes), QImage::Format_ARGB32);
-                shape = CursorShape{pixels.copy(), QPoint(int(s->hotspot_x), int(s->hotspot_y))};
+                shape = outlinedIfBlack(pixels.copy(), QPoint(int(s->hotspot_x), int(s->hotspot_y)));
             }
             const Cursor cursor{pointer.visible != 0, pointer.x, pointer.y, pointer.shape_id};
             QMetaObject::invokeMethod(this, [this, connection, cursor, shape = std::move(shape)] {
