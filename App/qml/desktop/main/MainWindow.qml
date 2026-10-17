@@ -9,8 +9,8 @@ ApplicationWindow {
     property bool sidebarOpen: true
     property int sidebarWidth: 216
     // 右边内容最窄多宽：窗口缩不到比它窄，侧栏也拖不过去（侧栏收着也算上它，打开时不用撑大窗口）。
-    // 侧栏是默认的宽时，窗口最小 820 × 623；第一次打开时 980 × 660
-    readonly property int contentMinimumWidth: 604
+    // 侧栏是默认的宽时，窗口最小 840 × 623；第一次打开时 980 × 660
+    readonly property int contentMinimumWidth: 624
 
     signal sessionRequested(var device, bool viewOnly)
     // 设置里点了"卸载远程控制"（macOS）
