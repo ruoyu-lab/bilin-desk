@@ -918,10 +918,9 @@ const ViewerSession::CursorShape *ViewerSession::cursorShape(uint32_t id) const
     return found == cursorShapes_.cend() ? nullptr : &*found;
 }
 
-void ViewerSession::sendInput(const rcs_input_event &event)
+rcs_result ViewerSession::sendInput(const rcs_input_event &event)
 {
-    if (session_)
-        session_->sendInput(event);
+    return session_ ? session_->sendInput(event) : RCS_ERROR_INVALID_STATE;
 }
 
 rc::peer::SendResult ViewerSession::sendData(std::uint32_t channel, const QByteArray &data)

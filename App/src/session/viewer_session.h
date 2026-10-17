@@ -217,7 +217,7 @@ public:
     // 这次连接里见过的形状；没见过的编号为空
     const CursorShape *cursorShape(uint32_t id) const;
     // 对方允许控制（controlGranted）时才会被执行
-    void sendInput(const rcs_input_event &event);
+    rcs_result sendInput(const rcs_input_event &event);
     // 数据通道：发给对方一条（连上以后）
     rc::peer::SendResult sendData(std::uint32_t channel, const QByteArray &data);
 

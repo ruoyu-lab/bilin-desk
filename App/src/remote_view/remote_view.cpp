@@ -198,7 +198,9 @@ void RemoteView::sendShortcut(const QString &id)
     if (id == QLatin1StringView(remote_input::SecureAttention)) {
         rcs_input_event event = rcs_input_event_init();
         event.type = RCS_INPUT_SECURE_ATTENTION;
-        send(event);
+        // 对方执行了也不会说：日志里记着发出去没有
+        const rcs_result result = session_ ? session_->sendInput(event) : RCS_ERROR_INVALID_STATE;
+        qInfo("向对方发 Ctrl+Alt+Del：%s", rcs_result_message(result));
         return;
     }
     const auto shortcuts = remote_input::shortcuts(remoteIsMac());

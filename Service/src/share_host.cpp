@@ -267,6 +267,12 @@ void ShareHost::start()
         const rcs_platform platform = viewer.peer.platform;
         later([this, id, route, platform, admit] { viewerArrived(id, route, platformName(platform), admit); });
     };
+    // 观看端要按 Ctrl+Alt+Del：记一笔（SDK 交给系统以后系统不说成没成，日志里至少看得出请求到了），照常执行
+    callbacks.onInput = [](const rcs_input_event &event) {
+        if (event.type == RCS_INPUT_SECURE_ATTENTION)
+            qInfo("观看端要按 Ctrl+Alt+Del");
+        return true;
+    };
     callbacks.onEvent = [this, later](const rcs_event &event) {
         if (auto file = rc::FileTransfers::read(event)) {
             later([this, file = std::move(*file)] { files_.handle(file); });
