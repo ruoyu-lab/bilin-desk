@@ -9,7 +9,7 @@ ApplicationWindow {
     property bool sidebarOpen: true
     property int sidebarWidth: 216
     // 右边内容最窄多宽：窗口缩不到比它窄，侧栏也拖不过去（侧栏收着也算上它，打开时不用撑大窗口）。
-    // 侧栏是默认的宽时，窗口最小 820 × 625；第一次打开时 980 × 660
+    // 侧栏是默认的宽时，窗口最小 820 × 620；第一次打开时 980 × 660
     readonly property int contentMinimumWidth: 604
 
     signal sessionRequested(var device, bool viewOnly)
@@ -19,7 +19,7 @@ ApplicationWindow {
     width: 980
     height: 660
     minimumWidth: sidebarWidth + contentMinimumWidth
-    minimumHeight: 625
+    minimumHeight: 620
     title: qsTr("比邻")
     color: Theme.bg
     flags: Theme.windowFlags
