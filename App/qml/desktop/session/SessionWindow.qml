@@ -23,7 +23,7 @@ ApplicationWindow {
     width: 1280
     height: 800
     minimumWidth: 820
-    minimumHeight: 615
+    minimumHeight: 625
     title: currentView ? currentView.name : qsTr("远程会话")
     color: Theme.canvas
     flags: Theme.windowFlags
