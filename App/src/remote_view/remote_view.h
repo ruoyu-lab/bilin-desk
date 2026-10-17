@@ -154,7 +154,8 @@ private:
     // 笔（Apple Pencil、数位板）：对方收得了笔时按笔发，返回 true；不然 false，Qt 把它当鼠标
     bool pen(QTabletEvent *tablet);
     void send(const rcs_input_event &event);
-    // Windows：控制对方、有焦点时截下 Win 键（SystemKeys）
+    // 控制对方、有焦点时，系统自己先拿走的键也给对方：Windows 截下 Win 键（SystemKeys），macOS 暂停系统的快捷键
+    // （system_keys_mac）
     void updateSystemKeys();
     void releaseAll();
     void button(QMouseEvent *mouse, bool down);

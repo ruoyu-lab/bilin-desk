@@ -2,6 +2,9 @@
 
 #include "frame_mailbox.h"
 #include "frame_node.h"
+#ifdef Q_OS_MACOS
+#include "system_keys_mac.h"
+#endif
 #ifdef Q_OS_IOS
 #include "hardware_keys.h"
 #endif
@@ -32,6 +35,11 @@ constexpr uint32_t HiddenCursor = std::numeric_limits<uint32_t>::max();
 
 // 最近拿到焦点的画面：打字框有焦点时，接着的键盘的按键给它（RemoteView::keyTarget）
 QPointer<RemoteView> focusedView;
+
+#ifdef Q_OS_MACOS
+// 暂停了系统快捷键的画面（updateSystemKeys）
+const RemoteView *shortcutsPausedBy = nullptr;
+#endif
 
 // 手机上的手指（逻辑像素、毫秒）
 constexpr qreal TapSlop = 10;         // 动了不到这么多还算点
@@ -102,6 +110,10 @@ RemoteView::~RemoteView()
 {
     if (frames_)
         frames_->setRenderWindow(nullptr);
+#ifdef Q_OS_MACOS
+    if (shortcutsPausedBy == this)
+        system_keys_mac::pauseShortcuts(false);
+#endif
 }
 
 void RemoteView::setSession(ViewerSession *session)
@@ -511,6 +523,17 @@ void RemoteView::key(QKeyEvent *key, bool down)
         key->ignore();
         return;
     }
+#ifdef Q_OS_MACOS
+    // Mac 上的 Caps Lock 只报大写锁定开了（当成按下）、关了（当成松开），按一次只有一个：每一个都当按了一下发，
+    // 不然对方要按两次才切一次
+    constexpr uint32_t CapsLock = 57;
+    if (usage == CapsLock) {
+        sendKey(usage, true, false, false);
+        sendKey(usage, false, false, false);
+        key->accept();
+        return;
+    }
+#endif
     sendKey(usage, down, key->isAutoRepeat(), key->modifiers() == Qt::NoModifier);
     key->accept();
 }
@@ -628,7 +651,17 @@ void RemoteView::focusOutEvent(QFocusEvent *event)
 
 void RemoteView::updateSystemKeys()
 {
-#ifdef Q_OS_WIN
+#ifdef Q_OS_MACOS
+    // 只有暂停了的那个画面恢复（别的窗口里的画面变了不算）
+    const bool wanted = inputEnabled_ && hasActiveFocus() && touchMode_.isEmpty();
+    if (wanted) {
+        shortcutsPausedBy = this;
+        system_keys_mac::pauseShortcuts(true);
+    } else if (shortcutsPausedBy == this) {
+        shortcutsPausedBy = nullptr;
+        system_keys_mac::pauseShortcuts(false);
+    }
+#elif defined(Q_OS_WIN)
     const bool wanted = inputEnabled_ && hasActiveFocus() && touchMode_.isEmpty();
     if (wanted == bool(systemKeys_))
         return;

@@ -236,7 +236,8 @@ if(BILIN_MOBILE)
         list(APPEND app_qml qml/desktop/session/FilePickers.qml)
     else()
         # 在 Mac 上预览手机的界面
-        list(APPEND app_sources src/mobile/phone_system_none.cpp src/remote_view/frame_textures_mac.mm)
+        list(APPEND app_sources src/mobile/phone_system_none.cpp src/remote_view/frame_textures_mac.mm
+             src/remote_view/system_keys_mac.h src/remote_view/system_keys_mac.mm)
         list(APPEND app_qml qml/desktop/session/FilePickers.qml)
     endif()
     list(APPEND app_qml ${mobile_qml})
@@ -424,7 +425,7 @@ endif()
 if(APPLE)
     target_sources(Bilin PRIVATE src/windowchrome_mac.mm src/dock_mac.mm src/login_item_mac.mm
                    src/quit_reason_mac.mm src/remote_view/frame_textures_mac.mm src/setup/setup_mac.mm
-                   src/wallpaper_mac.mm)
+                   src/wallpaper_mac.mm src/remote_view/system_keys_mac.h src/remote_view/system_keys_mac.mm)
     target_link_libraries(Bilin PRIVATE "-framework AppKit" "-framework CoreVideo" "-framework Metal"
                           "-framework ServiceManagement" "-framework ImageIO" "-framework UniformTypeIdentifiers")
 elseif(WIN32)
