@@ -3,7 +3,10 @@ import { createReadStream } from 'node:fs';
 import websocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance } from 'fastify';
 
+import { parseFeedback, type FeedbackStore } from './feedback.js';
 import { CloseCode, Hub, type HubOptions, type HubSources } from './hub.js';
+import { feedbackMail } from './mail.js';
+import { hashToken } from './registry.js';
 import { fileType, isPlatform, type Releases } from './releases.js';
 
 export interface ServerOptions extends HubSources {
@@ -14,13 +17,23 @@ export interface ServerOptions extends HubSources {
     heartbeatMs?: number;
     // 程序的新版本（管理后台发布的）；没有时不提供下载
     releases?: Releases;
+    // 用户提交的反馈存在这里；adminUrl：通知邮件里的链接（管理后台）。没有时不收反馈
+    feedback?: { store: FeedbackStore; adminUrl: string };
 }
+
+// 反馈（feedback.ts）：同一台设备一天最多 5 条，同一个地址 20 条；通知邮件一天最多 20 封（多的在后台里看）
+const DAY_S = 24 * 60 * 60;
+const FEEDBACK_PER_DEVICE = 5;
+const FEEDBACK_PER_ADDRESS = 20;
+const FEEDBACK_MAILS_PER_DAY = 20;
+// 请求体最大：日志（feedback.ts 的 MAX_LOGS_BYTES）写成 JSON 以后会大一些
+const FEEDBACK_BODY_LIMIT = 8 * 1024 * 1024;
 
 // 程序来这里看有没有新版本、下载安装包（官网的下载按钮也问它）
 export const UPDATES_PATH = '/updates';
 
 // GET /ws：后台服务的长连接（消息见 protocol.ts）；GET /health：给 Nginx、部署脚本看活着没有；
-// GET /updates/...：新版本（releases.ts）
+// GET /updates/...：新版本（releases.ts）；POST /feedback：用户提交反馈（程序的后台服务发，feedback.ts）
 export async function buildServer(options: ServerOptions): Promise<{ app: FastifyInstance; hub: Hub }> {
     // 在本机的 Nginx 后面：设备的真实地址是 Nginx 加在 X-Forwarded-For 最后的那一个（前面的设备自己能乱写）
     const app = Fastify({ logger: options.logger, trustProxy: ['127.0.0.1', '::1'] });
@@ -53,6 +66,51 @@ export async function buildServer(options: ServerOptions): Promise<{ app: Fastif
                     return reply.code(404).send({ error: 'notFound' });
                 return reply.type(fileType(platform)).send(createReadStream(full));
             });
+    }
+
+    const feedback = options.feedback;
+    if (feedback) {
+        // 不用登录：设备 ID 和令牌对得上就收。登录了的，联系方式是账号的邮箱
+        app.post('/feedback', { bodyLimit: FEEDBACK_BODY_LIMIT }, async (request, reply) => {
+            const body = parseFeedback(request.body);
+            if (!body)
+                return reply.code(400).send({ error: 'invalid' });
+            if (await options.limiter.hit(`feedback:address:${request.ip}`, DAY_S) > FEEDBACK_PER_ADDRESS)
+                return reply.code(429).send({ error: 'tooMany' });
+            if (!await options.registry.owns(body.deviceId, hashToken(body.token)))
+                return reply.code(401).send({ error: 'device' });
+            if (await options.limiter.hit(`feedback:device:${body.deviceId}`, DAY_S) > FEEDBACK_PER_DEVICE)
+                return reply.code(429).send({ error: 'tooMany' });
+
+            // 上面认过这台设备，记录一定在
+            const [device, accountId] = await Promise.all([
+                options.registry.device(body.deviceId), options.registry.accountOf(body.deviceId)]);
+            const account = accountId ? await options.accounts.get(accountId) : null;
+            const stored = await feedback.store.add({
+                deviceId: body.deviceId,
+                deviceName: device!.name,
+                platform: device!.platform,
+                version: body.version,
+                system: body.system,
+                contact: account?.email ?? body.contact,
+                signedIn: account !== null,
+                text: body.text,
+                logs: body.logs,
+            });
+            request.log.info({ deviceId: body.deviceId, feedback: stored.id }, '收到反馈');
+
+            const to = await feedback.store.notifyAddress();
+            if (to && options.mailer && await options.limiter.hit('feedback:mails', DAY_S) <= FEEDBACK_MAILS_PER_DAY) {
+                try {
+                    await options.mailer.send(feedbackMail(to, stored, feedback.adminUrl));
+                    await options.stats.count('mails');
+                } catch (error) {
+                    request.log.error({ err: error }, '反馈的通知邮件没发出去');
+                    await options.stats.mailFailed(error instanceof Error ? error.message : String(error));
+                }
+            }
+            return { ok: true };
+        });
     }
 
     app.get('/ws', { websocket: true }, (socket, request) => {

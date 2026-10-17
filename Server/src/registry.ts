@@ -32,6 +32,8 @@ export type ClaimResult = 'ok' | 'taken';
 export interface Registry {
     // 登记过没有
     exists(id: string): Promise<boolean>;
+    // 这个 ID 登记过、令牌对得上（不在长连接上的请求，比如提交反馈，拿它认设备）
+    owns(id: string, tokenHash: string): Promise<boolean>;
     claim(device: DeviceClaim): Promise<ClaimResult>;
     // 这些设备连着（还在用）
     seen(ids: string[]): Promise<void>;
@@ -83,6 +85,10 @@ export class MongoRegistry implements Registry {
 
     async exists(id: string): Promise<boolean> {
         return (await this.#devices.countDocuments({ _id: id }, { limit: 1 })) > 0;
+    }
+
+    async owns(id: string, tokenHash: string): Promise<boolean> {
+        return (await this.#devices.countDocuments({ _id: id, tokenHash }, { limit: 1 })) > 0;
     }
 
     async seen(ids: string[]): Promise<void> {

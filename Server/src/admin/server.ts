@@ -5,6 +5,7 @@ import type { Readable } from 'node:stream';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 
 import { checkPassword } from '../accounts.js';
+import { isFeedbackId, type FeedbackStore } from '../feedback.js';
 import type { Limiter } from '../limiter.js';
 import { EMAIL, MAX_EMAIL } from '../protocol.js';
 import { PLATFORMS, ReleaseError, type Releases } from '../releases.js';
@@ -13,7 +14,7 @@ import type { LogEntry } from './logs.js';
 import type { Sessions } from './sessions.js';
 import type { Status } from './status.js';
 
-// 管理后台（docs/admin.md）：给软件的作者一个人用，看服务器在不在正常运行、备份数据库、发布新版本。
+// 管理后台（docs/admin.md）：给软件的作者一个人用，看服务器在不在正常运行、备份数据库、发布新版本、看反馈。
 // 在 Nginx 后面，接口在 base（/admin）下的 api/；网页（Server/admin 编出来的静态文件）由 Nginx 在 base 下发。
 // 密码只有一个，哈希存在 passwordFile 里（set-password.ts 写），登录时读：改了密码不用重启
 export interface AdminOptions {
@@ -23,6 +24,8 @@ export interface AdminOptions {
     limiter: Limiter;
     backups: Backups;
     releases: Releases;
+    // 用户提交的反馈（feedback.ts）
+    feedback: FeedbackStore;
     status: () => Promise<Status>;
     // 最近的警告和出错、把日志清空（logs.ts）
     logs: () => Promise<LogEntry[]>;
@@ -133,6 +136,46 @@ export async function buildAdmin(options: AdminOptions): Promise<FastifyInstance
             }
             request.log.info('发了一封测试邮件');
             return { ok: true };
+        });
+
+        admin.get('/api/feedback', { onRequest: signedIn }, async () => ({
+            feedback: await options.feedback.list(),
+            notify: await options.feedback.notifyAddress(),
+        }));
+
+        // 有新的反馈时发邮件告诉谁：空的是不发
+        admin.put<{ Body: { to?: unknown } }>('/api/feedback/notify', { onRequest: signedIn }, async (request, reply) => {
+            const to = typeof request.body?.to === 'string' ? request.body.to.trim() : null;
+            if (to === null || (to && (to.length > MAX_EMAIL || !EMAIL.test(to))))
+                return reply.code(400).send({ error: 'email' });
+            await options.feedback.setNotifyAddress(to || null);
+            return { notify: to || null };
+        });
+
+        // 打开一条：记成看过了
+        admin.post<{ Params: { id: string } }>('/api/feedback/:id/read', { onRequest: signedIn }, async (request, reply) => {
+            const feedback = isFeedbackId(request.params.id) ? await options.feedback.markRead(request.params.id) : null;
+            if (!feedback)
+                return reply.code(404).send({ error: 'notFound' });
+            return feedback;
+        });
+
+        // 日志：存的就是 gzip 压缩的文本，原样发（浏览器自己解开）
+        admin.get<{ Params: { id: string } }>('/api/feedback/:id/logs', { onRequest: signedIn }, async (request, reply) => {
+            const logs = isFeedbackId(request.params.id) ? await options.feedback.logs(request.params.id) : null;
+            if (!logs)
+                return reply.code(404).send({ error: 'notFound' });
+            return reply
+                .type('text/plain; charset=utf-8')
+                .header('content-encoding', 'gzip')
+                .header('content-disposition', `inline; filename="bilin-feedback-${request.params.id}.log"`)
+                .send(logs);
+        });
+
+        admin.delete<{ Params: { id: string } }>('/api/feedback/:id', { onRequest: signedIn }, async (request, reply) => {
+            if (!isFeedbackId(request.params.id) || !(await options.feedback.remove(request.params.id)))
+                return reply.code(404).send({ error: 'notFound' });
+            return reply.code(204).send();
         });
 
         admin.get('/api/backups', { onRequest: signedIn }, async () => ({

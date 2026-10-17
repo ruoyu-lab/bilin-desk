@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 
 import { CODE_TTL_S } from './codes.js';
+import type { FeedbackSummary } from './feedback.js';
 import type { CodePurpose } from './protocol.js';
 
-// 发邮件。现在只发验证码（注册、找回密码）
+// 发邮件：验证码（注册、找回密码），有新的反馈时告诉管理后台里设的邮箱
 export interface Mail {
     to: string;
     subject: string;
@@ -94,4 +95,28 @@ font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',san
 </div>
 </body></html>`;
     return { to, subject: '比邻的测试邮件', text, html };
+}
+
+function escapeHtml(text: string): string {
+    return text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+}
+
+// 有新的反馈：告诉管理后台里设的邮箱（全文和日志在后台里看）
+export function feedbackMail(to: string, feedback: FeedbackSummary, adminUrl: string): Mail {
+    const from = `${feedback.deviceName}（${feedback.platform} ${feedback.version}，${feedback.system}）`;
+    const contact = feedback.contact || '没留';
+    const logs = feedback.logsBytes > 0 ? `带了日志（${Math.ceil(feedback.logsBytes / 1024)} KB）` : '没带日志';
+    const text = `${feedback.text}\n\n来自：${from}\n联系方式：${contact}\n${logs}\n\n在管理后台里看：${adminUrl}\n`;
+    const html = `<!doctype html><html lang="zh-CN"><body style="margin:0;padding:32px 16px;background:#f4f5f7;
+font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;color:#15171a">
+<div style="max-width:560px;margin:0 auto;padding:32px 28px;background:#ffffff;border-radius:16px">
+<div style="font-size:15px;font-weight:600">比邻 · 新的反馈</div>
+<p style="margin:20px 0 0;font-size:14px;line-height:1.7;white-space:pre-wrap">${escapeHtml(feedback.text)}</p>
+<p style="margin:20px 0 0;font-size:13px;line-height:1.8;color:#5f6670">来自：${escapeHtml(from)}<br>
+联系方式：${escapeHtml(contact)}<br>${logs}</p>
+<p style="margin:20px 0 0;font-size:13px"><a href="${adminUrl}" style="color:#15171a">在管理后台里看</a></p>
+</div>
+</body></html>`;
+    const subject = `比邻的反馈：${feedback.text.replace(/\s+/g, ' ').slice(0, 40)}`;
+    return { to, subject, text, html };
 }

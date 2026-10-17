@@ -23,6 +23,8 @@ module.exports = {
                 // 发验证码邮件（src/mail.ts）：Resend 的 API 密钥只在服务器上（Server/deploy/set-mail-key.sh 写），不进仓库
                 MAIL_KEY_FILE: '/etc/bilin/mail-key',
                 MAIL_FROM: '比邻 <noreply@bilindesk.com>',
+                // 有新的反馈时，通知邮件里管理后台的地址
+                ADMIN_URL: 'https://www.bilindesk.com/admin/',
             },
             // 开发用的虚拟机：不真的发邮件，验证码写进日志（pm2 logs bilin-server）
             env_development: {

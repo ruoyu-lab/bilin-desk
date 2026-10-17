@@ -34,7 +34,7 @@ export async function api<T>(method: string, path: string, body?: unknown): Prom
   return data as T
 }
 
-// 下面几个和服务端的一样（Server/src/admin/status.ts、logs.ts、backups.ts，Server/src/releases.ts）
+// 下面几个和服务端的一样（Server/src/admin/status.ts、logs.ts、backups.ts，Server/src/releases.ts、feedback.ts）
 
 export interface Status {
   uptimeS: number
@@ -63,6 +63,21 @@ export interface LogEntry {
   app: string
   message: string
   detail: string
+}
+
+export interface Feedback {
+  id: string
+  createdAt: string
+  deviceId: string
+  deviceName: string
+  platform: string
+  version: string
+  system: string
+  contact: string
+  signedIn: boolean
+  text: string
+  logsBytes: number
+  read: boolean
 }
 
 export interface Release {

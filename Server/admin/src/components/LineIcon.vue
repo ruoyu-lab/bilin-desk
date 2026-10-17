@@ -2,7 +2,7 @@
 // 线条图标（24×24，描边随文字颜色），和官网的同一种画法（Website/src/components/LineIcon.vue）
 export type IconName =
   | 'monitor' | 'chart' | 'package' | 'database' | 'user' | 'wifi' | 'upload' | 'download' | 'logout' | 'apple'
-  | 'windows' | 'phone' | 'alert' | 'shield' | 'mail' | 'refresh'
+  | 'windows' | 'phone' | 'alert' | 'shield' | 'mail' | 'refresh' | 'message' | 'trash'
 
 withDefaults(defineProps<{ name: IconName; size?: number; stroke?: number }>(), { size: 20, stroke: 1.8 })
 
@@ -21,6 +21,8 @@ const paths: Partial<Record<IconName, string[]>> = {
   shield: ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', 'm9 12 2 2 4-4'],
   mail: ['M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'm22 6-10 7L2 6'],
   refresh: ['M21 12a9 9 0 0 1-15.5 6.2L3 16', 'M3 21v-5h5', 'M3 12a9 9 0 0 1 15.5-6.2L21 8', 'M21 3v5h-5'],
+  message: ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'],
+  trash: ['M3 6h18', 'M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2', 'M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6'],
   phone: ['M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z', 'M12 18h.01'],
 }
 

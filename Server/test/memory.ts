@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 import { checkPassword, hashPassword, type Account, type Accounts } from '../src/accounts.js';
 import type { Bus, BusMessage } from '../src/bus.js';
+import {
+    compressLogs, logsBytes, newFeedbackId, type FeedbackStore, type FeedbackSummary, type NewFeedback,
+} from '../src/feedback.js';
 import { CODE_TTL_S, codeHash, MAX_TRIES, newCode, type Codes } from '../src/codes.js';
 import type { Limiter } from '../src/limiter.js';
 import type { Mail, Mailer } from '../src/mail.js';
@@ -15,6 +18,10 @@ export class MemoryRegistry implements Registry {
 
     async exists(id: string): Promise<boolean> {
         return this.devices.has(id);
+    }
+
+    async owns(id: string, tokenHash: string): Promise<boolean> {
+        return this.devices.get(id)?.tokenHash === tokenHash;
     }
 
     async claim(device: DeviceClaim): Promise<ClaimResult> {
@@ -287,4 +294,57 @@ export class MemoryStats implements Stats {
     }
 
     async close(): Promise<void> {}
+}
+
+// 测试用：内存里的反馈，规则和 MongoFeedback 一样（到期删掉由 MongoDB 做）
+export class MemoryFeedback implements FeedbackStore {
+    readonly items: Array<FeedbackSummary & { logs: Buffer | null }> = [];
+    #notify: string | null = null;
+
+    async add(feedback: NewFeedback): Promise<FeedbackSummary> {
+        const { logs, ...rest } = feedback;
+        const item = {
+            ...rest, id: newFeedbackId(), createdAt: new Date().toISOString(), logsBytes: logsBytes(logs), read: false,
+            logs: await compressLogs(logs),
+        };
+        this.items.unshift(item);
+        return MemoryFeedback.#summary(item);
+    }
+
+    async list(): Promise<FeedbackSummary[]> {
+        return this.items.map(MemoryFeedback.#summary);
+    }
+
+    async markRead(id: string): Promise<FeedbackSummary | null> {
+        const item = this.items.find((i) => i.id === id);
+        if (!item)
+            return null;
+        item.read = true;
+        return MemoryFeedback.#summary(item);
+    }
+
+    async logs(id: string): Promise<Buffer | null> {
+        return this.items.find((i) => i.id === id)?.logs ?? null;
+    }
+
+    async remove(id: string): Promise<boolean> {
+        const index = this.items.findIndex((i) => i.id === id);
+        if (index < 0)
+            return false;
+        this.items.splice(index, 1);
+        return true;
+    }
+
+    async notifyAddress(): Promise<string | null> {
+        return this.#notify;
+    }
+
+    async setNotifyAddress(to: string | null): Promise<void> {
+        this.#notify = to;
+    }
+
+    static #summary(item: FeedbackSummary & { logs: Buffer | null }): FeedbackSummary {
+        const { logs: _, ...summary } = item;
+        return summary;
+    }
 }

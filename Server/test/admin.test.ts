@@ -16,7 +16,9 @@ import { newSessionToken, type Sessions } from '../src/admin/sessions.js';
 import type { Status } from '../src/admin/status.js';
 import { Releases } from '../src/releases.js';
 import { signRelease } from './releases.test.js';
-import { MemoryLimiter } from './memory.js';
+import { gunzipSync } from 'node:zlib';
+
+import { MemoryFeedback, MemoryLimiter } from './memory.js';
 
 const BASE = '/admin';
 const PASSWORD = 'correct horse battery';
@@ -72,6 +74,7 @@ describe('管理后台', () => {
     let testMails: string[];
     let logsCleared: number;
     let mailError: string | null;
+    let feedback: MemoryFeedback;
 
     beforeEach(async () => {
         directory = await mkdtemp(path.join(tmpdir(), 'bilin-admin-'));
@@ -81,6 +84,7 @@ describe('管理后台', () => {
         logsCleared = 0;
         mailError = null;
         failDump = false;
+        feedback = new MemoryFeedback();
         // 假的 mongodump：写一个小文件；名字里的时间到秒，连着备份时等一秒
         const backups = new Backups(path.join(directory, 'backups'), 2, async (file) => {
             if (failDump)
@@ -96,6 +100,7 @@ describe('管理后台', () => {
             limiter: new MemoryLimiter(),
             backups,
             releases: new Releases(path.join(directory, 'updates'), releaseKeys.publicKey),
+            feedback,
             status: async () => status,
             logs: async () => problems,
             clearLogs: async () => {
@@ -277,6 +282,40 @@ describe('管理后台', () => {
         expect(failed.statusCode).toBe(502);
         expect(failed.json()).toEqual({ error: 'mailFailed', message: 'Resend 回了 403：domain is not verified' });
     });
+    it('反馈：列出来、打开记成看过、看日志、删除', async () => {
+        const cookie = await signedIn();
+        expect((await app.inject({ url: `${BASE}/api/feedback` })).statusCode).toBe(401);
+        const added = await feedback.add({
+            deviceId: '123456789', deviceName: '书房的电脑', platform: 'macOS', version: '0.1.5-beta', system: 'macOS 15.3',
+            contact: '', signedIn: false, text: '画面是黑的', logs: [{ name: 'service.log', text: '出错了\n' }],
+        });
+        const list = (await app.inject({ url: `${BASE}/api/feedback`, headers: { cookie } })).json();
+        expect(list).toMatchObject({ notify: null, feedback: [{ id: added.id, text: '画面是黑的', read: false }] });
+
+        const read = await app.inject({ method: 'POST', url: `${BASE}/api/feedback/${added.id}/read`, headers: { cookie } });
+        expect(read.json()).toMatchObject({ id: added.id, read: true });
+
+        const logs = await app.inject({ url: `${BASE}/api/feedback/${added.id}/logs`, headers: { cookie } });
+        expect(logs.headers['content-encoding']).toBe('gzip');
+        expect(gunzipSync(logs.rawPayload).toString()).toBe('===== service.log =====\n出错了\n');
+
+        expect((await app.inject({ url: `${BASE}/api/feedback/../backups/logs`, headers: { cookie } })).statusCode).toBe(404);
+        expect((await app.inject({ method: 'DELETE', url: `${BASE}/api/feedback/${added.id}`, headers: { cookie } })).statusCode).toBe(204);
+        expect((await app.inject({ method: 'DELETE', url: `${BASE}/api/feedback/${added.id}`, headers: { cookie } })).statusCode).toBe(404);
+        expect(feedback.items).toHaveLength(0);
+    });
+
+    it('反馈的通知邮箱：设上、清空，邮箱不对不收', async () => {
+        const cookie = await signedIn();
+        const put = (to: unknown) => app.inject({ method: 'PUT', url: `${BASE}/api/feedback/notify`, headers: { cookie }, payload: { to } });
+        expect((await put(' me@example.com ')).json()).toEqual({ notify: 'me@example.com' });
+        expect(await feedback.notifyAddress()).toBe('me@example.com');
+        expect((await put('不是邮箱')).statusCode).toBe(400);
+        expect((await put(42)).statusCode).toBe(400);
+        expect((await put('')).json()).toEqual({ notify: null });
+        expect(await feedback.notifyAddress()).toBeNull();
+    });
+
     it('登录以后才能清空日志', async () => {
         expect((await app.inject({ method: 'DELETE', url: `${BASE}/api/logs` })).statusCode).toBe(401);
         expect(logsCleared).toBe(0);

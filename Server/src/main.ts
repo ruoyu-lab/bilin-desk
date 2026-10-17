@@ -5,6 +5,7 @@ import { MongoClient } from 'mongodb';
 import { MongoAccounts, type AccountDocument } from './accounts.js';
 import { RedisBus } from './bus.js';
 import { RedisCodes } from './codes.js';
+import { MongoFeedback, type FeedbackDocument, type SettingsDocument } from './feedback.js';
 import { defaultHubOptions } from './hub.js';
 import { loadIceSettings } from './ice.js';
 import { RedisLimiter } from './limiter.js';
@@ -22,12 +23,16 @@ const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
 const ice = await loadIceSettings(process.env);
 const updatesDirectory = process.env.UPDATES_DIR ?? '/var/lib/bilin/updates';
 const releaseKeyFile = new URL('../release-key.pub', import.meta.url);
+// 反馈的通知邮件里，管理后台的地址
+const adminUrl = process.env.ADMIN_URL ?? 'https://www.bilindesk.com/admin/';
 
 const mongo = new MongoClient(mongoUrl);
 await mongo.connect();
 const registry = new MongoRegistry(mongo.db().collection<DeviceDocument>('devices'));
 const accounts = new MongoAccounts(mongo.db().collection<AccountDocument>('accounts'));
-await Promise.all([registry.prepare(), accounts.prepare()]);
+const feedback = new MongoFeedback(mongo.db().collection<FeedbackDocument>('feedback'),
+                                 mongo.db().collection<SettingsDocument>('settings'));
+await Promise.all([registry.prepare(), accounts.prepare(), feedback.prepare()]);
 const bus = new RedisBus(redisUrl);
 const limiter = new RedisLimiter(redisUrl);
 const codes = new RedisCodes(redisUrl);
@@ -39,6 +44,7 @@ const mailLog = { info: (object: object, message: string) => app.log.info(object
 const mailer = await loadMailer(process.env, mailLog);
 const { app } = await buildServer({
     registry, accounts, bus, limiter, codes, mailer, stats, releases, logger: true, hub: { ...defaultHubOptions, ice },
+    feedback: { store: feedback, adminUrl: `${adminUrl}#feedback` },
 });
 await app.listen({ host, port });
 if (ice)
