@@ -37,7 +37,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Teleport to="body">
+  <!-- 挪到页面末尾自己的容器里（预渲染的页面被接管时，挪过去的东西要在一个单独的容器里认得出来） -->
+  <Teleport to="#teleports">
     <div v-if="open" class="overlay" @click.self="open = false">
       <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="sponsor-title">
         <button ref="close" class="close" aria-label="关闭" @click="open = false">

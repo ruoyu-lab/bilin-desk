@@ -4,6 +4,7 @@ import AppWindowMock from '../components/AppWindowMock.vue'
 import LineIcon, { type IconName } from '../components/LineIcon.vue'
 import SiteFooter from '../components/SiteFooter.vue'
 import SiteHeader from '../components/SiteHeader.vue'
+import { faq } from '../faq'
 import { loadReleases, megabytes, releases, type Platform } from '../releases'
 
 onMounted(loadReleases)
@@ -194,6 +195,18 @@ const cards = computed(() =>
         </div>
       </div>
       <p class="update-note">安装后可在应用内检查并获取更新。</p>
+    </section>
+
+    <section id="faq" class="wrap block">
+      <div class="intro">
+        <h2 class="section-title">常见问题</h2>
+      </div>
+      <div class="faq">
+        <div v-for="item in faq" :key="item.question" class="question">
+          <h3>{{ item.question }}</h3>
+          <p>{{ item.answer }}</p>
+        </div>
+      </div>
     </section>
   </main>
   <SiteFooter />
@@ -436,5 +449,31 @@ h1 {
   text-align: center;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+.faq {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px 28px;
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.question h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.question p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text-secondary);
 }
 </style>

@@ -18,3 +18,4 @@ Server/admin/dist/
 # 官网
 Website/node_modules/
 Website/dist/
+Website/dist-ssr/

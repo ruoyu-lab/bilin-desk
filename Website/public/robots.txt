@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /updates/
+
+Sitemap: https://www.bilindesk.com/sitemap.xml

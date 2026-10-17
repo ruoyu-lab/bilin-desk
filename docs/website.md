@@ -7,7 +7,7 @@
 cd Website
 npm install
 npm run dev       # 本机看：http://localhost:5173/
-npm run build     # 类型检查，再构建到 Website/dist/
+npm run build     # 类型检查，构建到 Website/dist/，再预渲染（见下）
 npm run preview   # 看构建出来的
 ```
 
@@ -22,3 +22,16 @@ npm run preview   # 看构建出来的
   和微信收款码（`src/assets/wechat-pay.jpg`，从收款码图片裁出中间的白色卡片，二维码没动）
 - 构建出来的地址都是相对的，放在服务器的哪个目录下都行
 - TypeScript 用 6：vue-tsc 还不支持 7（7 是原生重写的，没有它要用的接口）
+
+## 搜索引擎（只做了 Google，Search Console 用户自己管）
+
+- **预渲染**：`npm run build` 先构建浏览器里的三页，再 `vite build --ssr src/server.ts` 编一份在 Node 里渲染的，
+  `scripts/prerender.mjs` 用它把三页渲染成完整的 HTML 填进 `dist`（`<div id="app">`），浏览器里 `createSSRApp` 接管。
+  搜索引擎、分享卡片不用跑脚本就读得到页面上的字。所以组件在建立时（setup、渲染）不能碰浏览器才有的东西（`window`、
+  `document`、`fetch`），放到 `onMounted` 里；也不能按时间、随机数渲染（Node 里和浏览器里渲染得要一样，不然接管时对不上）
+- 挪到页面末尾的东西（赞助的浮窗，`Teleport`）挪进 `#teleports`，不直接挪到 `body`：接管时 Vue 认为挪过去的地方开头就是它的标记
+- 每页的 `<head>` 里有 description、canonical、Open Graph / Twitter 卡片（`public/og.png`）、PNG 图标；首页的结构化数据
+  （SoftwareApplication 和常见问题的 FAQPage，常见问题在 `src/faq.ts`，页面上显示的是同一份）由 `prerender.mjs` 写进去
+- `public/robots.txt`（不让爬 `/admin/`、`/updates/`）；`sitemap.xml` 由 `prerender.mjs` 每次构建写，日期是构建那天。
+  加了新页面：`vite.config.ts` 的 input、`server.ts` 的 render、`prerender.mjs` 的 pages 一起加
+- `public/` 里的 og.png、favicon-32.png、apple-touch-icon.png 由 `scripts/make-icons.sh` 从 Logo 生成
