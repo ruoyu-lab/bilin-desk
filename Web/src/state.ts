@@ -88,17 +88,19 @@ watch(scheme, (value) => {
   }
 }, { immediate: true })
 
-// ---- 地址的 #：#/（概览）、#/devices、#/recent、#/settings、#/session/<设备 ID> ----
+// ---- 地址的 #：#/（概览）、#/devices、#/favorites、#/recent、#/settings，
+// 会话 #/session/<设备 ID>/<交接编号>（新的标签页，见 openSession）----
 
-export type Page = 'home' | 'devices' | 'recent' | 'settings' | 'session' | 'unsupported'
+export type Page = 'home' | 'devices' | 'favorites' | 'recent' | 'settings' | 'session' | 'unsupported'
 
-function parse(): { page: Page; id: string } {
-  const [, page = '', id = ''] = location.hash.split('/')
-  if (page === 'session' && /^\d{9}$/.test(id)) return { page: 'session', id }
-  if (page === 'devices' || page === 'recent' || page === 'settings') return { page, id: '' }
+function parse(): { page: Page; id: string; handoff: string } {
+  const [, page = '', id = '', handoff = ''] = location.hash.split('/')
+  if (page === 'session' && /^\d{9}$/.test(id)) return { page: 'session', id, handoff }
+  if (page === 'devices' || page === 'favorites' || page === 'recent' || page === 'settings')
+    return { page, id: '', handoff: '' }
   // 预览"请用 Chrome 或 Edge 打开"那一页（只在本机开发时）
-  if (page === 'unsupported' && import.meta.env.DEV) return { page, id: '' }
-  return { page: 'home', id: '' }
+  if (page === 'unsupported' && import.meta.env.DEV) return { page, id: '', handoff: '' }
+  return { page: 'home', id: '', handoff: '' }
 }
 
 export const route = ref(parse())
@@ -143,15 +145,42 @@ export function closePassword(): void {
 
 // 我的设备不用密码；别的要临时密码
 export function connect(device: Device): void {
-  if (device.mine && state.account) go(`session/${device.id}`)
+  if (device.mine && state.account) openSession(device.id)
   else askingPassword.value = device
 }
 
 // 按设备 ID 连（概览上输入的）：没见过的先记进最近
-export function connectById(id: string): void {
+export function connectById(id: string, password: string): void {
   if (!findDevice(id))
     state.devices.push({ id, name: displayId(id), system: 'windows', online: true, mine: false, favorite: false, lastConnected: '' })
-  go(`session/${id}`)
+  openSession(id, password)
+}
+
+// 会话在新的标签页里，几台可以一起连。临时密码不放进地址：以一个随机的交接编号存进这个浏览器，
+// 新的标签页拿到就删掉（takeHandoff），地址里只有编号
+const HANDOFF = 'bilin.handoff.'
+
+export function openSession(id: string, password = ''): void {
+  const handoff = crypto.randomUUID()
+  if (password) localStorage.setItem(HANDOFF + handoff, password)
+  const url = `${location.pathname}#/session/${id}/${handoff}`
+  // 不用 noopener：带着它 window.open 总是返回 null，分不出是不是被拦了。打开以后自己断开 opener
+  const tab = window.open(url, '_blank')
+  if (tab) tab.opener = null
+  // 浏览器拦了新窗口：就在这个标签页里打开
+  else location.href = url
+}
+
+// 交过来的临时密码（只能拿一次）；没有时为空：我的设备，或者刷新过、直接打开的地址，要再输一次
+export function takeHandoff(handoff: string): string {
+  const key = HANDOFF + handoff
+  const password = localStorage.getItem(key) ?? ''
+  localStorage.removeItem(key)
+  return password
+}
+
+export function favoriteDevices(): Device[] {
+  return state.devices.filter((d) => d.favorite && (!d.mine || state.account))
 }
 
 export function toggleFavorite(device: Device): void {

@@ -1,18 +1,24 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import LogoMark from '@shared/LogoMark.vue'
 import LineIcon from '../components/LineIcon.vue'
-import { displayId, findDevice, go } from '../state'
+import { displayId, findDevice, go, takeHandoff } from '../state'
 
-// 会话：上面一条细的工具栏，下面铺满对方的画面（照着程序的会话窗口）。现在画面是假的，先把样子定下来；
-// 接上 SDK 的浏览器包以后是 VideoView、InputMapper、CursorView（docs/web.md）
-const props = defineProps<{ id: string }>()
+// 会话（自己一个标签页，openSession 打开的）：上面一条细的工具栏，下面铺满对方的画面（照着程序的会话窗口）。
+// 现在画面是假的，先把样子定下来；接上 SDK 的浏览器包以后是 VideoView、InputMapper、CursorView（docs/web.md）
+const props = defineProps<{ id: string; handoff: string }>()
 
 const device = computed(() => findDevice(props.id))
 const name = computed(() => device.value?.name ?? displayId(props.id))
 const isMac = computed(() => device.value?.system === 'apple')
 
-// connecting：正在连 | connected | ended：断开了
-const phase = ref<'connecting' | 'connected' | 'ended'>('connecting')
+// 打开它的标签页交过来的临时密码。我的设备不要；没有又要（刷新过、直接打开的地址）时先在这里输
+const password = ref(takeHandoff(props.handoff))
+const typed = ref('')
+
+// password：等输入临时密码 | connecting：正在连 | connected
+const phase = ref<'password' | 'connecting' | 'connected'>(
+  device.value?.mine || password.value ? 'connecting' : 'password')
 const clipboard = ref(true)
 const fullScreen = ref(false)
 const menuOpen = ref(false)
@@ -20,9 +26,22 @@ const hintOpen = ref(true)
 const sending = ref<{ name: string; progress: number } | null>(null)
 
 let connectTimer = 0
+function start() {
+  phase.value = 'connecting'
+  connectTimer = window.setTimeout(() => (phase.value = 'connected'), 1200)
+}
+
+function submitPassword() {
+  if (!typed.value.trim()) return
+  password.value = typed.value.trim()
+  typed.value = ''
+  start()
+}
+
 onMounted(() => {
   document.title = `${name.value} - 比邻网页版`
-  connectTimer = window.setTimeout(() => (phase.value = 'connected'), 1200)
+  if (phase.value === 'connecting')
+    start()
   document.addEventListener('fullscreenchange', onFullScreen)
   window.addEventListener('mousedown', closeMenu)
 })
@@ -79,15 +98,17 @@ const sendFiles = () => {
   fileInput.value!.value = ''
 }
 
-const disconnect = () => go('')
+// 断开：关掉这个标签页（它是打开的那一页开出来的）；关不掉时（直接打开的地址）回到首页
+const disconnect = () => {
+  window.close()
+  go('')
+}
 </script>
 
 <template>
   <div class="session" :class="{ full: fullScreen }">
     <header class="bar">
-      <a href="#/" class="back" aria-label="回到首页" title="回到首页">
-        <LineIcon name="chevron-right" :size="16" style="transform: rotate(180deg)" />
-      </a>
+      <LogoMark :size="20" class="logo" />
       <span class="os small" :class="device?.system ?? 'windows'">
         <LineIcon :name="device?.system ?? 'windows'" :size="13" />
       </span>
@@ -132,6 +153,15 @@ const disconnect = () => go('')
         <div class="window w2"><span class="window-bar" /></div>
         <div class="taskbar" />
       </div>
+
+      <form v-if="phase === 'password'" class="overlay" @submit.prevent="submitPassword">
+        <div class="overlay-title">连接 {{ name }}</div>
+        <div class="overlay-detail">输入对方电脑上比邻显示的临时密码（设备 ID {{ displayId(props.id) }}）</div>
+        <div class="password-row">
+          <input v-model="typed" class="field" placeholder="临时密码" autocomplete="off" spellcheck="false" autofocus />
+          <button class="button dark" type="submit" :disabled="!typed.trim()">连接</button>
+        </div>
+      </form>
 
       <div v-if="phase === 'connecting'" class="overlay">
         <span class="spinner" />
@@ -178,18 +208,9 @@ const disconnect = () => go('')
   box-shadow: 0 1px 0 var(--border);
 }
 
-.back {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius);
-  color: var(--text-secondary);
-}
-
-.back:hover {
-  background: var(--hover);
-  color: var(--text);
+.logo {
+  flex-shrink: 0;
+  margin: 0 4px 0 6px;
 }
 
 .os.small {
@@ -400,6 +421,17 @@ kbd {
   margin-bottom: 10px;
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.password-row {
+  display: flex;
+  gap: 8px;
+  width: 300px;
+  max-width: 100%;
+}
+
+.password-row .field {
+  background: var(--surface);
 }
 
 .spinner {

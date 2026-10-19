@@ -8,6 +8,7 @@ import LogoMark from '@shared/LogoMark.vue'
 const pages: Array<{ page: Page; path: string; title: string; icon: IconName }> = [
   { page: 'home', path: '', title: '概览', icon: 'home' },
   { page: 'devices', path: 'devices', title: '我的设备', icon: 'monitor' },
+  { page: 'favorites', path: 'favorites', title: '收藏', icon: 'star' },
   { page: 'recent', path: 'recent', title: '最近', icon: 'clock' },
 ]
 </script>

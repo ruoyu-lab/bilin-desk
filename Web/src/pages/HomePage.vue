@@ -11,7 +11,10 @@ const password = ref('')
 const digits = computed(() => id.value.replace(/\D/g, ''))
 
 const submit = () => {
-  if (digits.value.length === 9 && password.value.trim()) connectById(digits.value)
+  if (digits.value.length !== 9 || !password.value.trim()) return
+  connectById(digits.value, password.value.trim())
+  // 临时密码用一次就换（对方断开以后），不留在这里
+  password.value = ''
 }
 
 // 输入时三位一组
