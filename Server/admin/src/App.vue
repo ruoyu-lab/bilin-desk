@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { api, signedIn } from './api'
-import LineIcon, { type IconName } from './components/LineIcon.vue'
+import LineIcon from './components/LineIcon.vue'
+import type { IconName } from './icons'
 import LoginView from './components/LoginView.vue'
-import LogoMark from './components/LogoMark.vue'
+import LogoMark from '@shared/LogoMark.vue'
 import BackupsPage from './pages/BackupsPage.vue'
 import FeedbackPage from './pages/FeedbackPage.vue'
 import LogsPage from './pages/LogsPage.vue'
@@ -67,7 +68,7 @@ async function logout() {
       </nav>
       <div class="foot">
         <span class="host">{{ host }}</span>
-        <a href="#" @click.prevent="logout"><LineIcon name="logout" :size="17" />退出</a>
+        <a href="#" @click.prevent="logout"><LineIcon name="log-out" :size="17" />退出</a>
       </div>
     </aside>
     <main class="content">

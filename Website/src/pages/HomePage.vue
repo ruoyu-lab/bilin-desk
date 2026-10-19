@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import AppWindowMock from '../components/AppWindowMock.vue'
-import LineIcon, { type IconName } from '../components/LineIcon.vue'
+import LineIcon from '../components/LineIcon.vue'
+import type { IconName } from '../icons'
 import SiteFooter from '../components/SiteFooter.vue'
 import SiteHeader from '../components/SiteHeader.vue'
 import { faq } from '../faq'

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api, ApiError, platformName, type Status } from '../api'
-import LineIcon, { type IconName } from '../components/LineIcon.vue'
+import LineIcon from '../components/LineIcon.vue'
+import type { IconName } from '../icons'
 import { ago, bytes, daysUntil, duration, shortDay, time } from '../format'
 import { toast } from '../toasts'
 

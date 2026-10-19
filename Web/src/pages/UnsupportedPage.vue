@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import LogoMark from '../components/LogoMark.vue'
+import LogoMark from '@shared/LogoMark.vue'
 import LineIcon from '../components/LineIcon.vue'
 
 // 不是 Chrome、Edge 时：网页版先只在这两个浏览器里能用（SDK 的浏览器包只在 Chromium 上验证过）

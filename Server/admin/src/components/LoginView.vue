@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { api, ApiError } from '../api'
-import LogoMark from './LogoMark.vue'
+import LogoMark from '@shared/LogoMark.vue'
 
 const emit = defineEmits<{ signedIn: [] }>()
 

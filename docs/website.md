@@ -15,7 +15,7 @@ npm run preview   # 看构建出来的
 - 不用网络字体、不接第三方统计：国内打不开谷歌字体，也不想把访客交给别人（隐私政策说了不含第三方）
 - 服务协议、隐私政策直接读程序里的那两份（`App/legal/*.md`），只改那里；用到的 Markdown 只有标题、段落、列表、加粗
   （`src/legal/markdown.ts`），文档里用了别的写法要在那里加上
-- Logo 用程序的 `App/branding/logo.svg`
+- Logo 用程序的 `App/branding/logo.svg`；页面里的 Logo、图标用几个网站共用的 `WebShared/`（本站用到的图标列在 `src/icons.ts`）
 - 下载按钮问服务器现在发布的版本（`/updates/<平台>/latest`，和程序检查更新同一个，见 [admin.md](admin.md)），
   直接指向安装包；网页和服务器在同一个域名下。本机看网页时这些请求转给正式服务器（`vite.config.ts`）。还没发布的平台说"还没有发布"，连不上服务器时说"暂时取不到安装包"
 - 页头的"赞助"（`src/components/SponsorDialog.vue`）：浮窗里写赞助用在哪（服务器、Apple 开发者账号、各平台的客户端）

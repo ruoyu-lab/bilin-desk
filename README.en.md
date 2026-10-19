@@ -121,6 +121,8 @@ Core/         code shared by both: identity, the local link between them, server
 Server/       the server (Node.js + TypeScript): devices, accounts, presence, signaling, relay credentials;
               admin/ is the admin console
 Website/      the website (Vue 3 + TypeScript)
+Web/          the web version: control a computer from Chrome or Edge (Vue 3 + TypeScript)
+WebShared/    icons and the logo shared by the websites
 tools/        the Windows installer, a command-line connection tool
 scripts/      building, packaging, signing, publishing
 docs/         design and development notes

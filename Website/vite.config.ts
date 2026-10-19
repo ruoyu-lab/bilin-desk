@@ -14,6 +14,8 @@ const updates: Record<string, ProxyOptions> = {
 // 把三页渲染成 HTML 填进去
 export default defineConfig(({ isSsrBuild }) => ({
   plugins: [vue()],
+  // 几个网站共用的图标、Logo（WebShared）：@shared/...；那里没有 node_modules，vue 从这里找
+  resolve: { alias: { '@shared': here('../WebShared') }, dedupe: ['vue'] },
   // 相对地址：放在服务器的哪个目录下都能打开
   base: './',
   build: isSsrBuild
@@ -30,7 +32,7 @@ export default defineConfig(({ isSsrBuild }) => ({
   server: {
     proxy: updates,
     // 服务协议、隐私政策和 Logo 直接用程序里的那几份（App/legal、App/branding）
-    fs: { allow: [here('.'), here('../App/legal'), here('../App/branding')] },
+    fs: { allow: [here('.'), here('../App/legal'), here('../App/branding'), here('../WebShared')] },
   },
   preview: { proxy: updates },
 }))

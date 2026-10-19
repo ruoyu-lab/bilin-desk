@@ -28,4 +28,5 @@
 cd Web && npm install && npm run dev
 ```
 
-Vue 3 + TypeScript + Vite，和官网、管理后台一样；颜色照程序的 `App/qml/common/Theme.qml`。
+Vue 3 + TypeScript + Vite，和官网、管理后台一样，各自是独立的项目；图标、Logo 用三个网站共用的 `WebShared/`
+（本站用到的图标列在 `src/icons.ts`）。颜色照程序的 `App/qml/common/Theme.qml`。

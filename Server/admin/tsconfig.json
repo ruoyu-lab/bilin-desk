@@ -13,7 +13,11 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "paths": {
+      "@shared/*": ["../../WebShared/*"],
+      "vue": ["./node_modules/vue"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]
 }

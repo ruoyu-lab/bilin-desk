@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import LineIcon, { type IconName } from './LineIcon.vue'
+import LineIcon from './LineIcon.vue'
+import type { IconName } from '../icons'
 
 // 首屏的程序主窗口（概览页）：照着程序画的（App/qml/main/OverviewPage.qml、Sidebar.qml，颜色是 Theme.qml 的），
 // 网页是深色时画程序的深色。只是画出来的，不能点

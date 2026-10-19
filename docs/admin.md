@@ -5,7 +5,8 @@
 - 地址：`https://admin.bilindesk.com/`，自己一个域名，浏览器里和官网、网页版的数据互相碰不到
   （开发用的虚拟机只有一个地址：`http://localhost:8800/admin/`，PM2 的 `BASE_PATH`）
 - 网页是 `Server/admin/`（Vue 3 + TypeScript），编出来是静态文件，Nginx 在根上发（`deploy/nginx/admin.bilindesk.com.conf`）；
-  本机改网页时 `npm run dev`（在 Server/admin 里），接口转给开发用的虚拟机
+  本机改网页时 `npm run dev`（在 Server/admin 里），接口转给开发用的虚拟机；Logo、图标用几个网站共用的 `WebShared/`
+  （本站用到的图标列在 `src/icons.ts`）
 - 接口（`/api/`，开发用的虚拟机上是 `/admin/api/`）是单独一个进程（PM2 的 `bilin-admin`，Server/src/admin/），只听本机的 3100 端口，Nginx 把请求转给它。
   和服务端用同一个 MongoDB、Redis
 

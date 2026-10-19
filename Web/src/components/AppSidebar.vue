@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { go, openLogin, route, state, type Page } from '../state'
-import LineIcon, { type IconName } from './LineIcon.vue'
-import LogoMark from './LogoMark.vue'
+import LineIcon from './LineIcon.vue'
+import type { IconName } from '../icons'
+import LogoMark from '@shared/LogoMark.vue'
 
 // 左边的导航栏（照着程序的 Sidebar.qml）：上面几页，最下面是账号和设置
 const pages: Array<{ page: Page; path: string; title: string; icon: IconName }> = [

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import wechatPay from '../assets/wechat-pay.jpg'
-import LineIcon, { type IconName } from './LineIcon.vue'
+import LineIcon from './LineIcon.vue'
+import type { IconName } from '../icons'
 
 // 赞助的浮窗（页头的"赞助"）：赞助用在哪里、微信的收款码，电脑上左右两栏（收款码在左），手机上上下排。点外面、按 Esc、点右上角关掉
 const open = defineModel<boolean>({ required: true })

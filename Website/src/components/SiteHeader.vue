@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { SOURCE_URL } from '../links'
 import LineIcon from './LineIcon.vue'
-import LogoMark from './LogoMark.vue'
+import LogoMark from '@shared/LogoMark.vue'
 import SponsorDialog from './SponsorDialog.vue'
 
 const sponsoring = ref(false)

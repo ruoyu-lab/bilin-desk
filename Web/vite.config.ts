@@ -9,12 +9,16 @@ const isolation = {
   'Cross-Origin-Embedder-Policy': 'require-corp',
 }
 
+const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
+
 export default defineConfig({
   plugins: [vue()],
+  // 几个网站共用的图标、Logo（WebShared）：@shared/...；那里没有 node_modules，vue 从这里找
+  resolve: { alias: { '@shared': here('../WebShared') }, dedupe: ['vue'] },
   server: {
     headers: isolation,
-    // Logo 用程序的（App/branding）
-    fs: { allow: [fileURLToPath(new URL('.', import.meta.url)), fileURLToPath(new URL('../App/branding', import.meta.url))] },
+    // 网页图标用程序的 Logo（App/branding）
+    fs: { allow: [here('.'), here('../App/branding'), here('../WebShared')] },
   },
   preview: { headers: isolation },
 })

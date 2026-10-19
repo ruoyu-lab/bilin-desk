@@ -109,6 +109,8 @@ Service/      后台服务：本机身份、被连的那一面，没有界面
 Core/         两个程序共用的部分：本机身份、两者之间的本机连接、和服务器之间的消息
 Server/       服务端（Node.js + TypeScript）：设备登记、账号、在线、转发信令、发中继凭据；admin/ 是管理后台的网页
 Website/      官网（Vue 3 + TypeScript）
+Web/          网页版：在 Chrome、Edge 里控制电脑（Vue 3 + TypeScript）
+WebShared/    几个网站共用的图标、Logo
 tools/        Windows 的安装程序、命令行连接工具
 scripts/      编译、打包、签名、发布
 docs/         设计和开发文档
