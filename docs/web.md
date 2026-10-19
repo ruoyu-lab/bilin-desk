@@ -51,6 +51,12 @@ SDK 的浏览器包：`scripts/build-web-sdk.sh` 用 Emscripten（`~/emsdk`）�
 - 页面跟着地址的 #：`#/`、`#/devices`、`#/favorites`、`#/recent`、`#/settings`、`#/session/<设备 ID>/<交接编号>`；本机开发时
   `#/unsupported` 看"请用 Chrome 或 Edge 打开"那一页
 
+## 部署
+
+`Server/deploy/deploy-production.sh` 一起部署：编 SDK 的浏览器包和网页，放进 `/var/www/web.bilindesk.com`，
+Nginx 的配置 `Server/deploy/nginx/web.bilindesk.com.conf`（跨源隔离、严格的内容安全策略；`/sdk/` 补上 `.mjs` 的类型，
+系统的 MIME 表里没有；`/web/connect` 给服务端，`/relay` 给转发进程），转发进程是 PM2 的 `bilin-relay`（127.0.0.1:3200）。
+
 ## 开发
 
 ```sh
