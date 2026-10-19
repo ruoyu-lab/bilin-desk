@@ -4,6 +4,7 @@
 #include <rc/transport.h>
 
 #include <QHash>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QList>
 #include <QLocalServer>
@@ -40,6 +41,8 @@ public:
     void publish(QLatin1StringView topic, const QJsonObject &value);
     // 一次性的通知，发给所有连着的界面
     void sendEvent(QLatin1StringView event, const QJsonObject &arguments);
+    // 只发给 socket 那个界面（它的命令的回答）；它已经断开了就不发
+    void sendEventTo(qintptr socket, QLatin1StringView event, const QJsonObject &arguments);
     // 连着的界面有几个
     qsizetype clientCount() const { return channels_.size(); }
 
@@ -88,6 +91,9 @@ signals:
     void cancelTransferRequested(int id);
     void retryTransferRequested(int id);
     void removeTransferRequested(int id);
+    // 界面 socket 要后台服务的日志、提交反馈（rc/protocol.h 的 FeedbackLogs、SendFeedback）：回答用 sendEventTo 给它
+    void feedbackLogsRequested(qintptr socket);
+    void feedbackRequested(qintptr socket, const QString &text, const QString &contact, const QJsonArray &logs);
 
 private:
     void accept();
@@ -104,7 +110,7 @@ private:
     rc::protocol::ServiceInfo info_;
     const Clients clients_;
     QLocalServer server_;
-    QList<rc::LineChannel *> channels_;
+    QHash<qintptr, rc::LineChannel *> channels_; // 键是界面的本机连接
     QHash<qintptr, QSet<QString>> signalSessions_; // 每个界面的本机连接发过信令、还没结束的连接
     QHash<QLatin1StringView, QJsonObject> topics_; // publish 交来的（主题名是 rc/protocol.h 里的常量）
 };

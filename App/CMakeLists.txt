@@ -23,6 +23,8 @@ set(app_sources
     src/devices/device_wake.cpp
     src/documents.h
     src/documents.cpp
+    src/feedback/feedback.h
+    src/feedback/feedback.cpp
     src/files/file_transfer_list.h
     src/files/file_transfer_list.cpp
     src/remote_view/remote_input.h
@@ -94,6 +96,7 @@ set(app_qml
     qml/shared/AboutSettings.qml
     qml/shared/AccountDialog.qml
     qml/shared/AccountSettings.qml
+    qml/shared/FeedbackSettings.qml
     qml/shared/LegalPage.qml
     qml/shared/LicensesPage.qml
     qml/shared/RemoteCanvas.qml
@@ -351,8 +354,8 @@ qt_add_shaders(Bilin "shaders"
 )
 
 # QML 类型注册按文件名包含头文件
-target_include_directories(Bilin PRIVATE src src/account src/chat src/devices src/files src/remote_view src/session
-                           src/setup src/share src/mobile)
+target_include_directories(Bilin PRIVATE src src/account src/chat src/devices src/feedback src/files src/remote_view
+                           src/session src/setup src/share src/mobile)
 target_compile_definitions(Bilin PRIVATE APP_VERSION="${BILIN_VERSION}")
 
 # Qt6::Svg：界面里的图标都是 .svg，运行时靠 SVG 的图片格式插件（imageformats/qsvg）加载。部署工具只有看到程序链接了

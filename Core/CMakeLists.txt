@@ -14,6 +14,8 @@ qt_add_library(rccore STATIC
     src/rc/download_mark.h
     src/rc/control_protocol.h
     src/rc/control_protocol.cpp
+    src/rc/feedback_logs.h
+    src/rc/feedback_logs.cpp
     src/rc/interrupted_transfers.h
     src/rc/interrupted_transfers.cpp
     src/rc/json_file.h

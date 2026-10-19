@@ -1,6 +1,7 @@
 #include "service_wiring.h"
 
 #include "control_server.h"
+#include "feedback_sender.h"
 #include "lan_discovery.h"
 #include "lan_signaling.h"
 #include "server_link.h"
@@ -113,6 +114,31 @@ void connectViewerSignaling(ControlServer &server, ServerLink &link, LanSignalin
                          server.sendEvent(protocol::Undeliverable, {{QStringLiteral("to"), to},
                                                                     {QStringLiteral("session"), session},
                                                                     {QStringLiteral("reason"), reason}});
+                     });
+}
+
+void connectFeedback(ControlServer &server, FeedbackSender &feedback)
+{
+    QObject::connect(&server, &ControlServer::feedbackLogsRequested, &feedback, [&server, &feedback](qintptr socket) {
+        server.sendEventTo(socket, protocol::FeedbackLogs,
+                           {{QStringLiteral("logs"), rc::feedback::packLogs(feedback.logs())}});
+    });
+    QObject::connect(&server, &ControlServer::feedbackRequested, &feedback,
+                     [&server, &feedback](qintptr socket, const QString &text, const QString &contact,
+                                          const QJsonArray &packed) {
+                         const auto done = [&server, socket](const QString &reason) {
+                             if (reason.isEmpty())
+                                 server.sendEventTo(socket, protocol::FeedbackSent, {});
+                             else
+                                 server.sendEventTo(socket, protocol::FeedbackFailed, {{QStringLiteral("reason"), reason}});
+                         };
+                         const std::optional<QList<rc::feedback::Log>> logs = rc::feedback::unpackLogs(packed);
+                         if (!logs) {
+                             qWarning("界面发来的反馈日志不对");
+                             done(protocol::Failed);
+                             return;
+                         }
+                         feedback.send(text, contact, *logs, done);
                      });
 }
 

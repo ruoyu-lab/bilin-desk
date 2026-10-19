@@ -39,10 +39,13 @@ LocalService::LocalService(const QString &directory, QObject *parent)
     , discovery_(store_, {.announce = false})
     , lan_(store_, {})
     , signaling_([this](const QString &deviceId) { return discovery_.addressOf(deviceId); })
+    // 反馈：后台服务在本进程里，它的日志也在界面的 app.log 里（界面那边带），这里没有自己的
+    , feedback_(store_, HttpUpdateSource::baseFor(QUrl(QStringLiteral(RC_SERVER_URL))), {})
 {
     service_wiring::connectAccount(server_, link_);
     service_wiring::publishNetwork(server_, link_, discovery_);
     service_wiring::connectViewerSignaling(server_, link_, lan_, signaling_);
+    service_wiring::connectFeedback(server_, feedback_);
     connect(&signaling_, &Signaling::toSharer, this,
             [this](const QString &from, const QString &, const QString &session) {
                 signaling_.declineFromSharer(from, session, QLatin1StringView(rc::peer::NotAccepting));

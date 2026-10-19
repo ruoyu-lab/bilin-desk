@@ -6,6 +6,7 @@
 #include "devices/device_directory.h"
 #include "devices/device_wake.h"
 #include "dock.h"
+#include "feedback/feedback.h"
 #include "remote_view/view_graphics.h"
 #include "service_client.h"
 #include "session/viewer_sessions.h"
@@ -137,8 +138,9 @@ int main(int argc, char *argv[])
     Autostart autostart(&app);
     Autostart::setInstance(&autostart);
 
-    // 本机的身份和被控那一面在后台服务里：连上它；开发版没在运行就启动它
-    const bool systemService = rc::system_service::installed();
+    // 本机的身份和被控那一面在后台服务里：连上它；开发版没在运行就启动它。装好的那一份连系统服务；
+    // 这台电脑装了比邻、却是别处编出来的开发版时也连旁边的后台服务（同一次编译，连开发服务器）
+    const bool systemService = rc::system_service::installed() && setup_platform::runningInstalled();
     ServiceClient service(systemService ? ServiceClient::Runner::System : ServiceClient::Runner::Beside,
                           systemService ? rc::system_service::endpoint() : rc::ipc::serviceEndpoint());
     ThisDevice thisDevice(service, &app);
@@ -154,6 +156,15 @@ int main(int argc, char *argv[])
     // 登录的账号：同一个账号下的设备互为"我的设备"
     Account account(service, &app);
     Account::setInstance(&account);
+    // 反馈：带上界面程序的日志（这次和上次运行的；macOS 装好时还有登录的人的助手的），后台服务的由它自己带
+    QStringList feedbackLogs{rc::stateDirectory() + QStringLiteral("/app.log"),
+                             rc::stateDirectory() + QStringLiteral("/app.log.previous")};
+#ifdef Q_OS_MACOS
+    const QString agentLog = QDir::homePath() + QStringLiteral("/Library/Logs/Bilin/agent.log");
+    feedbackLogs << agentLog << agentLog + QStringLiteral(".previous");
+#endif
+    Feedback feedback(service, feedbackLogs, &app);
+    Feedback::setInstance(&feedback);
     // 设备列表：我的设备（账号下的）、附近的（后台服务发现的）和本机记着的（添加的、收藏的、连过的）
     DeviceDirectory devices(service, account, rc::stateDirectory() + QStringLiteral("/devices.json"), &app);
     DeviceDirectory::setInstance(&devices);

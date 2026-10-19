@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
-// 设置：最上面是账号卡片（登录着时点进账号页，没登录时去登录），下面"本机"四项、"通用"三项。
-// 不常用的收在点进去的下一页里：账号（昵称、密码、我的设备、退出、注销）、关于比邻（版本、协议、开源声明、卸载）
+// 设置：最上面是账号卡片（登录着时点进账号页，没登录时去登录），下面"本机"四项、"通用"四项。
+// 不常用的收在点进去的下一页里：账号（昵称、密码、我的设备、退出、注销）、反馈问题、关于比邻（版本、协议、开源声明、卸载）
 Item {
     id: root
 
@@ -21,7 +21,7 @@ Item {
     // 点了"卸载比邻"（macOS：没有系统的卸载入口，程序自己给）
     signal uninstallRequested()
 
-    // 点进去的下一页：account（账号）| about（关于比邻）| terms、privacy（服务协议、隐私政策）| licenses（开源声明）；
+    // 点进去的下一页：account（账号）| feedback（反馈问题）| about（关于比邻）| terms、privacy（服务协议、隐私政策）| licenses（开源声明）；
     // 空是设置本身。离开设置时回到设置本身
     property string subpage
     onVisibleChanged: if (!visible) subpage = ""
@@ -189,6 +189,12 @@ Item {
                 sourceComponent: root.generalRows
             }
             SettingsRow {
+                iconName: "message"
+                label: qsTr("反馈问题")
+                navigates: true
+                onClicked: root.subpage = "feedback"
+            }
+            SettingsRow {
                 iconName: "info"
                 label: qsTr("关于比邻")
                 value: Qt.application.version
@@ -201,6 +207,14 @@ Item {
     AccountSettings {
         anchors.fill: parent
         visible: root.subpage === "account"
+        overTitleBar: root.overTitleBar
+        leftInset: root.leftInset
+        onBackRequested: root.subpage = ""
+    }
+
+    FeedbackSettings {
+        anchors.fill: parent
+        visible: root.subpage === "feedback"
         overTitleBar: root.overTitleBar
         leftInset: root.leftInset
         onBackRequested: root.subpage = ""

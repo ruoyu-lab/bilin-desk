@@ -17,7 +17,7 @@ export const MAX_CONTACT = 100;
 export const MAX_SYSTEM = 100;
 // 日志不压缩时最多这么大（程序只带最近的一段）
 export const MAX_LOGS_BYTES = 6 * 1024 * 1024;
-const MAX_LOG_FILES = 8;
+const MAX_LOG_FILES = 12;
 const MAX_LOG_NAME = 64;
 const FEEDBACK_ID = /^[0-9a-f]{16}$/;
 

@@ -23,7 +23,9 @@ scripts\build-windows.cmd C:\Qt\6.11.2\msvc2022_64 build\windows D:\Bilin
 
 用 Qt Creator 时打开根目录的 `CMakeLists.txt`。
 
-- 开发时编的程序连 Mac 上的开发服务器（下面），CMake 的 `RC_SERVER_URL` 默认 `ws://localhost:8800/ws`；
+- 开发时编的程序连 Mac 上的开发服务器（下面），CMake 的 `RC_SERVER_URL` 默认 `ws://localhost:8800/ws`。
+  这台电脑装了比邻时也一样：只有装好的那一份连系统服务，开发版连它旁边的后台服务（两份各有各的身份，
+  局域网信令的端口被装好的占着时，开发版之间只能经服务器连）；
   局域网里别的电脑写 Mac 的地址，比如 `-DRC_SERVER_URL=ws://192.168.1.10:8800/ws`
 - 日志在数据目录（macOS `~/Library/Application Support/Bilin`，Windows `%LOCALAPPDATA%\Bilin`）的 `app.log` 和 `service.log`
 - 环境变量 `RC_STATE_DIR` 换掉数据目录（本机连接的名字也跟着换），测试时在同一台电脑上再跑一份完全隔开的

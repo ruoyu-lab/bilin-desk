@@ -2,6 +2,7 @@
 
 #include "control_server.h"
 #include "device_store.h"
+#include "feedback_sender.h"
 #include "lan_discovery.h"
 #include "lan_signaling.h"
 #include "server_link.h"
@@ -14,7 +15,7 @@
 
 // 手机上的后台服务：手机上不能另起一个程序在后台跑，所以在本程序的进程里，界面照样经本机连接（ServiceClient，
 // rc/protocol.h）和它说话，和电脑上一样。只有去连别人要的那些：本机身份、账号、附近的设备、信令
-// （service_wiring.h）。手机不被别人连：来连的一律回绝（peer::NotAccepting）。
+// （service_wiring.h）和提交反馈。手机不被别人连：来连的一律回绝（peer::NotAccepting）。
 // Android 上从官网装的：新版本也从服务器来（Updater，下载好交给系统的安装界面）
 class LocalService : public QObject
 {
@@ -34,6 +35,7 @@ private:
     LanDiscovery discovery_;
     LanSignaling lan_;
     Signaling signaling_;
+    FeedbackSender feedback_;
     std::unique_ptr<HttpUpdateSource> updateSource_;
     std::unique_ptr<Updater> updater_;
 };

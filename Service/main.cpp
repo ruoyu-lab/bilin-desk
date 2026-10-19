@@ -2,6 +2,7 @@
 #include "connection_history.h"
 #include "control_server.h"
 #include "device_store.h"
+#include "feedback_sender.h"
 #include "lan_discovery.h"
 #include "lan_signaling.h"
 #include "server_link.h"
@@ -229,6 +230,19 @@ int main(int argc, char *argv[])
 
     // 账号：经服务器，结果给界面
     service_wiring::connectAccount(server, serverLink);
+
+    // 反馈：带上本程序的日志（这次和上次运行的）；装好时还有 Windows 系统服务的看护者、macOS 登录界面上的助手的
+    QStringList logFiles{directory + QStringLiteral("/service.log"), directory + QStringLiteral("/service.log.previous")};
+    if (installed) {
+#ifdef Q_OS_WIN
+        const QString watcher = directory + QStringLiteral("/system-service.log");
+#else
+        const QString watcher = directory + QStringLiteral("/agent-loginwindow.log");
+#endif
+        logFiles << watcher << watcher + QStringLiteral(".previous");
+    }
+    FeedbackSender feedback(store, HttpUpdateSource::baseFor(QUrl(QStringLiteral(RC_SERVER_URL))), logFiles);
+    service_wiring::connectFeedback(server, feedback);
 
     // 局域网：附近的设备（发现），不经服务器的信令
     LanDiscovery discovery(store, {.defaultAddress = defaultAddress});

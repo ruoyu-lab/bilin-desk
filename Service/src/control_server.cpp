@@ -41,11 +41,11 @@ void ControlServer::accept()
             continue;
         }
         auto *channel = new rc::LineChannel(socket, this);
-        channels_.append(channel);
+        channels_.insert(descriptor, channel);
         connect(channel, &rc::LineChannel::received, this,
                 [this, descriptor](const QJsonObject &message) { handle(descriptor, message); });
         connect(channel, &rc::LineChannel::disconnected, this, [this, channel, descriptor] {
-            channels_.removeOne(channel);
+            channels_.remove(descriptor);
             for (const QString &session : signalSessions_.take(descriptor))
                 emit signalEnded(session);
             channel->deleteLater();
@@ -152,6 +152,12 @@ void ControlServer::handle(qintptr socket, const QJsonObject &message)
         emit retryTransferRequested(message.value(QLatin1StringView("id")).toInt());
     else if (command == protocol::RemoveTransfer)
         emit removeTransferRequested(message.value(QLatin1StringView("id")).toInt());
+    else if (command == protocol::FeedbackLogs)
+        emit feedbackLogsRequested(socket);
+    else if (command == protocol::SendFeedback)
+        emit feedbackRequested(socket, message.value(QLatin1StringView("text")).toString(),
+                               message.value(QLatin1StringView("contact")).toString(),
+                               message.value(QLatin1StringView("logs")).toArray());
     else
         qWarning("不认识的命令：%s", qUtf8Printable(command));
 }
@@ -205,6 +211,12 @@ void ControlServer::broadcast(const QJsonObject &message)
 void ControlServer::sendEvent(QLatin1StringView event, const QJsonObject &arguments)
 {
     broadcast(protocol::eventMessage(event, arguments));
+}
+
+void ControlServer::sendEventTo(qintptr socket, QLatin1StringView event, const QJsonObject &arguments)
+{
+    if (rc::LineChannel *channel = channels_.value(socket))
+        channel->send(protocol::eventMessage(event, arguments));
 }
 
 QJsonObject ControlServer::deviceMessage() const

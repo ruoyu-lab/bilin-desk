@@ -3,6 +3,7 @@
 #include "chat/conversations.h"
 #include "devices/device_directory.h"
 #include "devices/device_wake.h"
+#include "feedback/feedback.h"
 #include "mobile/local_service.h"
 #include "mobile/mobile_files.h"
 #include "mobile/phone_system.h"
@@ -80,6 +81,8 @@ int main(int argc, char *argv[])
     ThisDevice::setInstance(&thisDevice);
     Account account(service, &app);
     Account::setInstance(&account);
+    Feedback feedback(service, {directory + QStringLiteral("/app.log"), directory + QStringLiteral("/app.log.previous")}, &app);
+    Feedback::setInstance(&feedback);
     DeviceDirectory devices(service, account, directory + QStringLiteral("/devices.json"), &app);
     DeviceDirectory::setInstance(&devices);
     DeviceWake wake(directory + QStringLiteral("/wake.json"), &app);

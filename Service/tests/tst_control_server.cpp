@@ -273,6 +273,36 @@ private slots:
         QCOMPARE(server_->clientCount(), 0);
     }
 
+    // 要后台服务的日志、提交反馈：回答只给发命令的那个界面
+    void feedbackIsAnsweredToTheAsker()
+    {
+        QList<QJsonObject> other;
+        auto *socket = new QLocalSocket;
+        rc::LineChannel second(socket);
+        connect(&second, &rc::LineChannel::received, this, [&other](const QJsonObject &m) { other.append(m); });
+        socket->connectToServer(endpoint_);
+        QTRY_COMPARE(other.size(), 2);
+
+        QSignalSpy logsRequested(server_, &ControlServer::feedbackLogsRequested);
+        QSignalSpy feedback(server_, &ControlServer::feedbackRequested);
+        client_->send(protocol::commandMessage(protocol::FeedbackLogs));
+        const QJsonArray logs{QJsonObject{{QStringLiteral("name"), QStringLiteral("app.log")}}};
+        client_->send(protocol::commandMessage(protocol::SendFeedback, {{QStringLiteral("text"), QStringLiteral("画面是黑的")},
+                                                                       {QStringLiteral("contact"), QString()},
+                                                                       {QStringLiteral("logs"), logs}}));
+        QTRY_COMPARE(feedback.count(), 1);
+        QCOMPARE(logsRequested.count(), 1);
+        QCOMPARE(feedback.at(0).at(1).toString(), QStringLiteral("画面是黑的"));
+        QCOMPARE(feedback.at(0).at(3).toJsonArray(), logs);
+
+        const int before = received_.size();
+        server_->sendEventTo(logsRequested.at(0).at(0).value<qintptr>(), protocol::FeedbackSent, {});
+        QTRY_COMPARE(received_.size(), before + 1);
+        QCOMPARE(received_.last().value(QLatin1StringView("event")).toString(), QString(protocol::FeedbackSent));
+        QTest::qWait(50);
+        QCOMPARE(other.size(), 2);
+    }
+
     void quitIsAskedFor()
     {
         QSignalSpy quit(server_, &ControlServer::quitRequested);

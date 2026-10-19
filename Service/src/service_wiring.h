@@ -1,6 +1,7 @@
 #pragma once
 
 class ControlServer;
+class FeedbackSender;
 class LanDiscovery;
 class LanSignaling;
 class ServerLink;
@@ -18,5 +19,8 @@ void publishNetwork(ControlServer &server, ServerLink &link, LanDiscovery &disco
 
 // 信令：界面去连别人的会话 ↔ 服务器或局域网（谁的交给谁、走哪条路见 Signaling）
 void connectViewerSignaling(ControlServer &server, ServerLink &link, LanSignaling &lan, Signaling &signaling);
+
+// 反馈：界面要后台服务的日志（给人看）、提交反馈，回答只给发命令的那个界面
+void connectFeedback(ControlServer &server, FeedbackSender &feedback);
 
 } // namespace service_wiring

@@ -10,6 +10,8 @@ qt_add_library(rcservicecore STATIC
     src/control_server.cpp
     src/device_store.h
     src/device_store.cpp
+    src/feedback_sender.h
+    src/feedback_sender.cpp
     src/lan_discovery.h
     src/lan_discovery.cpp
     src/lan_signaling.h
@@ -31,7 +33,7 @@ qt_add_library(rcservicecore STATIC
     src/updater.cpp
 )
 target_include_directories(rcservicecore PUBLIC src)
-target_link_libraries(rcservicecore PUBLIC rccore Qt6::WebSockets)
+target_link_libraries(rcservicecore PUBLIC rccore Qt6::Network Qt6::WebSockets)
 # 本机连接上来的是谁（client_rights.h）
 if(IOS)
     target_sources(rcservicecore PRIVATE src/client_rights_ios.cpp)

@@ -9,6 +9,7 @@ endfunction()
 rc_service_test(tst_app_keeper)
 rc_service_test(tst_connection_history)
 rc_service_test(tst_device_store)
+rc_service_test(tst_feedback_sender)
 rc_service_test(tst_control_server)
 rc_service_test(tst_server_link)
 # 测试 wss:// 用的证书：自己签的、只给 127.0.0.1，私钥也只给测试用（程序不认它）

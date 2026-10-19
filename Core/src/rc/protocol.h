@@ -113,6 +113,11 @@ inline constexpr QLatin1StringView CancelTransfer{"cancelTransfer"};
 inline constexpr QLatin1StringView RetryTransfer{"retryTransfer"};
 // id：从列表里去掉结束了的
 inline constexpr QLatin1StringView RemoveTransfer{"removeTransfer"};
+// 要后台服务的日志（反馈带上，rc/feedback_logs.h）：回答是只发给这个界面的同名事件
+inline constexpr QLatin1StringView FeedbackLogs{"feedbackLogs"};
+// text、contact（没登录时自己填的，可以是空的）、logs（rc/feedback_logs.h 的 packLogs，可以是空的）：
+// 提交反馈（docs/feedback.md），版本和系统由后台服务带上。结果是只发给这个界面的 feedbackSent 或 feedbackFailed
+inline constexpr QLatin1StringView SendFeedback{"sendFeedback"};
 
 // ---- 事件 ----
 
@@ -144,6 +149,12 @@ inline constexpr QLatin1StringView ChatReceived{"chatReceived"};
 inline constexpr QLatin1StringView ChatFailed{"chatFailed"};
 inline constexpr QLatin1StringView QueueFull{"queueFull"};
 inline constexpr QLatin1StringView NotConnected{"notConnected"};
+// feedbackLogs（事件名和命令一样）：logs（packLogs）是后台服务的日志
+// 反馈交给服务器了
+inline constexpr QLatin1StringView FeedbackSent{"feedbackSent"};
+// reason：反馈没交上。tooMany（今天提交得太多了）| noServer（连不上服务器）| failed（服务器不收，别的错）
+inline constexpr QLatin1StringView FeedbackFailed{"feedbackFailed"};
+inline constexpr QLatin1StringView Failed{"failed"};
 
 struct DeviceState
 {
