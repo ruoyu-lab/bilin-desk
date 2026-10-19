@@ -7,12 +7,18 @@
 
 #include <QJSEngine>
 #include <QJsonDocument>
+#include <QLocale>
 
 namespace protocol = rc::protocol;
 
 namespace {
 
 Feedback *instance = nullptr;
+
+QString sizeText(qsizetype bytes)
+{
+    return QLocale().formattedDataSize(bytes, 1, QLocale::DataSizeTraditionalFormat);
+}
 
 QString failureMessage(const QString &reason)
 {
@@ -77,8 +83,17 @@ QVariantList Feedback::logs() const
 {
     QVariantList list;
     for (const rc::feedback::Log &log : logs_)
-        list.append(QVariantMap{{QStringLiteral("name"), log.name}, {QStringLiteral("bytes"), log.text.toUtf8().size()}});
+        list.append(QVariantMap{{QStringLiteral("name"), log.name},
+                                {QStringLiteral("size"), sizeText(log.text.toUtf8().size())}});
     return list;
+}
+
+QString Feedback::logsSize() const
+{
+    qsizetype bytes = 0;
+    for (const rc::feedback::Log &log : logs_)
+        bytes += log.text.toUtf8().size();
+    return sizeText(bytes);
 }
 
 void Feedback::loadLogs()

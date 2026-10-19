@@ -20,8 +20,10 @@ class Feedback : public QObject
     QML_ELEMENT
     QML_SINGLETON
 
-    // 日志：{ name, bytes }，内容用 logText(index) 取
+    // 日志：{ name, size（给人看的大小）}，内容用 logText(index) 取
     Q_PROPERTY(QVariantList logs READ logs NOTIFY logsChanged)
+    // 所有日志加起来多大（给人看的）
+    Q_PROPERTY(QString logsSize READ logsSize NOTIFY logsChanged)
     // 在等后台服务的日志
     Q_PROPERTY(bool loadingLogs READ loadingLogs NOTIFY logsChanged)
     // 在等后台服务交给服务器
@@ -37,6 +39,7 @@ public:
     static Feedback *create(QQmlEngine *, QJSEngine *);
 
     QVariantList logs() const;
+    QString logsSize() const;
     bool loadingLogs() const { return loadingLogs_; }
     bool busy() const { return busy_; }
     QString systemName() const { return rc::feedback::systemName(); }

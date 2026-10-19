@@ -13,6 +13,7 @@ MobilePage {
 
     signal accountRequested()
     signal loginRequested()
+    signal feedbackRequested()
     signal aboutRequested()
 
     // ---- 账号 ----
@@ -128,6 +129,11 @@ MobilePage {
                 currentIndex: ["system", "light", "dark"].indexOf(Appearance.scheme)
                 onCurrentIndexChanged: Appearance.scheme = ["system", "light", "dark"][currentIndex]
             }
+        }
+        SettingsRow {
+            label: qsTr("反馈问题")
+            navigates: true
+            onClicked: root.feedbackRequested()
         }
         SettingsRow {
             label: qsTr("关于比邻")

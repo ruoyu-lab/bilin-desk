@@ -21,9 +21,11 @@ Item {
     // 点了"卸载比邻"（macOS：没有系统的卸载入口，程序自己给）
     signal uninstallRequested()
 
-    // 点进去的下一页：account（账号）| feedback（反馈问题）| about（关于比邻）| terms、privacy（服务协议、隐私政策）| licenses（开源声明）；
+    // 点进去的下一页：account（账号）| feedback（反馈问题）、feedbackLogs（它的日志）、feedbackLog（其中一份，
+    // feedbackLog 是第几份）| about（关于比邻）| terms、privacy（服务协议、隐私政策）| licenses（开源声明）；
     // 空是设置本身。离开设置时回到设置本身
     property string subpage
+    property int feedbackLog: -1
     onVisibleChanged: if (!visible) subpage = ""
 
     // 在账号页时退出、注销了：回到设置
@@ -192,7 +194,10 @@ Item {
                 iconName: "message"
                 label: qsTr("反馈问题")
                 navigates: true
-                onClicked: root.subpage = "feedback"
+                onClicked: {
+                    root.subpage = "feedback"
+                    feedback.start()
+                }
             }
             SettingsRow {
                 iconName: "info"
@@ -213,11 +218,35 @@ Item {
     }
 
     FeedbackSettings {
+        id: feedback
         anchors.fill: parent
         visible: root.subpage === "feedback"
         overTitleBar: root.overTitleBar
         leftInset: root.leftInset
         onBackRequested: root.subpage = ""
+        onLogsRequested: root.subpage = "feedbackLogs"
+    }
+
+    FeedbackLogs {
+        anchors.fill: parent
+        visible: root.subpage === "feedbackLogs"
+        overTitleBar: root.overTitleBar
+        leftInset: root.leftInset
+        onBackRequested: root.subpage = "feedback"
+        onLogRequested: index => {
+            root.feedbackLog = index
+            root.subpage = "feedbackLog"
+        }
+    }
+
+    // 退出来时放下那一份（再打开时重新取，也不一直占着几百 KB 的文字）
+    FeedbackLog {
+        anchors.fill: parent
+        visible: root.subpage === "feedbackLog"
+        index: visible ? root.feedbackLog : -1
+        overTitleBar: root.overTitleBar
+        leftInset: root.leftInset
+        onBackRequested: root.subpage = "feedbackLogs"
     }
 
     AboutSettings {

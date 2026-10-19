@@ -96,6 +96,8 @@ set(app_qml
     qml/shared/AboutSettings.qml
     qml/shared/AccountDialog.qml
     qml/shared/AccountSettings.qml
+    qml/shared/FeedbackLog.qml
+    qml/shared/FeedbackLogs.qml
     qml/shared/FeedbackSettings.qml
     qml/shared/LegalPage.qml
     qml/shared/LicensesPage.qml

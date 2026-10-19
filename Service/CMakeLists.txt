@@ -33,7 +33,7 @@ qt_add_library(rcservicecore STATIC
     src/updater.cpp
 )
 target_include_directories(rcservicecore PUBLIC src)
-target_link_libraries(rcservicecore PUBLIC rccore Qt6::Network Qt6::WebSockets)
+target_link_libraries(rcservicecore PUBLIC rccore Qt6::WebSockets)
 # 本机连接上来的是谁（client_rights.h）
 if(IOS)
     target_sources(rcservicecore PRIVATE src/client_rights_ios.cpp)

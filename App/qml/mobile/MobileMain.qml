@@ -133,6 +133,7 @@ ApplicationWindow {
                 fingerMode: app.fingerMode
                 onAccountRequested: stack.push(accountPage)
                 onLoginRequested: stack.push(loginPage)
+                onFeedbackRequested: stack.push(feedbackPage)
                 onAboutRequested: stack.push(aboutPage)
             }
         }
@@ -188,6 +189,30 @@ ApplicationWindow {
     Component {
         id: accountPage
         AccountSettings {
+            onBackRequested: stack.pop()
+        }
+    }
+
+    Component {
+        id: feedbackPage
+        FeedbackSettings {
+            Component.onCompleted: start()
+            onBackRequested: stack.pop()
+            onLogsRequested: stack.push(feedbackLogsPage)
+        }
+    }
+
+    Component {
+        id: feedbackLogsPage
+        FeedbackLogs {
+            onBackRequested: stack.pop()
+            onLogRequested: index => stack.push(feedbackLogPage, { index: index })
+        }
+    }
+
+    Component {
+        id: feedbackLogPage
+        FeedbackLog {
             onBackRequested: stack.pop()
         }
     }

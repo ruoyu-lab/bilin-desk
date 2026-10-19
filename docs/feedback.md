@@ -19,7 +19,7 @@ Nginx 那里这个地址的请求体最大 8 MB。
 
 ## 程序
 
-设置 › 反馈问题（`App/qml/shared/FeedbackSettings.qml`，电脑、平板共用；QML 单例 `Feedback`，`App/src/feedback/`）。
+设置 › 反馈问题（`App/qml/shared/FeedbackSettings.qml`，点进去的日志列表 `FeedbackLogs.qml`、一份日志 `FeedbackLog.qml`；电脑、平板、手机共用，手机上一页一页推进来；QML 单例 `Feedback`，`App/src/feedback/`）。
 
 - 说明必填（最多 5000 字）；没登录时可以留邮箱、微信或 QQ，登录着时服务器用账号的邮箱
 - "附带日志"默认开着，"查看日志"里能一份一份看全部内容，提交的就是看到的这些。版本和系统写在下面，一起交上去
@@ -32,6 +32,9 @@ Nginx 那里这个地址的请求体最大 8 MB。
   `rc/protocol.h`），回答只发给要的那个界面。后台服务解开（先看压缩数据里写的大小，不超过 512 KB 才解），
   带上设备 ID、令牌、版本、系统交给服务器（`Service/src/feedback_sender.h`）；界面程序拿不到令牌
 - 没交上时说原因：今天提交得太多了（429）、连不上服务器、别的错
+
+在 Mac 上用手机的界面试：手机预览版（[mobile.md](mobile.md)）配置时加 `-DRC_SERVER_URL=ws://localhost:8800/ws` 连开发服务器，
+运行时用单独的数据目录（`RC_STATE_DIR`），免得和电脑开发版用同一个设备身份、互相挤下线。
 
 `Service/tests/tst_feedback_sender` 里有一项连真的服务器（先登记、再提交）：
 
