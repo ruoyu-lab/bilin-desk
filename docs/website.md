@@ -32,6 +32,6 @@ npm run preview   # 看构建出来的
 - 挪到页面末尾的东西（赞助的浮窗，`Teleport`）挪进 `#teleports`，不直接挪到 `body`：接管时 Vue 认为挪过去的地方开头就是它的标记
 - 每页的 `<head>` 里有 description、canonical、Open Graph / Twitter 卡片（`public/og.png`）、PNG 图标；首页的结构化数据
   （SoftwareApplication 和常见问题的 FAQPage，常见问题在 `src/faq.ts`，页面上显示的是同一份）由 `prerender.mjs` 写进去
-- `public/robots.txt`（不让爬 `/admin/`、`/updates/`）；`sitemap.xml` 由 `prerender.mjs` 每次构建写，日期是构建那天。
+- `public/robots.txt`（不让爬 `/updates/`；管理后台在自己的域名上，响应头里说不让收）；`sitemap.xml` 由 `prerender.mjs` 每次构建写，日期是构建那天。
   加了新页面：`vite.config.ts` 的 input、`server.ts` 的 render、`prerender.mjs` 的 pages 一起加
 - `public/` 里的 og.png、favicon-32.png、apple-touch-icon.png 由 `scripts/make-icons.sh` 从 Logo 生成

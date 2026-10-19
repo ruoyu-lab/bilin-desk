@@ -24,7 +24,7 @@ const ice = await loadIceSettings(process.env);
 const updatesDirectory = process.env.UPDATES_DIR ?? '/var/lib/bilin/updates';
 const releaseKeyFile = new URL('../release-key.pub', import.meta.url);
 // 反馈的通知邮件里，管理后台的地址
-const adminUrl = process.env.ADMIN_URL ?? 'https://www.bilindesk.com/admin/';
+const adminUrl = process.env.ADMIN_URL ?? 'https://admin.bilindesk.com/';
 
 const mongo = new MongoClient(mongoUrl);
 await mongo.connect();

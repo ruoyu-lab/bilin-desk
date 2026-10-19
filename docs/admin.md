@@ -2,10 +2,11 @@
 
 给软件的作者一个人用：看服务器在不在正常运行、备份数据库、发布新版本、看用户的反馈。不看任何一个账号、设备的内容，首页只有数目。
 
-- 地址：`https://www.bilindesk.com/admin/`（开发用的虚拟机：`http://localhost:8800/admin/`）
-- 网页是 `Server/admin/`（Vue 3 + TypeScript），编出来是静态文件，Nginx 在 `/admin/` 下发；本机改网页时
-  `npm run dev`（在 Server/admin 里），接口转给开发用的虚拟机
-- 接口（`/admin/api/`）是单独一个进程（PM2 的 `bilin-admin`，Server/src/admin/），只听本机的 3100 端口，Nginx 把请求转给它。
+- 地址：`https://admin.bilindesk.com/`，自己一个域名，浏览器里和官网、网页版的数据互相碰不到
+  （开发用的虚拟机只有一个地址：`http://localhost:8800/admin/`，PM2 的 `BASE_PATH`）
+- 网页是 `Server/admin/`（Vue 3 + TypeScript），编出来是静态文件，Nginx 在根上发（`deploy/nginx/admin.bilindesk.com.conf`）；
+  本机改网页时 `npm run dev`（在 Server/admin 里），接口转给开发用的虚拟机
+- 接口（`/api/`，开发用的虚拟机上是 `/admin/api/`）是单独一个进程（PM2 的 `bilin-admin`，Server/src/admin/），只听本机的 3100 端口，Nginx 把请求转给它。
   和服务端用同一个 MongoDB、Redis
 
 ## 密码
@@ -137,12 +138,13 @@ Redis 里的（谁在线、限速的计数、登录的会话）不用备份：�
 | | 位置 |
 | --- | --- |
 | 服务端、管理后台的接口 | `/opt/bilin/server`（bilin 用户，PM2 的 `bilin-server` ×2 在 3000 端口、`bilin-admin` 在 3100 端口） |
-| 官网、管理后台的网页 | `/var/www/bilindesk.com`（后台在 `admin/` 下） |
+| 官网的网页 | `/var/www/bilindesk.com` |
+| 管理后台的网页 | `/var/www/admin.bilindesk.com` |
 | 发布的新版本、备份 | `/var/lib/bilin/updates`、`/var/lib/bilin/backups` |
 | 中继的共享密钥、后台密码的哈希、发邮件的密钥 | `/etc/bilin` |
 | 日志 | `/var/log/bilin`（Nginx 的出错日志、coturn），`/opt/bilin/.pm2/logs`；都只留 14 天 |
-| Nginx | `/etc/nginx/conf.d/bilindesk.com.conf`；不认识的域名、直接用 IP 来的由 `00-default.conf` 回答 |
-| 证书 | Let's Encrypt（`/etc/letsencrypt/live/bilindesk.com`），certbot 的定时任务自己续期，续好了重新加载 Nginx |
+| Nginx | `/etc/nginx/conf.d/bilindesk.com.conf`、`admin.bilindesk.com.conf`；不认识的域名、直接用 IP 来的由 `00-default.conf` 回答 |
+| 证书 | Let's Encrypt（`/etc/letsencrypt/live/bilindesk.com`），一张带着 bilindesk.com、www、admin、web，部署时缺了名字就补上；certbot 的定时任务自己续期，续好了重新加载 Nginx |
 
 同一台服务器以后再放别的网站：程序放在它自己的目录、用它自己的用户和端口（不要用 3000、3100），
 Nginx 在 `conf.d` 里加一份按它的域名起名的配置；新域名先 `certbot certonly --webroot -w /var/www/letsencrypt -d 域名`

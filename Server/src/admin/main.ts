@@ -22,7 +22,7 @@ import { onlineDevices, systemStatus, type MailMode } from './status.js';
 // 配置都从环境变量来（ecosystem.config.cjs）
 const host = process.env.HOST ?? '127.0.0.1';
 const port = Number(process.env.PORT ?? 3100);
-const base = process.env.BASE_PATH ?? '/admin';
+const base = process.env.BASE_PATH ?? '';
 const mongoUrl = process.env.MONGO_URL ?? 'mongodb://127.0.0.1:27017/bilin';
 const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
 const dataDirectory = process.env.DATA_DIR ?? '/var/lib/bilin';

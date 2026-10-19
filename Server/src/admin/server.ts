@@ -15,7 +15,8 @@ import type { Sessions } from './sessions.js';
 import type { Status } from './status.js';
 
 // 管理后台（docs/admin.md）：给软件的作者一个人用，看服务器在不在正常运行、备份数据库、发布新版本、看反馈。
-// 在 Nginx 后面，接口在 base（/admin）下的 api/；网页（Server/admin 编出来的静态文件）由 Nginx 在 base 下发。
+// 在 Nginx 后面，接口在 base 下的 api/（正式服务器上 base 是空的：admin.bilindesk.com/api/；开发用的虚拟机只有
+// 一个地址，是 /admin）；网页（Server/admin 编出来的静态文件）由 Nginx 在 base 下发。
 // 密码只有一个，哈希存在 passwordFile 里（set-password.ts 写），登录时读：改了密码不用重启
 export interface AdminOptions {
     base: string;
@@ -67,7 +68,7 @@ export async function buildAdmin(options: AdminOptions): Promise<FastifyInstance
     const app = Fastify({ logger: options.logger, trustProxy: ['127.0.0.1', '::1'] });
     const { base, sessions } = options;
     const cookie = (token: string, maxAgeS: number) =>
-        `${COOKIE}=${token}; Path=${base}; Max-Age=${maxAgeS}; HttpOnly; SameSite=Strict${options.secureCookie ? '; Secure' : ''}`;
+        `${COOKIE}=${token}; Path=${base || '/'}; Max-Age=${maxAgeS}; HttpOnly; SameSite=Strict${options.secureCookie ? '; Secure' : ''}`;
 
     await app.register(async (admin) => {
         // 上传的安装包：不读进内存，原样交给 Releases 边收边存

@@ -132,6 +132,21 @@ describe('管理后台', () => {
         return String(response.headers['set-cookie']).split(';')[0]!;
     }
 
+    it('有自己的域名时 base 是空的：接口在根下的 api/，cookie 也在根上', async () => {
+        const root = await buildAdmin({
+            base: '', passwordFile: path.join(directory, 'password'), sessions: new MemorySessions(),
+            limiter: new MemoryLimiter(), backups: new Backups(path.join(directory, 'backups'), 2, async () => {}),
+            releases: new Releases(path.join(directory, 'updates'), releaseKeys.publicKey), feedback,
+            status: async () => status, logs: async () => problems, clearLogs: async () => 0, testMail: async () => {},
+            secureCookie: true, logger: false,
+        });
+        const login = await root.inject({ method: 'POST', url: '/api/login', payload: { password: PASSWORD } });
+        const cookie = String(login.headers['set-cookie']);
+        expect(cookie).toContain('Path=/;');
+        expect((await root.inject({ url: '/api/status', headers: { cookie: cookie.split(';')[0]! } })).statusCode).toBe(200);
+        await root.close();
+    });
+
     it('只有 base 下的接口，网页由 Nginx 发', async () => {
         expect((await app.inject({ url: `${BASE}/` })).statusCode).toBe(404);
         expect((await app.inject({ url: '/api/status' })).statusCode).toBe(404);

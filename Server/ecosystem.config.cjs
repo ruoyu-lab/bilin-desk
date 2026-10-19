@@ -24,11 +24,12 @@ module.exports = {
                 MAIL_KEY_FILE: '/etc/bilin/mail-key',
                 MAIL_FROM: '比邻 <noreply@bilindesk.com>',
                 // 有新的反馈时，通知邮件里管理后台的地址
-                ADMIN_URL: 'https://www.bilindesk.com/admin/',
+                ADMIN_URL: 'https://admin.bilindesk.com/',
             },
             // 开发用的虚拟机：不真的发邮件，验证码写进日志（pm2 logs bilin-server）
             env_development: {
                 MAIL: 'log',
+                ADMIN_URL: 'http://localhost:8800/admin/',
             },
         },
         {
@@ -42,8 +43,8 @@ module.exports = {
                 NODE_ENV: 'production',
                 HOST: '127.0.0.1',
                 PORT: '3100',
-                // 网页和接口在这个地址下面（Nginx 的配置里同一个）
-                BASE_PATH: '/admin',
+                // 网页和接口在这个路径下面（Nginx 的配置里同一个）：正式服务器上管理后台有自己的域名，在根上
+                BASE_PATH: '',
                 MONGO_URL: 'mongodb://127.0.0.1:27017/bilin',
                 REDIS_URL: 'redis://127.0.0.1:6379',
                 HEALTH_URL: 'http://127.0.0.1:3000/health',
@@ -59,8 +60,9 @@ module.exports = {
                 MAIL_KEY_FILE: '/etc/bilin/mail-key',
                 MAIL_FROM: '比邻 <noreply@bilindesk.com>',
             },
-            // 开发用的虚拟机：http，cookie 不加 Secure；没有证书；邮件写进日志
+            // 开发用的虚拟机：只有一个地址，管理后台在 /admin 下；http，cookie 不加 Secure；没有证书；邮件写进日志
             env_development: {
+                BASE_PATH: '/admin',
                 COOKIE_SECURE: 'false',
                 CERT_HOST: '',
                 MAIL: 'log',
