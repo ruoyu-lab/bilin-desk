@@ -20,11 +20,13 @@
 #include <QObject>
 #include <QString>
 #include <QTimer>
+#include <QUrl>
 
 #include <memory>
 #include <optional>
 
 class DeviceStore;
+class RelayChannel;
 
 namespace rcsdk {
 class AgentGate;
@@ -98,6 +100,9 @@ public:
     // P2P 和中继用的服务器（服务器发来的）：从下一个连接起用
     void setIceServers(const rc::IceServers &ice);
 
+    // 有浏览器（网页版）要连本机（只有别人的这一个，PasswordAccess）：凭 ticket 经 relay（转发进程的地址）进本机的房间，
+    // 分享会话换成经它（rc::WebTransport，SDK 的宿主通道）。浏览器照样要输临时密码、本机的人点允许
+    void webViewer(const QUrl &relay, const QString &ticket);
     // 设备 from（名字 name）发来的信令：它要这样（mode）连本机，mode.access 和这一个的一样
     void receiveSignal(const QString &from, const QString &name, const QString &session, const QString &text,
                        const rc::ConnectionMode &mode);
@@ -234,6 +239,9 @@ private:
     ShareClipboard clipboard_;
     ShareThumbnails thumbnails_;
     bool lowLatency_ = false; // 分享会话现在用着低延迟预设
+    std::unique_ptr<RelayChannel> relay_; // 网页版：经转发进程连浏览器的通道（活得比分享会话久）
+    QUrl relayUrl_;
+    QString relayTicket_; // 换成网页版时进房间用的
     std::unique_ptr<rcsdk::Session> session_;
     quint64 run_ = 0; // 分享会话开了第几次：SDK 排着的事件只给开着的这一次
     QString pin_;

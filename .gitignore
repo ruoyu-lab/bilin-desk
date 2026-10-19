@@ -22,3 +22,5 @@ Website/dist-ssr/
 # 网页版
 Web/node_modules/
 Web/dist/
+# SDK 的浏览器包：scripts/build-web-sdk.sh 编出来的
+Web/public/sdk/

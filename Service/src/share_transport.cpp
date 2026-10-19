@@ -37,7 +37,7 @@ void ShareTransport::switchTo(const QString &transport)
 bool ShareTransport::shouldSwitchBack(bool inUse)
 {
     forgetAttempts();
-    return current_ == rc::RelayTransport && !inUse && attempts_.isEmpty();
+    return current_ != rc::DirectTransport && !inUse && attempts_.isEmpty();
 }
 
 bool ShareTransport::othersAttempting(const QString &from)

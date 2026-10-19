@@ -14,6 +14,7 @@ import { RedisStats } from './stats.js';
 import { MongoRegistry, type DeviceDocument } from './registry.js';
 import { Releases, releaseKey } from './releases.js';
 import { buildServer } from './server.js';
+import { RedisTickets } from './tickets.js';
 
 // 配置都从环境变量来（PM2 的 ecosystem.config.cjs 里设）
 const host = process.env.HOST ?? '127.0.0.1';
@@ -37,6 +38,7 @@ const bus = new RedisBus(redisUrl);
 const limiter = new RedisLimiter(redisUrl);
 const codes = new RedisCodes(redisUrl);
 const stats = new RedisStats(redisUrl);
+const tickets = new RedisTickets(redisUrl);
 const releases = new Releases(updatesDirectory, releaseKey(await readFile(releaseKeyFile, 'utf8')));
 
 // 发邮件的日志在 Fastify 建好以前还没有：先交给一个转发的，建好以后接上
@@ -45,6 +47,7 @@ const mailer = await loadMailer(process.env, mailLog);
 const { app } = await buildServer({
     registry, accounts, bus, limiter, codes, mailer, stats, releases, logger: true, hub: { ...defaultHubOptions, ice },
     feedback: { store: feedback, adminUrl: `${adminUrl}#feedback` },
+    web: { tickets },
 });
 await app.listen({ host, port });
 if (ice)
@@ -66,6 +69,7 @@ async function stop(signal: string): Promise<void> {
     await limiter.close();
     await codes.close();
     await stats.close();
+    await tickets.close();
     await mongo.close();
     process.exit(0);
 }

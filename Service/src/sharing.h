@@ -34,6 +34,8 @@ public:
     void setIceServers(const rc::IceServers &ice);
     void requestPermission(const QString &permission);
     void restart();
+    // 网页版来连：交给别人的那一个（ShareHost::webViewer）
+    void webViewer(const QUrl &relay, const QString &ticket);
     void receiveSignal(const QString &from, const QString &name, const QString &session, const QString &text,
                        const rc::ConnectionMode &mode);
     void admit(int id, bool control);

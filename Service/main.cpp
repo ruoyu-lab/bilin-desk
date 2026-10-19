@@ -3,6 +3,7 @@
 #include "control_server.h"
 #include "device_store.h"
 #include "feedback_sender.h"
+#include "relay_channel.h"
 #include "lan_discovery.h"
 #include "lan_signaling.h"
 #include "server_link.h"
@@ -170,6 +171,11 @@ int main(int argc, char *argv[])
                      [&] { server.sendEvent(rc::protocol::WallpaperWanted, {}); });
     QObject::connect(&server, &ControlServer::permissionRequested, &host, &Sharing::requestPermission);
     QObject::connect(&server, &ControlServer::restartShareRequested, &host, &Sharing::restart);
+    // 网页版：浏览器经服务器上的转发进程来连本机
+    QObject::connect(&serverLink, &ServerLink::webViewerRequested, &host,
+                     [&host, relay = RelayChannel::urlFor(QUrl(QStringLiteral(RC_SERVER_URL)))](const QString &ticket) {
+                         host.webViewer(relay, ticket);
+                     });
     // 有人连着本机时界面程序要在（本机的人看得到谁在连）：意外没了就拉起来，界面要退出就先断开连着的人
     AppKeeper keeper(installed ? system_mode::launchApp : launchAppBeside, [&host] { host.disconnectAll(); });
     QObject::connect(&server, &ControlServer::clientsChanged, &keeper,

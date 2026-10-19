@@ -264,6 +264,11 @@ export class Hub {
         return receivers > 0;
     }
 
+    // 有浏览器要连设备 to：凭 ticket 进它的房间。不在线时 false
+    async webViewer(to: string, ticket: string): Promise<boolean> {
+        return await this.#bus.publish(to, { type: 'webViewer', ticket }) > 0;
+    }
+
     // 回绝送不到（对方不在线了）就算了：它自己会等不到回答
     async decline(from: string, request: DeclineRequest): Promise<void> {
         await this.#bus.publish(request.to, { type: 'decline', from, session: request.session, reason: request.reason });
@@ -498,6 +503,9 @@ export class Hub {
             break;
         case 'decline':
             connection.send({ type: 'decline', from: message.from, session: message.session, reason: message.reason });
+            break;
+        case 'webViewer':
+            connection.send({ type: 'webViewer', ticket: message.ticket });
             break;
         case 'accountChanged':
             connection.refreshAccount();

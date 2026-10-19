@@ -60,6 +60,8 @@ qt_add_executable(rcservice
     main.cpp
     src/local_displays.h
     src/local_displays.cpp
+    src/relay_channel.h
+    src/relay_channel.cpp
     src/share_clipboard.h
     src/share_clipboard.cpp
     src/share_host.h

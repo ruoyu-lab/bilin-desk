@@ -609,7 +609,9 @@ QtObject {
                         Person {
                             Layout.fillWidth: true
                             info: request.modelData
-                            subtitle: qsTr("请求连接本机 · %1").arg(request.modelData.deviceId)
+                            // 网页版来的没有设备 ID
+                            subtitle: request.modelData.deviceId.length > 0 ? qsTr("请求连接本机 · %1").arg(request.modelData.deviceId)
+                                                                           : qsTr("请求连接本机")
                         }
                         Text {
                             Layout.fillWidth: true

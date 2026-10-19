@@ -20,6 +20,9 @@ namespace rc {
 
 inline constexpr QLatin1StringView DirectTransport{"p2p"};
 inline constexpr QLatin1StringView RelayTransport{"relay"};
+// 网页版（docs/web.md）：浏览器经服务器上的转发进程连本机（SDK 的 RCS_TRANSPORT_HOST）。只有分享端用，
+// 不在设备之间的信令里出现
+inline constexpr QLatin1StringView WebTransport{"web"};
 
 // 临时密码（SDK 的 PIN）：被连的人点允许
 inline constexpr QLatin1StringView PasswordAccess{"password"};

@@ -75,6 +75,8 @@ signals:
                         const rc::ConnectionMode &mode);
     // 设备 from 回绝了这次连接
     void declined(const QString &from, const QString &session, const QString &reason);
+    // 有浏览器（网页版）要连本机：凭 ticket 进转发进程里本机的房间
+    void webViewerRequested(const QString &ticket);
     // 发给设备 to 的信令没送到；reason：offline（它不在线，或者没有这个 ID）| tooMany（服务器先不让连）
     void undeliverable(const QString &to, const QString &session, const QString &reason);
     void accountChanged();

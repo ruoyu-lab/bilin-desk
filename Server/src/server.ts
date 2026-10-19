@@ -7,7 +7,9 @@ import { parseFeedback, type FeedbackStore } from './feedback.js';
 import { CloseCode, Hub, type HubOptions, type HubSources } from './hub.js';
 import { feedbackMail } from './mail.js';
 import { hashToken } from './registry.js';
+import { DEVICE_ID } from './protocol.js';
 import { fileType, isPlatform, type Releases } from './releases.js';
+import type { Tickets } from './tickets.js';
 
 export interface ServerOptions extends HubSources {
     // 测试里关掉
@@ -19,7 +21,12 @@ export interface ServerOptions extends HubSources {
     releases?: Releases;
     // 用户提交的反馈存在这里；adminUrl：通知邮件里的链接（管理后台）。没有时不收反馈
     feedback?: { store: FeedbackStore; adminUrl: string };
+    // 网页版经转发进程连电脑用的一次性通行证（tickets.ts）；没有时网页版连不了
+    web?: { tickets: Tickets };
 }
+
+// 网页版要连电脑（POST /web/connect）：同一个地址一小时最多 60 次
+const WEB_CONNECTS_PER_ADDRESS = 60;
 
 // 反馈（feedback.ts）：同一台设备一天最多 5 条，同一个地址 20 条；通知邮件一天最多 20 封（多的在后台里看）
 const DAY_S = 24 * 60 * 60;
@@ -33,7 +40,8 @@ const FEEDBACK_BODY_LIMIT = 8 * 1024 * 1024;
 export const UPDATES_PATH = '/updates';
 
 // GET /ws：后台服务的长连接（消息见 protocol.ts）；GET /health：给 Nginx、部署脚本看活着没有；
-// GET /updates/...：新版本（releases.ts）；POST /feedback：用户提交反馈（程序的后台服务发，feedback.ts）
+// GET /updates/...：新版本（releases.ts）；POST /feedback：用户提交反馈（程序的后台服务发，feedback.ts）；
+// POST /web/connect：网页版要连一台电脑（docs/web.md）
 export async function buildServer(options: ServerOptions): Promise<{ app: FastifyInstance; hub: Hub }> {
     // 在本机的 Nginx 后面：设备的真实地址是 Nginx 加在 X-Forwarded-For 最后的那一个（前面的设备自己能乱写）
     const app = Fastify({ logger: options.logger, trustProxy: ['127.0.0.1', '::1'] });
@@ -110,6 +118,23 @@ export async function buildServer(options: ServerOptions): Promise<{ app: Fastif
                 }
             }
             return { ok: true };
+        });
+    }
+
+    const web = options.web;
+    if (web) {
+        // 给那台电脑和浏览器各发一张进它房间的通行证，告诉电脑有浏览器要来。不用登录：浏览器连上以后还要
+        // 输对方的临时密码（SDK 在两端之间核对），对方还要点允许
+        app.post<{ Body: { deviceId?: unknown } }>('/web/connect', async (request, reply) => {
+            const deviceId = request.body?.deviceId;
+            if (typeof deviceId !== 'string' || !DEVICE_ID.test(deviceId))
+                return reply.code(400).send({ error: 'invalid' });
+            if (await options.limiter.hit(`web:address:${request.ip}`, 3600) > WEB_CONNECTS_PER_ADDRESS)
+                return reply.code(429).send({ error: 'tooMany' });
+            const share = await web.tickets.issue({ room: deviceId, role: 'share' });
+            if (!await hub.webViewer(deviceId, share))
+                return reply.code(404).send({ error: 'offline' });
+            return { ticket: await web.tickets.issue({ room: deviceId, role: 'view' }) };
         });
     }
 

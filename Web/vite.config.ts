@@ -17,6 +17,11 @@ export default defineConfig({
   resolve: { alias: { '@shared': here('../WebShared') }, dedupe: ['vue'] },
   server: {
     headers: isolation,
+    // 本机开发时，要通行证、转发进程交给开发用的虚拟机（Server/deploy/deploy-dev.sh）
+    proxy: {
+      '/web': 'http://localhost:8800',
+      '/relay': { target: 'ws://localhost:8800', ws: true },
+    },
     // 网页图标用程序的 Logo（App/branding）
     fs: { allow: [here('.'), here('../App/branding'), here('../WebShared')] },
   },

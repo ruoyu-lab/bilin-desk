@@ -194,6 +194,8 @@ export type ServerMessage =
         sdk: string;
     }
     | { type: 'decline'; from: string; session: string; reason: string }
+    // 有浏览器（网页版）要连本机：凭 ticket 经转发进程进本机的房间（docs/web.md）
+    | { type: 'webViewer'; ticket: string }
     // offline：对方不在线（或者没有这个 ID）| tooMany：发起的连接太多、连不上的太多，过一会儿再连
     | { type: 'undeliverable'; to: string; session: string; reason: 'offline' | 'tooMany' }
     // 这台设备登录的账号；null：没登录（退出了、被移出了）

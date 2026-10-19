@@ -2,57 +2,147 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import LogoMark from '@shared/LogoMark.vue'
 import LineIcon from '../components/LineIcon.vue'
+import { ConnectError, loadSdk, relayUrl, requestTicket, type Session } from '../remote'
 import { displayId, findDevice, go, takeHandoff } from '../state'
 
 // 会话（自己一个标签页，openSession 打开的）：上面一条细的工具栏，下面铺满对方的画面（照着程序的会话窗口）。
-// 现在画面是假的，先把样子定下来；接上 SDK 的浏览器包以后是 VideoView、InputMapper、CursorView（docs/web.md）
+// 向服务器要通行证，SDK 的浏览器包经转发进程连过去（docs/web.md）：画面画在画布上（VideoView，在 SDK 的媒体线程上），
+// 键鼠经 InputMapper，对方的指针变成页面的指针（CursorView）。网页版最高 1080p、每秒 30 帧
 const props = defineProps<{ id: string; handoff: string }>()
 
 const device = computed(() => findDevice(props.id))
 const name = computed(() => device.value?.name ?? displayId(props.id))
 const isMac = computed(() => device.value?.system === 'apple')
 
-// 打开它的标签页交过来的临时密码。我的设备不要；没有又要（刷新过、直接打开的地址）时先在这里输
+// 打开它的标签页交过来的临时密码；没有时（刷新过、直接打开的地址）先在这里输
 const password = ref(takeHandoff(props.handoff))
 const typed = ref('')
 
-// password：等输入临时密码 | connecting：正在连 | connected
-const phase = ref<'password' | 'connecting' | 'connected'>(
-  device.value?.mine || password.value ? 'connecting' : 'password')
+// password：等输入临时密码 | connecting：正在连（等对方点允许也算）| connected | ended：没连上、断开了（ended 说为什么）
+const phase = ref<'password' | 'connecting' | 'connected' | 'ended'>(password.value ? 'connecting' : 'password')
+const ended = ref('')
 const clipboard = ref(true)
 const fullScreen = ref(false)
 const menuOpen = ref(false)
 const hintOpen = ref(true)
 const sending = ref<{ name: string; progress: number } | null>(null)
+const canvas = ref<HTMLCanvasElement | null>(null)
 
-let connectTimer = 0
-function start() {
+// 对方的电脑上弹出了连接请求，在等它点允许
+const waiting = ref(false)
+
+let session: Session | null = null
+let closeViews = () => {}
+
+// SDK 的结果码（rcs_result）给人看的说法
+const AUTHENTICATION = -16
+function failureText(result: number, message: string): string {
+  switch (result) {
+  case -15: return '对方没有回应：对方的电脑可能正被别人直连着，或者比邻不是最新版本'
+  case AUTHENTICATION: return '临时密码不对'
+  case -22: return '对方没有允许这次连接'
+  case -18: return '对方断开了连接'
+  case -20: return '对方正忙，过一会儿再试'
+  case -3:
+  case -17: return '双方的比邻版本不一样，请对方更新到最新版本'
+  default: return message ? `没连上（${message}）` : '没连上'
+  }
+}
+
+function end(message: string) {
+  phase.value = 'ended'
+  waiting.value = false
+  ended.value = message
+  closeViews()
+  closeViews = () => {}
+  void session?.destroy()
+  session = null
+}
+
+async function start() {
   phase.value = 'connecting'
-  connectTimer = window.setTimeout(() => (phase.value = 'connected'), 1200)
+  ended.value = ''
+  try {
+    const [ticket, { rcsdk, sdk }] = await Promise.all([requestTicket(props.id), loadSdk()])
+    const created = sdk.createSession({
+      identity: { pin: password.value },
+      // 转发进程一条消息转一个数据报
+      channel: 'datagram',
+      viewRequest: { width: 1920, height: 1080, framesPerSecond: 30, cursor: 'separate' },
+      clipboard: { send: true, receive: true },
+      files: { send: true, receive: true },
+    })
+    session = created
+    const view = new rcsdk.VideoView(created, canvas.value!)
+    const input = new rcsdk.InputMapper(created, view)
+    const cursor = new rcsdk.CursorView(created, view)
+    const sync = new rcsdk.ClipboardSync(created)
+    closeViews = () => {
+      sync.close()
+      cursor.close()
+      input.close()
+      view.close()
+    }
+    created.addEventListener('state', (event: Event) => {
+      const { state, result, message } = (event as CustomEvent<{ state: string; result: number; message?: string }>).detail
+      if (state === 'running') {
+        phase.value = 'connected'
+        waiting.value = false
+      } else if (state === 'failed') {
+        // 密码不对：重新连接时再输一次
+        if (result === AUTHENTICATION) password.value = ''
+        end(failureText(result, message ?? ''))
+      } else if (state === 'stopped' && phase.value !== 'ended') {
+        end('对方断开了连接')
+      }
+    })
+    // 1：等对方点允许
+    created.addEventListener('admission', (event: Event) => {
+      waiting.value = (event as CustomEvent<{ state: number }>).detail.state === 1
+    })
+    created.addEventListener('fileprogress', (event: Event) => {
+      const { doneBytes, totalBytes } = (event as CustomEvent<{ doneBytes: number; totalBytes: number }>).detail
+      if (sending.value && totalBytes > 0) sending.value.progress = doneBytes / totalBytes
+    })
+    created.addEventListener('filedone', () => {
+      if (sending.value) sending.value.progress = 1
+      window.setTimeout(() => (sending.value = null), 1200)
+    })
+    await created.connectWebSocket(relayUrl(ticket))
+    await created.start()
+  } catch (error) {
+    end(error instanceof ConnectError ? error.message : `没连上：${error instanceof Error ? error.message : String(error)}`)
+  }
 }
 
 function submitPassword() {
   if (!typed.value.trim()) return
   password.value = typed.value.trim()
   typed.value = ''
-  start()
+  void start()
+}
+
+function retry() {
+  if (password.value) void start()
+  else phase.value = 'password'
 }
 
 onMounted(() => {
   document.title = `${name.value} - 比邻网页版`
   if (phase.value === 'connecting')
-    start()
+    void start()
   document.addEventListener('fullscreenchange', onFullScreen)
   window.addEventListener('mousedown', closeMenu)
 })
 onUnmounted(() => {
   document.title = '比邻网页版'
-  window.clearTimeout(connectTimer)
+  closeViews()
+  void session?.destroy()
   document.removeEventListener('fullscreenchange', onFullScreen)
   window.removeEventListener('mousedown', closeMenu)
 })
 
-// 浏览器、系统自己会拿走的组合键：从菜单里发给对方
+// 浏览器、系统自己会拿走的组合键：从菜单里发给对方（还没接上）
 const shortcuts = computed(() => isMac.value
   ? [
       { title: '调度中心', keys: '⌃ ↑' },
@@ -83,23 +173,20 @@ const closeMenu = (event: MouseEvent) => {
 }
 
 const fileInput = ref<HTMLInputElement | null>(null)
-const sendFiles = () => {
+const sendFiles = async () => {
   const files = fileInput.value?.files
-  if (!files || files.length === 0) return
+  if (!files || files.length === 0 || !session) return
+  const { rcsdk } = await loadSdk()
   sending.value = { name: files.length > 1 ? `${files[0]!.name} 等 ${files.length} 个` : files[0]!.name, progress: 0 }
-  const timer = window.setInterval(() => {
-    if (!sending.value) return window.clearInterval(timer)
-    sending.value.progress = Math.min(1, sending.value.progress + 0.08)
-    if (sending.value.progress >= 1) {
-      window.clearInterval(timer)
-      window.setTimeout(() => (sending.value = null), 1200)
-    }
-  }, 150)
+  session.files.send(await rcsdk.collectFiles(files))
   fileInput.value!.value = ''
 }
 
 // 断开：关掉这个标签页（它是打开的那一页开出来的）；关不掉时（直接打开的地址）回到首页
 const disconnect = () => {
+  closeViews()
+  void session?.destroy()
+  session = null
   window.close()
   go('')
 }
@@ -114,7 +201,7 @@ const disconnect = () => {
       </span>
       <span class="name">{{ name }}</span>
       <span v-if="phase === 'connected'" class="status">
-        <span class="dot online" />经服务器转发 · 1080p · 30 帧 · 32 ms
+        <span class="dot online" />经服务器转发 · 最高 1080p、30 帧
       </span>
 
       <div class="tools">
@@ -147,12 +234,8 @@ const disconnect = () => {
     </header>
 
     <main ref="stage" class="stage">
-      <!-- 假的画面：对方的桌面 -->
-      <div v-if="phase === 'connected'" class="picture" :class="{ mac: isMac }">
-        <div class="window w1"><span class="window-bar" /></div>
-        <div class="window w2"><span class="window-bar" /></div>
-        <div class="taskbar" />
-      </div>
+      <!-- 对方的画面：交给 SDK 的媒体线程画（VideoView），一直在，连上了才看得见 -->
+      <canvas v-show="phase === 'connected'" ref="canvas" class="picture" tabindex="0" />
 
       <form v-if="phase === 'password'" class="overlay" @submit.prevent="submitPassword">
         <div class="overlay-title">连接 {{ name }}</div>
@@ -166,8 +249,17 @@ const disconnect = () => {
       <div v-if="phase === 'connecting'" class="overlay">
         <span class="spinner" />
         <div class="overlay-title">正在连接 {{ name }}…</div>
-        <div class="overlay-detail">网页版经比邻的服务器转发</div>
+        <div class="overlay-detail">{{ waiting ? '等对方在电脑上点"允许"…' : '网页版经比邻的服务器转发' }}</div>
         <button class="button" type="button" @click="disconnect">取消</button>
+      </div>
+
+      <div v-if="phase === 'ended'" class="overlay">
+        <div class="overlay-title">{{ ended }}</div>
+        <div class="overlay-detail">{{ name }}（{{ displayId(props.id) }}）</div>
+        <div class="password-row centered">
+          <button class="button dark" type="button" @click="retry">重新连接</button>
+          <button class="button" type="button" @click="disconnect">关闭</button>
+        </div>
       </div>
 
       <div v-if="phase === 'connected' && hintOpen && !fullScreen" class="hint">
@@ -341,66 +433,14 @@ kbd {
   background: var(--canvas);
 }
 
-/* 假的画面：16:9，按窗口大小放进去 */
+/* 对方的画面：铺满，按比例放进去（SDK 把页面坐标换成画面坐标时也按 object-fit: contain 算） */
 .picture {
-  position: relative;
-  width: min(100%, calc((100vh - 40px) * 16 / 9));
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  background: linear-gradient(135deg, #1f6fd1 0%, #5aa9f0 45%, #a8d4ff 100%);
-}
-
-.full .picture {
-  width: min(100%, calc(100vh * 16 / 9));
-}
-
-.picture.mac {
-  background: linear-gradient(160deg, #3b2f63 0%, #a2577c 50%, #f0a37a 100%);
-}
-
-.window {
   position: absolute;
-  border-radius: 8px;
-  background: #f7f8fb;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-}
-
-.window-bar {
-  display: block;
-  height: 9%;
-  min-height: 14px;
-  border-radius: 8px 8px 0 0;
-  background: rgba(0, 0, 0, 0.06);
-}
-
-.w1 {
-  top: 12%;
-  left: 10%;
-  width: 46%;
-  height: 58%;
-}
-
-.w2 {
-  top: 26%;
-  left: 44%;
-  width: 40%;
-  height: 50%;
-}
-
-.taskbar {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 6%;
-  background: rgba(20, 24, 32, 0.75);
-}
-
-.mac .taskbar {
-  top: 0;
-  bottom: auto;
-  height: 3.5%;
-  background: rgba(255, 255, 255, 0.35);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  outline: none;
 }
 
 .overlay {
@@ -432,6 +472,10 @@ kbd {
 
 .password-row .field {
   background: var(--surface);
+}
+
+.password-row.centered {
+  justify-content: center;
 }
 
 .spinner {

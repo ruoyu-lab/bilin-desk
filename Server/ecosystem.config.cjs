@@ -1,5 +1,5 @@
 // PM2：服务端两个实例（cluster 模式，共用 127.0.0.1:3000），Nginx 在前面，实例之间经 Redis 转发消息；
-// 管理后台一个（127.0.0.1:3100，docs/admin.md）。开发用的虚拟机用 env_development（deploy-dev.sh）
+// 管理后台一个（127.0.0.1:3100，docs/admin.md）；网页版的转发进程一个（127.0.0.1:3200，docs/web.md）。开发用的虚拟机用 env_development（deploy-dev.sh）
 module.exports = {
     apps: [
         {
@@ -66,6 +66,21 @@ module.exports = {
                 COOKIE_SECURE: 'false',
                 CERT_HOST: '',
                 MAIL: 'log',
+            },
+        },
+        {
+            // 网页版的转发进程：浏览器和被连的电脑必须进同一个进程才配得上对，只开一个
+            name: 'bilin-relay',
+            script: 'dist/relay/main.js',
+            instances: 1,
+            exec_mode: 'fork',
+            node_args: '--enable-source-maps',
+            kill_timeout: 5000,
+            env: {
+                NODE_ENV: 'production',
+                HOST: '127.0.0.1',
+                PORT: '3200',
+                REDIS_URL: 'redis://127.0.0.1:6379',
             },
         },
     ],

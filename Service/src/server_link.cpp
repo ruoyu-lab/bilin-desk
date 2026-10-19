@@ -178,6 +178,8 @@ void ServerLink::received(const QString &text)
         emit declined(message.value(QLatin1StringView("from")).toString(),
                       message.value(QLatin1StringView("session")).toString(),
                       message.value(QLatin1StringView("reason")).toString());
+    } else if (type == server::WebViewer) {
+        emit webViewerRequested(message.value(QLatin1StringView("ticket")).toString());
     } else if (type == server::Account) {
         const QJsonObject account = message.value(QLatin1StringView("account")).toObject();
         rc::protocol::AccountState state;

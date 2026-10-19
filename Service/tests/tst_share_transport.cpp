@@ -90,6 +90,21 @@ private slots:
         QVERIFY(!transport.shouldSwitchBack(true));
         QVERIFY(transport.shouldSwitchBack(false));
     }
+
+    // 网页版（浏览器经转发进程来连，没有设备 ID）：没人用时换过去，正被直连着时不行，人走了换回直连
+    void webVersionFollowsTheSameRules()
+    {
+        ShareTransport transport(100);
+        const QString web = QString(rc::WebTransport);
+        QCOMPARE(transport.check({}, web, false, false), ShareTransport::Verdict::Switch);
+        QCOMPARE(transport.check({}, web, true, false), ShareTransport::Verdict::Busy);
+        transport.switchTo(web);
+        QCOMPARE(transport.check({}, web, true, false), ShareTransport::Verdict::Accept);
+        transport.attempting({});
+        QVERIFY(!transport.shouldSwitchBack(false));
+        transport.arrived({});
+        QVERIFY(transport.shouldSwitchBack(false));
+    }
 };
 
 QTEST_GUILESS_MAIN(TestShareTransport)

@@ -84,6 +84,11 @@ void Sharing::restart()
     mine_.restart();
 }
 
+void Sharing::webViewer(const QUrl &relay, const QString &ticket)
+{
+    others_.webViewer(relay, ticket);
+}
+
 void Sharing::receiveSignal(const QString &from, const QString &name, const QString &session, const QString &text,
                             const rc::ConnectionMode &mode)
 {

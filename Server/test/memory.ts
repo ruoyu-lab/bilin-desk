@@ -10,6 +10,7 @@ import type { Limiter } from '../src/limiter.js';
 import type { Mail, Mailer } from '../src/mail.js';
 import type { CodePurpose } from '../src/protocol.js';
 import type { DailyCounter, Stats } from '../src/stats.js';
+import { newTicket, TICKET, type Ticket, type Tickets } from '../src/tickets.js';
 import type { ClaimResult, DeviceClaim, DeviceRecord, Registry } from '../src/registry.js';
 
 // 测试用：内存里的设备登记表，规则和 MongoRegistry 一样（太久没上线的删掉由 MongoDB 做，这里只记时间）
@@ -347,4 +348,25 @@ export class MemoryFeedback implements FeedbackStore {
         const { logs: _, ...summary } = item;
         return summary;
     }
+}
+
+// 测试用：内存里的一次性通行证，规则和 RedisTickets 一样（过期由 Redis 做，这里不管）
+export class MemoryTickets implements Tickets {
+    readonly #tickets = new Map<string, Ticket>();
+
+    async issue(ticket: Ticket): Promise<string> {
+        const value = newTicket();
+        this.#tickets.set(value, ticket);
+        return value;
+    }
+
+    async redeem(ticket: string): Promise<Ticket | null> {
+        if (!TICKET.test(ticket))
+            return null;
+        const stored = this.#tickets.get(ticket) ?? null;
+        this.#tickets.delete(ticket);
+        return stored;
+    }
+
+    async close(): Promise<void> {}
 }

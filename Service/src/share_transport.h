@@ -13,7 +13,8 @@
 // - 不一样、有人在用：回绝，对方稍后再试（Busy）。在用：有人连着、在等允许、路断了在回来的路上（ShareHost 知道，
 //   inUse），或者别的设备刚来连过、还没连通（这里记着：重开会把它的连接断掉）
 // - 要中继、本机没有中继（没连上服务器）：回绝（NoRelay）
-// 用着中继、没人在用了：换回直连（shouldSwitchBack）
+// 网页版（浏览器经服务器上的转发进程来连，rc::WebTransport）也是一种，规则一样。
+// 用着中继、网页版的转发，没人在用了：换回直连（shouldSwitchBack）
 class ShareTransport
 {
 public:
@@ -34,7 +35,7 @@ public:
     void arrived(const QString &from);
     // 换成 transport 重开了分享会话：在连的都断了
     void switchTo(const QString &transport);
-    // 用着中继、没人在用了
+    // 用着中继、网页版的转发，没人在用了
     bool shouldSwitchBack(bool inUse);
 
 private:
