@@ -1,64 +1,187 @@
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import * as api from './api'
 
-// 网页版的状态。现在是假数据，先把界面做出来（docs/web.md）；接上服务器和 SDK 的浏览器包以后换成真的
+// 网页版的状态（docs/web.md）：登录着的账号和它下面的设备从服务器来（api.ts），连过的、收藏的记在这个浏览器里
 
-export type System = 'windows' | 'apple'
+export type System = 'windows' | 'apple' | 'other'
 
 export interface Device {
   id: string // 9 位数字
   name: string
   system: System
-  online: boolean
+  // 在不在线：我的设备才知道（服务器说的）；别人的电脑不知道（null）
+  online: boolean | null
   // 我的设备：同一个账号下的，不用密码
   mine: boolean
   favorite: boolean
-  // 上次连接的时间（ISO）；没连过时为空
+  // 上次在这个浏览器里连接的时间（ISO）；没连过时为空
   lastConnected: string
 }
 
-export interface Account {
-  email: string
-  nickname: string
+// 记在浏览器里的一台：连过的、收藏的
+interface Remembered {
+  id: string
+  name: string
+  system: System
+  favorite: boolean
+  lastConnected: string
 }
-
-const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3600_000).toISOString()
 
 export const state = reactive({
-  account: null as Account | null,
-  devices: [
-    { id: '416902934', name: '书房的 PC', system: 'windows', online: true, mine: true, favorite: true, lastConnected: hoursAgo(2) },
-    { id: '731204586', name: '客厅的 Mac mini', system: 'apple', online: true, mine: true, favorite: false, lastConnected: hoursAgo(30) },
-    { id: '208553617', name: '爸妈家的笔记本', system: 'windows', online: false, mine: true, favorite: false, lastConnected: hoursAgo(120) },
-    { id: '582017463', name: '小林的 MacBook', system: 'apple', online: true, mine: false, favorite: false, lastConnected: hoursAgo(5) },
-    { id: '903361258', name: '阿杰的游戏本', system: 'windows', online: true, mine: false, favorite: false, lastConnected: hoursAgo(72) },
-  ] as Device[],
+  // 问过服务器了（刚打开时还没问到，先不显示"没登录"）
+  loaded: false,
+  account: null as api.Account | null,
+  accountDevices: [] as api.AccountDevice[],
+  records: [] as Remembered[],
 })
-
-export function signIn(email: string): void {
-  state.account = { email, nickname: '阿禾' }
-}
-
-export function signOut(): void {
-  state.account = null
-}
 
 // "416902934" → "416 902 934"
 export function displayId(id: string): string {
   return id.replace(/(\d{3})(?=\d)/g, '$1 ')
 }
 
-export function findDevice(id: string): Device | undefined {
-  return state.devices.find((d) => d.id === id)
+export function systemOf(platform: string): System {
+  return platform === 'Windows' ? 'windows' : platform === 'macOS' ? 'apple' : 'other'
 }
 
-// 我的设备只有登录着才有
+// ---- 记在浏览器里的：几个标签页共用（storage 事件），存不了（隐私模式）时只在这个页面里 ----
+
+const RECORDS = 'bilin.devices'
+
+function readRecords(): Remembered[] {
+  try {
+    const stored = JSON.parse(localStorage.getItem(RECORDS) ?? '[]') as unknown
+    return Array.isArray(stored) ? stored as Remembered[] : []
+  } catch {
+    return []
+  }
+}
+
+function saveRecords(): void {
+  try {
+    localStorage.setItem(RECORDS, JSON.stringify(state.records))
+  } catch {
+    // 存不了：这次照样用
+  }
+}
+
+state.records = readRecords()
+window.addEventListener('storage', (event) => {
+  if (event.key === RECORDS) state.records = readRecords()
+})
+
+function record(id: string): Remembered {
+  let found = state.records.find((r) => r.id === id)
+  if (!found) {
+    found = { id, name: displayId(id), system: 'other', favorite: false, lastConnected: '' }
+    state.records.push(found)
+  }
+  return found
+}
+
+// 连上了：记进最近；知道了名字、系统的也记下
+export function remember(id: string, known: { name?: string; system?: System }): void {
+  const found = record(id)
+  found.lastConnected = new Date().toISOString()
+  if (known.name) found.name = known.name
+  if (known.system && known.system !== 'other') found.system = known.system
+  saveRecords()
+}
+
+export function toggleFavorite(device: Device): void {
+  const found = record(device.id)
+  found.name = device.name
+  found.system = device.system
+  found.favorite = !device.favorite
+  saveRecords()
+}
+
+// 从最近里去掉（收藏的留着）
+export function forget(device: Device): void {
+  const found = record(device.id)
+  if (found.favorite) found.lastConnected = ''
+  else state.records = state.records.filter((r) => r.id !== device.id)
+  saveRecords()
+}
+
+// ---- 账号：问服务器 ----
+
+function applyMe(me: api.Me): void {
+  state.account = me.account
+  state.accountDevices = me.devices
+  state.loaded = true
+}
+
+export async function refresh(): Promise<void> {
+  try {
+    applyMe(await api.me())
+  } catch {
+    // 连不上服务器：留着上次的，下次再问
+    state.loaded = true
+  }
+}
+
+export async function signIn(email: string, password: string): Promise<void> {
+  applyMe(await api.login(email, password))
+}
+
+export async function registerAccount(nickname: string, email: string, password: string, code: string): Promise<void> {
+  applyMe(await api.register(nickname, email, password, code))
+}
+
+export async function resetPassword(email: string, code: string, password: string): Promise<void> {
+  applyMe(await api.resetPassword(email, code, password))
+}
+
+export async function signOut(): Promise<void> {
+  await api.logout().catch(() => null)
+  applyMe({ account: null, devices: [] })
+}
+
+// 打开时问一次；页面看得见的时候每 30 秒问一次（在线的变了），回到页面时马上问
+void refresh()
+window.setInterval(() => {
+  if (document.visibilityState === 'visible') void refresh()
+}, 30_000)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') void refresh()
+})
+
+// ---- 合起来的设备：我的设备（服务器的，能连的电脑）加上记在浏览器里的 ----
+
+export const devices = computed<Device[]>(() => {
+  const all = new Map<string, Device>()
+  for (const d of state.account ? state.accountDevices : []) {
+    const system = systemOf(d.platform)
+    // 手机、平板不能被连
+    if (system === 'other') continue
+    const found = state.records.find((r) => r.id === d.deviceId)
+    all.set(d.deviceId, {
+      id: d.deviceId, name: d.name, system, online: d.online, mine: true,
+      favorite: found?.favorite ?? false, lastConnected: found?.lastConnected ?? '',
+    })
+  }
+  for (const r of state.records) {
+    if (!all.has(r.id)) all.set(r.id, { ...r, online: null, mine: false })
+  }
+  return [...all.values()]
+})
+
+export function findDevice(id: string): Device | undefined {
+  return devices.value.find((d) => d.id === id)
+}
+
+// 在线的在前
 export function myDevices(): Device[] {
-  return state.account ? state.devices.filter((d) => d.mine) : []
+  return devices.value.filter((d) => d.mine).sort((a, b) => Number(b.online) - Number(a.online))
 }
 
 export function recentDevices(): Device[] {
-  return state.devices.filter((d) => d.lastConnected && (!d.mine || state.account))
-    .sort((a, b) => b.lastConnected.localeCompare(a.lastConnected))
+  return devices.value.filter((d) => d.lastConnected).sort((a, b) => b.lastConnected.localeCompare(a.lastConnected))
+}
+
+export function favoriteDevices(): Device[] {
+  return devices.value.filter((d) => d.favorite).sort((a, b) => Number(b.online === true) - Number(a.online === true))
 }
 
 // ---- 外观：跟随系统 | 浅色 | 深色，记在这个浏览器里 ----
@@ -145,15 +268,13 @@ export function closePassword(): void {
 
 // 我的设备不用密码；别的要临时密码
 export function connect(device: Device): void {
-  if (device.mine && state.account) openSession(device.id)
+  if (device.mine) openSession(device.id)
   else askingPassword.value = device
 }
 
-// 按设备 ID 连（概览上输入的）：没见过的先记进最近
+// 按设备 ID 连（概览上输入的）：我的设备不要密码
 export function connectById(id: string, password: string): void {
-  if (!findDevice(id))
-    state.devices.push({ id, name: displayId(id), system: 'windows', online: true, mine: false, favorite: false, lastConnected: '' })
-  openSession(id, password)
+  openSession(id, findDevice(id)?.mine ? '' : password)
 }
 
 // 会话在新的标签页里，几台可以一起连。临时密码不放进地址：以一个随机的交接编号存进这个浏览器，
@@ -177,12 +298,4 @@ export function takeHandoff(handoff: string): string {
   const password = localStorage.getItem(key) ?? ''
   localStorage.removeItem(key)
   return password
-}
-
-export function favoriteDevices(): Device[] {
-  return state.devices.filter((d) => d.favorite && (!d.mine || state.account))
-}
-
-export function toggleFavorite(device: Device): void {
-  device.favorite = !device.favorite
 }

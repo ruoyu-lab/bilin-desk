@@ -3,9 +3,9 @@ import { computed } from 'vue'
 import DeviceList from '../components/DeviceList.vue'
 import { myDevices, openLogin, state } from '../state'
 
-// 我的设备：同一个账号登录的电脑，在线的点"连接"就连，不用密码。收藏的排在前面
-const devices = computed(() => [...myDevices()].sort((a, b) => Number(b.favorite) - Number(a.favorite)
-  || Number(b.online) - Number(a.online)))
+// 我的设备：同一个账号登录的电脑（服务器说的，手机、平板不能被连，不列），在线的点"连接"就连，不用密码
+const devices = computed(() => [...myDevices()].sort((a, b) => Number(b.online) - Number(a.online)
+  || Number(b.favorite) - Number(a.favorite)))
 </script>
 
 <template>
@@ -13,6 +13,7 @@ const devices = computed(() => [...myDevices()].sort((a, b) => Number(b.favorite
     <h1>我的设备</h1>
     <p class="intro muted">同一个账号登录的电脑，不用密码就能连。电脑睡眠、关机时网页叫不醒，要用同一个局域网里的客户端。</p>
     <DeviceList v-if="devices.length > 0" :devices="devices" />
+    <div v-else-if="!state.loaded" class="card empty"><p class="muted">正在读取…</p></div>
     <div v-else-if="!state.account" class="card empty">
       <p class="muted">登录比邻账号以后，同一个账号的电脑会出现在这里。</p>
       <button class="button dark" type="button" @click="openLogin">登录 / 注册</button>

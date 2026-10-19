@@ -17,10 +17,11 @@ export default defineConfig({
   resolve: { alias: { '@shared': here('../WebShared') }, dedupe: ['vue'] },
   server: {
     headers: isolation,
-    // 本机开发时，要通行证、转发进程交给开发用的虚拟机（Server/deploy/deploy-dev.sh）
+    // 本机开发时，网页版的接口、转发进程交给开发用的虚拟机（Server/deploy/deploy-dev.sh）。带着原来的 Host：
+    // 服务端核对改东西的请求的 Origin（简写的代理会把它换成虚拟机的）
     proxy: {
-      '/web': 'http://localhost:8800',
-      '/relay': { target: 'ws://localhost:8800', ws: true },
+      '/web': { target: 'http://localhost:8800', changeOrigin: false },
+      '/relay': { target: 'ws://localhost:8800', ws: true, changeOrigin: false },
     },
     // 网页图标用程序的 Logo（App/branding）
     fs: { allow: [here('.'), here('../App/branding'), here('../WebShared')] },

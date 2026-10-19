@@ -2,17 +2,19 @@
 import { computed, ref } from 'vue'
 import DeviceTile from '../components/DeviceTile.vue'
 import LineIcon from '../components/LineIcon.vue'
-import { connectById, myDevices, openLogin, recentDevices, state } from '../state'
+import { connectById, findDevice, myDevices, openLogin, recentDevices, state } from '../state'
 
-// 概览：最上面按设备 ID 和临时密码连接；旁边没登录时请登录，登录了说说客户端（网页只能去连别人）；
+// 概览：最上面按设备 ID 和临时密码连接（我的设备不要密码）；旁边没登录时请登录，登录了说说客户端（网页只能去连别人）；
 // 下面是我的设备、最近连过的
 const id = ref('')
 const password = ref('')
 const digits = computed(() => id.value.replace(/\D/g, ''))
+const mineTyped = computed(() => findDevice(digits.value)?.mine === true)
+const ready = computed(() => digits.value.length === 9 && (mineTyped.value || password.value.trim().length > 0))
 
 const submit = () => {
-  if (digits.value.length !== 9 || !password.value.trim()) return
-  connectById(digits.value, password.value.trim())
+  if (!ready.value) return
+  connectById(digits.value, mineTyped.value ? '' : password.value.trim())
   // 临时密码用一次就换（对方断开以后），不留在这里
   password.value = ''
 }
@@ -36,17 +38,18 @@ const recent = computed(() => recentDevices().filter((d) => !d.mine).slice(0, 6)
         <p class="muted">输入对方电脑上比邻显示的设备 ID 和临时密码。</p>
         <div class="fields">
           <input v-model="id" class="field num" placeholder="设备 ID" inputmode="numeric" autocomplete="off" @input="formatId" />
-          <input v-model="password" class="field" placeholder="临时密码" autocomplete="off" spellcheck="false" />
-          <button class="button dark" type="submit" :disabled="digits.length !== 9 || !password.trim()">连接</button>
+          <input v-model="password" class="field" :placeholder="mineTyped ? '我的设备，不用密码' : '临时密码'"
+                 :disabled="mineTyped" autocomplete="off" spellcheck="false" />
+          <button class="button dark" type="submit" :disabled="!ready">连接</button>
         </div>
       </form>
 
-      <div v-if="!state.account" class="card side">
+      <div v-if="state.loaded && !state.account" class="card side">
         <h2>登录比邻账号</h2>
         <p class="muted">同一个账号的电脑不用密码，点一下就连。</p>
         <button class="button" type="button" @click="openLogin">登录 / 注册</button>
       </div>
-      <div v-else class="card side">
+      <div v-else-if="state.account" class="card side">
         <h2>让别人连这台电脑</h2>
         <p class="muted">网页版只能去连别的电脑。被别人连、更清晰流畅的画面，用客户端。</p>
         <a class="button" href="https://www.bilindesk.com/#download" target="_blank" rel="noopener">

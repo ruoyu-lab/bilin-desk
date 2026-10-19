@@ -2,20 +2,24 @@
 import { ago, connect, displayId, toggleFavorite, type Device } from '../state'
 import LineIcon from './LineIcon.vue'
 
-// 一行一台设备（我的设备、最近）：系统的图标、名字和设备 ID、在不在线、上次连接，右边收藏和连接
-const props = defineProps<{ devices: Device[] }>()
+// 一行一台设备（我的设备、收藏、最近）：系统的图标、名字和设备 ID、在不在线（我的设备才知道）、上次连接，
+// 右边收藏和连接；最近里能去掉一台（removable）
+const props = defineProps<{ devices: Device[]; removable?: boolean }>()
+const emit = defineEmits<{ remove: [device: Device] }>()
 </script>
 
 <template>
   <div class="list">
-    <div v-for="d in props.devices" :key="d.id" class="row" :class="{ offline: !d.online }">
-      <span class="os" :class="d.system"><LineIcon :name="d.system" :size="17" /></span>
+    <div v-for="d in props.devices" :key="d.id" class="row" :class="{ offline: d.online === false }">
+      <span class="os" :class="d.system"><LineIcon :name="d.system === 'other' ? 'monitor' : d.system" :size="17" /></span>
       <div class="main">
         <div class="name">{{ d.name }}<span v-if="d.mine" class="tag">我的设备</span></div>
         <div class="meta num">{{ displayId(d.id) }}</div>
       </div>
       <div class="state">
-        <span class="dot" :class="{ online: d.online }" />{{ d.online ? '在线' : '离线' }}
+        <template v-if="d.online !== null">
+          <span class="dot" :class="{ online: d.online }" />{{ d.online ? '在线' : '离线' }}
+        </template>
       </div>
       <div class="last">{{ d.lastConnected ? ago(d.lastConnected) : '没连过' }}</div>
       <div class="actions">
@@ -24,7 +28,11 @@ const props = defineProps<{ devices: Device[] }>()
                 @click="toggleFavorite(d)">
           <LineIcon name="star" :size="16" />
         </button>
-        <button class="button" type="button" :disabled="!d.online" @click="connect(d)">连接</button>
+        <button v-if="props.removable" class="icon-button" type="button" aria-label="从最近里去掉" title="从最近里去掉"
+                @click="emit('remove', d)">
+          <LineIcon name="x" :size="15" />
+        </button>
+        <button class="button" type="button" :disabled="d.online === false" @click="connect(d)">连接</button>
       </div>
     </div>
   </div>

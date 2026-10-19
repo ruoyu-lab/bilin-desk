@@ -5,9 +5,7 @@ import WebSocket from 'ws';
 import { defaultHubOptions } from '../src/hub.js';
 import type { ServerMessage } from '../src/protocol.js';
 import { buildServer } from '../src/server.js';
-import {
-    MemoryAccounts, MemoryBroker, MemoryCodes, MemoryLimiter, MemoryRegistry, MemoryStats, MemoryTickets,
-} from './memory.js';
+import { MemoryAccounts, MemoryBroker, MemoryCodes, MemoryLimiter, MemoryRegistry, MemoryStats } from './memory.js';
 
 // 真的起两个服务端（两个"实例"），用真的 WebSocket 连上去
 class Client {
@@ -116,36 +114,6 @@ describe('server', () => {
         sharer.send({ type: 'signal', to: '111111111', session: 'one', text: 'answer', transport: 'p2p', access: 'password', sdk: '0.1.0-beta' });
         expect(await viewer.next())
             .toEqual({ type: 'signal', from: '222222222', name: '电脑', session: 'one', text: 'answer', transport: 'p2p', access: 'password', sdk: '0.1.0-beta' });
-    });
-
-    // 网页版要连一台电脑：电脑收到进房间的通行证，浏览器拿到自己的；不在线的、ID 不对的说清楚
-    it('hands out relay tickets for the web version', async () => {
-        const tickets = new MemoryTickets();
-        const { app } = await buildServer({
-            registry: new MemoryRegistry(), accounts: new MemoryAccounts(), bus: new MemoryBroker().bus(),
-            limiter: new MemoryLimiter(), codes: new MemoryCodes(), mailer: null, stats: new MemoryStats(), logger: false,
-            web: { tickets },
-        });
-        await app.listen({ host: '127.0.0.1', port: 0 });
-        apps.push(app);
-        const address = app.server.address();
-        if (!address || typeof address === 'string')
-            throw new Error('no port');
-        const sharer = await open(`ws://127.0.0.1:${address.port}/ws`);
-        sharer.send(hello('222222222', 's'.repeat(43)));
-        expect((await sharer.next()).type).toBe('welcome');
-        expect((await sharer.next()).type).toBe('account');
-
-        const connect = (deviceId: unknown) => app.inject({ method: 'POST', url: '/web/connect', payload: { deviceId } });
-        const response = await connect('222222222');
-        expect(response.statusCode).toBe(200);
-        const notice = await sharer.next();
-        expect(notice.type).toBe('webViewer');
-        expect(await tickets.redeem((notice as { ticket: string }).ticket)).toEqual({ room: '222222222', role: 'share' });
-        expect(await tickets.redeem(response.json<{ ticket: string }>().ticket)).toEqual({ room: '222222222', role: 'view' });
-
-        expect((await connect('333333333')).json()).toEqual({ error: 'offline' });
-        expect((await connect('12345')).statusCode).toBe(400);
     });
 
     // 中继的地址跟着设备连服务器用的主机名（Host 头，不带端口）

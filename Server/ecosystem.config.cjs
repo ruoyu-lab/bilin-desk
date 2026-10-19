@@ -81,6 +81,9 @@ module.exports = {
                 HOST: '127.0.0.1',
                 PORT: '3200',
                 REDIS_URL: 'redis://127.0.0.1:6379',
+                // 服务器的带宽是共用的：网页版最多几路，发给一个浏览器每秒最多多少比特（1080p、30 帧够用）
+                WEB_MAX_SESSIONS: '20',
+                WEB_MAX_VIEWER_BPS: '8000000',
             },
         },
     ],

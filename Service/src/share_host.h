@@ -19,6 +19,7 @@
 #include <QList>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QTimer>
 #include <QUrl>
 
@@ -100,9 +101,11 @@ public:
     // P2P 和中继用的服务器（服务器发来的）：从下一个连接起用
     void setIceServers(const rc::IceServers &ice);
 
-    // 有浏览器（网页版）要连本机（只有别人的这一个，PasswordAccess）：凭 ticket 经 relay（转发进程的地址）进本机的房间，
-    // 分享会话换成经它（rc::WebTransport，SDK 的宿主通道）。浏览器照样要输临时密码、本机的人点允许
-    void webViewer(const QUrl &relay, const QString &ticket);
+    // 有浏览器（网页版）要连本机：凭 ticket 经 relay（转发进程的地址）进本机的房间，分享会话换成经它（rc::WebTransport，
+    // SDK 的宿主通道）。别人的（PasswordAccess）：浏览器照样要输临时密码、本机的人点允许；网页版的我的设备
+    // （WebKeyAccess）：key 是服务器给这次连接发的一次性钥匙，只为浏览器开着、人走了就停。
+    // 准备好了（进了房间、换好了钥匙）或者不行时 webAnswered，服务器等到它才让浏览器开始
+    void webViewer(const QUrl &relay, const QString &ticket, const QByteArray &key);
     // 设备 from（名字 name）发来的信令：它要这样（mode）连本机，mode.access 和这一个的一样
     void receiveSignal(const QString &from, const QString &name, const QString &session, const QString &text,
                        const rc::ConnectionMode &mode);
@@ -140,6 +143,8 @@ signals:
     void powerDone(const rc::protocol::SharePeer &viewer, const QString &action);
     // 有人连进来了：要一张本机桌面的背景（setWallpaper），背景可能换过
     void wallpaperWanted();
+    // 对 webViewer 那张通行证的回答：reason 空的是准备好了，不然是为什么不行（rc/peer_protocol.h）
+    void webAnswered(const QString &ticket, const QString &reason);
 
 private:
     // SDK 认的路由号 ↔ 哪台设备的哪次连接（宿主自己定，SDK 原样带回）
@@ -170,6 +175,9 @@ private:
     };
 
     bool mine() const { return access_ == rc::DeviceAccess; }
+    bool webMine() const { return access_ == rc::WebKeyAccess; }
+    // 进了转发进程的房间：等着的回答都说准备好了；没进成：都说不行
+    void answerWeb(const QString &reason);
     // 路由的那次连接还连着、在等允许，或者路断了在等它回来
     bool inUse(const Route &route) const;
     // 该不该运行：别人的开着"允许别人连接本机"，我的设备的账号下有别的设备（还要界面程序开着，或者允许没人开界面时也连）
@@ -242,6 +250,8 @@ private:
     std::unique_ptr<RelayChannel> relay_; // 网页版：经转发进程连浏览器的通道（活得比分享会话久）
     QUrl relayUrl_;
     QString relayTicket_; // 换成网页版时进房间用的
+    QStringList webAnswers_; // 还没回答的通行证：等进了房间
+    std::optional<QByteArray> webKey_; // 网页版的我的设备：这次连接的一次性钥匙
     std::unique_ptr<rcsdk::Session> session_;
     quint64 run_ = 0; // 分享会话开了第几次：SDK 排着的事件只给开着的这一次
     QString pin_;

@@ -82,6 +82,13 @@ bool ServerLink::sendSignal(const QString &to, const QString &session, const QSt
     return true;
 }
 
+void ServerLink::sendWebReady(const QString &ticket, const QString &reason)
+{
+    sendOnline({{QStringLiteral("type"), QStringLiteral("webReady")},
+                {QStringLiteral("ticket"), ticket},
+                {QStringLiteral("reason"), reason}});
+}
+
 void ServerLink::sendDecline(const QString &to, const QString &session, const QString &reason)
 {
     if (state_ == State::Online)
@@ -179,7 +186,12 @@ void ServerLink::received(const QString &text)
                       message.value(QLatin1StringView("session")).toString(),
                       message.value(QLatin1StringView("reason")).toString());
     } else if (type == server::WebViewer) {
-        emit webViewerRequested(message.value(QLatin1StringView("ticket")).toString());
+        const QByteArray key = QByteArray::fromBase64(message.value(QLatin1StringView("key")).toString().toLatin1());
+        if (!key.isEmpty() && key.size() != 32) {
+            qWarning("服务器发来的网页版钥匙不对");
+            return;
+        }
+        emit webViewerRequested(message.value(QLatin1StringView("ticket")).toString(), key);
     } else if (type == server::Account) {
         const QJsonObject account = message.value(QLatin1StringView("account")).toObject();
         rc::protocol::AccountState state;

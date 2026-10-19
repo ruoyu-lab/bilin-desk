@@ -10,7 +10,10 @@ import type { Limiter } from '../src/limiter.js';
 import type { Mail, Mailer } from '../src/mail.js';
 import type { CodePurpose } from '../src/protocol.js';
 import type { DailyCounter, Stats } from '../src/stats.js';
-import { newTicket, TICKET, type Ticket, type Tickets } from '../src/tickets.js';
+import { TICKET } from '../src/protocol.js';
+import type { RelayLoad, RelayStatus } from '../src/relay-load.js';
+import { newTicket, type Ticket, type Tickets } from '../src/tickets.js';
+import { newWebSession, WEB_SESSION, type WebSessions } from '../src/web-sessions.js';
 import type { ClaimResult, DeviceClaim, DeviceRecord, Registry } from '../src/registry.js';
 
 // 测试用：内存里的设备登记表，规则和 MongoRegistry 一样（太久没上线的删掉由 MongoDB 做，这里只记时间）
@@ -366,6 +369,52 @@ export class MemoryTickets implements Tickets {
         const stored = this.#tickets.get(ticket) ?? null;
         this.#tickets.delete(ticket);
         return stored;
+    }
+
+    readonly #answers = new Map<string, string>();
+
+    async answer(ticket: string, reason: string): Promise<void> {
+        this.#answers.set(ticket, reason);
+    }
+
+    async answered(ticket: string): Promise<string | null> {
+        return this.#answers.get(ticket) ?? null;
+    }
+
+    async close(): Promise<void> {}
+}
+
+// 测试用：转发进程报的网页版路数
+export class MemoryRelayStatus implements RelayStatus {
+    current: RelayLoad | null = { viewers: 0, max: 20 };
+
+    async setLoad(load: RelayLoad): Promise<void> {
+        this.current = load;
+    }
+
+    async load(): Promise<RelayLoad | null> {
+        return this.current;
+    }
+
+    async close(): Promise<void> {}
+}
+
+// 测试用：网页版登录着的账号
+export class MemoryWebSessions implements WebSessions {
+    readonly #sessions = new Map<string, string>();
+
+    async create(accountId: string): Promise<string> {
+        const token = newWebSession();
+        this.#sessions.set(token, accountId);
+        return token;
+    }
+
+    async account(token: string): Promise<string | null> {
+        return WEB_SESSION.test(token) ? this.#sessions.get(token) ?? null : null;
+    }
+
+    async remove(token: string): Promise<void> {
+        this.#sessions.delete(token);
     }
 
     async close(): Promise<void> {}

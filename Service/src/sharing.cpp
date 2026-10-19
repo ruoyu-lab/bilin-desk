@@ -8,8 +8,9 @@ Sharing::Sharing(DeviceStore &store, rc::InterruptedTransfers &transfers, const 
     : QObject(parent)
     , others_(rc::PasswordAccess, capture, store, transfers)
     , mine_(rc::DeviceAccess, capture, store, transfers)
+    , webMine_(rc::WebKeyAccess, capture, store, transfers)
 {
-    for (ShareHost *host : {&others_, &mine_}) {
+    for (ShareHost *host : hosts()) {
         connect(host, &ShareHost::answer, this, &Sharing::answer);
         connect(host, &ShareHost::declined, this, &Sharing::declined);
         connect(host, &ShareHost::stateChanged, this, &Sharing::stateChanged);
@@ -22,6 +23,7 @@ Sharing::Sharing(DeviceStore &store, rc::InterruptedTransfers &transfers, const 
         });
         connect(host, &ShareHost::wrongPin, this, &Sharing::wrongPin);
         connect(host, &ShareHost::wallpaperWanted, this, &Sharing::wallpaperWanted);
+        connect(host, &ShareHost::webAnswered, this, &Sharing::webAnswered);
         connect(host, &ShareHost::powerDone, this, [this, host](const protocol::SharePeer &viewer, const QString &action) {
             emit powerDone(globalPeer(*host, viewer), action);
         });
@@ -39,16 +41,17 @@ protocol::ShareState Sharing::state() const
         request = globalPeer(others_, request);
     for (protocol::SharePeer &viewer : state.viewers)
         viewer = globalPeer(others_, viewer);
-    const protocol::ShareState mine = mine_.state();
-    for (const protocol::SharePeer &viewer : mine.viewers)
-        state.viewers.append(globalPeer(mine_, viewer));
+    for (const ShareHost *host : {&mine_, &webMine_}) {
+        for (const protocol::SharePeer &viewer : host->state().viewers)
+            state.viewers.append(globalPeer(*host, viewer));
+    }
     return state;
 }
 
 QList<rc::Transfer> Sharing::transfers() const
 {
     QList<rc::Transfer> all;
-    for (const ShareHost *host : {&others_, &mine_}) {
+    for (const ShareHost *host : hosts()) {
         for (const rc::Transfer &transfer : host->files().transfers())
             all.append(globalTransfer(*host, transfer));
     }
@@ -62,8 +65,8 @@ void Sharing::setTrustedKeys(const std::optional<QList<QByteArray>> &keys)
 
 void Sharing::setAttended(bool attended)
 {
-    others_.setAttended(attended);
-    mine_.setAttended(attended);
+    for (ShareHost *host : hosts())
+        host->setAttended(attended);
 }
 
 void Sharing::setIceServers(const rc::IceServers &ice)
@@ -84,9 +87,9 @@ void Sharing::restart()
     mine_.restart();
 }
 
-void Sharing::webViewer(const QUrl &relay, const QString &ticket)
+void Sharing::webViewer(const QUrl &relay, const QString &ticket, const QByteArray &key)
 {
-    others_.webViewer(relay, ticket);
+    (key.isEmpty() ? others_ : webMine_).webViewer(relay, ticket, key);
 }
 
 void Sharing::receiveSignal(const QString &from, const QString &name, const QString &session, const QString &text,
@@ -118,31 +121,31 @@ void Sharing::setControl(int id, bool control)
 
 void Sharing::disconnectAll()
 {
-    others_.disconnectAll();
-    mine_.disconnectAll();
+    for (ShareHost *host : hosts())
+        host->disconnectAll();
 }
 
 void Sharing::stopForRestart()
 {
-    others_.stopForRestart();
-    mine_.stopForRestart();
+    for (ShareHost *host : hosts())
+        host->stopForRestart();
 }
 
 void Sharing::setClipboard(bool clipboard)
 {
-    others_.setClipboard(clipboard);
-    mine_.setClipboard(clipboard);
+    for (ShareHost *host : hosts())
+        host->setClipboard(clipboard);
 }
 
 void Sharing::setWallpaper(const QByteArray &jpeg)
 {
-    others_.setWallpaper(jpeg);
-    mine_.setWallpaper(jpeg);
+    for (ShareHost *host : hosts())
+        host->setWallpaper(jpeg);
 }
 
 void Sharing::addChannel(std::uint32_t channel, const rc::peer::DataChannels::Handler &handler)
 {
-    for (ShareHost *host : {&others_, &mine_}) {
+    for (ShareHost *host : hosts()) {
         const Session session = sessionOf(*host);
         host->addChannel(channel, [session, handler](int id, const QByteArray &data) {
             handler(share_ids::global(session, id), data);
@@ -185,9 +188,19 @@ void Sharing::removeTransfer(int id)
     host(id).files().remove(share_ids::local(id));
 }
 
+ShareHost &Sharing::host(int id)
+{
+    switch (share_ids::session(id)) {
+    case Session::Mine: return mine_;
+    case Session::WebMine: return webMine_;
+    case Session::Others: break;
+    }
+    return others_;
+}
+
 Session Sharing::sessionOf(const ShareHost &host) const
 {
-    return &host == &mine_ ? Session::Mine : Session::Others;
+    return &host == &mine_ ? Session::Mine : &host == &webMine_ ? Session::WebMine : Session::Others;
 }
 
 protocol::SharePeer Sharing::globalPeer(const ShareHost &host, protocol::SharePeer peer) const

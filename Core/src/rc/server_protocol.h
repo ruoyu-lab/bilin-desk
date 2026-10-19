@@ -11,7 +11,7 @@
 // 服务器那一边在 Server/src/protocol.ts，改了两边一起改。
 // 连上以后先发 hello，服务器回 welcome 才算登录；ID 已经属于别的设备时回 rejected（idTaken），换一个再来。
 // 登录以后发 signal（带着这次连接怎么连：传输方式、怎么证明自己，rc/transport.h）、现在不接受别人连本机时回 decline、
-// 改了名字发 rename。有浏览器要连本机时服务器发来 webViewer。
+// 改了名字发 rename。有浏览器要连本机时服务器发来 webViewer，本机回 webReady。
 // 账号（邮箱 + 密码）：注册、找回密码先 sendCode，服务器往邮箱发 6 位验证码，回 codeSent；registerAccount（带验证码）、
 // signIn、resetPassword（凭验证码设新密码）把本机挂到账号下，signOut 拿下来，removeDevice 把账号下别的设备拿下来；
 // 服务器随即（以后有变化时也）发来 account 和 devices。登录着时 setNickname 改昵称，changePassword 改密码（要旧密码，
@@ -31,7 +31,9 @@ inline constexpr QLatin1StringView IdTaken{"idTaken"};
 inline constexpr QLatin1StringView Signal{"signal"};
 // from、session、reason：设备 from 现在不接受连接，回绝了这次连接（原因见 rc/peer_protocol.h）
 inline constexpr QLatin1StringView Decline{"decline"};
-// ticket：有浏览器（网页版）要连本机，凭它经网页版的转发进程进本机的房间（docs/web.md）
+// ticket、key：有浏览器（网页版）要连本机，凭 ticket 经网页版的转发进程进本机的房间（docs/web.md）；key（base64 的
+// 32 字节）是登录了本机账号的浏览器这次连接的一次性钥匙，别人的浏览器没有。准备好了（或者不行）回 webReady
+// （ticket、reason：空的是准备好了，不然是 rc/peer_protocol.h 的原因）
 inline constexpr QLatin1StringView WebViewer{"webViewer"};
 // account：{email, nickname}，没登录账号时为 null
 inline constexpr QLatin1StringView Account{"account"};

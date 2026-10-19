@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import DeviceList from '../components/DeviceList.vue'
-import { recentDevices } from '../state'
+import { forget, recentDevices } from '../state'
 
 // 最近：这个浏览器里连过的电脑，新的在前（记在浏览器里，换个浏览器就没有）
 const devices = computed(recentDevices)
@@ -10,8 +10,8 @@ const devices = computed(recentDevices)
 <template>
   <div class="page">
     <h1>最近</h1>
-    <p class="intro muted">在这个浏览器里连过的电脑。不是我的设备的，连的时候还要输入临时密码。</p>
-    <DeviceList v-if="devices.length > 0" :devices="devices" />
+    <p class="intro muted">在这个浏览器里连过的电脑（记在这个浏览器里）。不是我的设备的，连的时候还要输入临时密码。</p>
+    <DeviceList v-if="devices.length > 0" :devices="devices" removable @remove="forget" />
     <div v-else class="card empty">
       <p class="muted">连过的电脑会出现在这里，下次不用再输设备 ID。</p>
     </div>

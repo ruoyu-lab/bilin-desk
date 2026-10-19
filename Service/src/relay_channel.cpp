@@ -24,12 +24,16 @@ RelayChannel::RelayChannel(QUrl url, QObject *parent)
     , url_(std::move(url))
 {
     connect(&socket_, &QWebSocket::binaryMessageReceived, this, &RelayChannel::received);
-    connect(&socket_, &QWebSocket::connected, this, [] { qInfo("网页版：进了转发进程里本机的房间"); });
+    connect(&socket_, &QWebSocket::connected, this, [this] {
+        qInfo("网页版：进了转发进程里本机的房间");
+        emit opened();
+    });
     connect(&socket_, &QWebSocket::disconnected, this, [this] {
         if (reopening_)
             return;
-        qInfo("网页版：和转发进程断开了（%s）", qUtf8Printable(socket_.closeReason()));
+        qInfo("网页版：和转发进程断开了（%d %s）", int(socket_.closeCode()), qUtf8Printable(socket_.closeReason()));
         closeRoutes();
+        emit lost();
     });
 }
 
@@ -59,6 +63,11 @@ void RelayChannel::open(const QString &ticket)
 bool RelayChannel::isOpen() const
 {
     return socket_.state() == QAbstractSocket::ConnectingState || socket_.state() == QAbstractSocket::ConnectedState;
+}
+
+bool RelayChannel::isConnected() const
+{
+    return socket_.state() == QAbstractSocket::ConnectedState;
 }
 
 bool RelayChannel::send(uint64_t route, const uint8_t *data, uint32_t size)

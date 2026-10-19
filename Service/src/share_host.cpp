@@ -22,6 +22,7 @@
 #include <QTimer>
 
 #include <algorithm>
+#include <utility>
 #include <cstring>
 
 namespace protocol = rc::protocol;
@@ -145,6 +146,9 @@ ShareHost::~ShareHost() = default;
 // 我的设备：账号下有别的设备，界面程序开着、或者允许没人开界面时也连（DeviceState::unattended）
 bool ShareHost::wanted() const
 {
+    // 网页版的我的设备：有浏览器来连时才开，和我的设备一样要界面程序开着、或者允许没人开界面时也连
+    if (webMine())
+        return webKey_.has_value() && (attended_ || store_.state().unattended);
     if (!mine())
         return store_.state().acceptIncoming;
     return trustedKeys_ && !trustedKeys_->isEmpty() && (attended_ || store_.state().unattended);
@@ -181,7 +185,7 @@ void ShareHost::update()
         return;
     }
     const auto device = store_.state();
-    if (mine() || device.password == pin_)
+    if (mine() || webMine() || device.password == pin_)
         return;
     // 换了临时密码：从下一个握手起用新的，已经连着的不受影响
     pin_ = device.password;
@@ -217,8 +221,11 @@ void ShareHost::start()
     // 画面格式默认 4:2:0；观看端要文字更清楚时用 4:4:4（显卡编得了的编码格式才带着它，SDK 按编码器报）
     config.setPictureFormats({RCS_PICTURE_420_8, RCS_PICTURE_444_8});
     lowLatency_ = false;
-    if (transport_.current() == rc::WebTransport)
+    if (transport_.current() == rc::WebTransport) {
         relay_ = std::make_unique<RelayChannel>(relayUrl_);
+        connect(relay_.get(), &RelayChannel::opened, this, [this] { answerWeb({}); });
+        connect(relay_.get(), &RelayChannel::lost, this, [this] { answerWeb(QLatin1StringView(rc::peer::Unavailable)); });
+    }
     useTransport(config);
     useCapture(config);
     // 电源模块：有人连着时电脑不睡（模块默认就是这样）；我的设备还能让本机重启、关机、睡眠、注销，正在控制本机的
@@ -264,7 +271,7 @@ void ShareHost::start()
     };
     // 别人：密码对了先不让进，等本机的人决定（admit / refuse）。
     // 我的设备：SDK 核对过它的设备密钥在信任列表里，直接让进、能控制（没有辅助功能授权时只能看）
-    const bool admit = mine();
+    const bool admit = mine() || webMine();
     const bool control = canControl_;
     callbacks.onViewerJoin = [this, later, admit, control](const rcs_viewer_info &viewer, rcs_viewer_decision &decision) {
         decision.admission = admit ? RCS_ADMIT : RCS_ADMIT_LATER;
@@ -389,7 +396,7 @@ void ShareHost::start()
         });
         relay_->open(relayTicket_);
     }
-    qInfo("开始接受%s连接本机（%s）%s", mine() ? "我的设备" : "别人",
+    qInfo("开始接受%s连接本机（%s）%s", mine() ? "我的设备" : webMine() ? "网页版的我的设备" : "别人",
           transport_.current() == rc::RelayTransport ? "经中继"
           : transport_.current() == rc::WebTransport ? "经网页版的转发" : "直连",
           canControl_ ? "" : "，还没授予辅助功能，只能让对方看");
@@ -420,7 +427,7 @@ void ShareHost::stop()
     problem_.clear();
     emit stateChanged();
     if (wasRunning)
-        qInfo("不再接受%s连接本机", mine() ? "我的设备" : "别人");
+        qInfo("不再接受%s连接本机", mine() ? "我的设备" : webMine() ? "网页版的我的设备" : "别人");
 }
 
 void ShareHost::end()
@@ -432,6 +439,7 @@ void ShareHost::end()
     thumbnails_.stop();
     session_.reset();
     relay_.reset();
+    answerWeb(QLatin1StringView(rc::peer::Unavailable));
     ++run_;
     canControl_ = false;
     routes_.clear();
@@ -463,6 +471,10 @@ void ShareHost::reopen(const QString &transport)
 
 void ShareHost::useIdentity(rcsdk::SessionConfig &config) const
 {
+    if (webMine()) {
+        config.setKey(keyFrom<rcsdk::ConnectionKey>(*webKey_));
+        return;
+    }
     if (!mine()) {
         config.setPin(pin_.toStdString());
         return;
@@ -532,6 +544,13 @@ void ShareHost::switchBackIfIdle()
 {
     if (!transport_.shouldSwitchBack(inUse()))
         return;
+    // 网页版的我的设备只为浏览器开着
+    if (webMine()) {
+        qInfo("网页版的我的设备都走了");
+        webKey_.reset();
+        stop();
+        return;
+    }
     qInfo("经中继、网页版的转发连本机的人都走了，换回直连");
     reopen(rc::DirectTransport);
 }
@@ -542,8 +561,14 @@ void ShareHost::runFailed()
     const rcsdk::SessionFailure failure = session_->failure();
     qCritical("分享会话停了：%s", failure.message.c_str());
     end();
-    // 经中继时停了（中继连不上、凭据被拒……）：换回直连接着接受连接
-    if (transport_.current() == rc::RelayTransport) {
+    // 网页版的我的设备：不用再开（浏览器那边连不上，再来时重新开）
+    if (webMine()) {
+        webKey_.reset();
+        stop();
+        return;
+    }
+    // 经中继、网页版的转发时停了（中继连不上、凭据被拒……）：换回直连接着接受连接
+    if (transport_.current() != rc::DirectTransport) {
         transport_.switchTo(rc::DirectTransport);
         start();
         return;
@@ -666,14 +691,34 @@ protocol::ShareState ShareHost::state() const
     return state;
 }
 
-void ShareHost::webViewer(const QUrl &relay, const QString &ticket)
+void ShareHost::webViewer(const QUrl &relay, const QString &ticket, const QByteArray &key)
 {
-    // 现在不接受连接：浏览器那边连不上，等到时候了自己说
+    relayUrl_ = relay;
+    // 网页版的我的设备：没开着时为它开（经网页版的转发）；开着时换钥匙，从下一个握手起用新的
+    if (webMine()) {
+        webKey_ = key;
+        if (!session_) {
+            relayTicket_ = ticket;
+            transport_.switchTo(rc::WebTransport);
+            update();
+        } else {
+            rcsdk::SessionConfig config(RCS_ROLE_SHARE);
+            useIdentity(config);
+            if (const rcs_result result = session_->setIdentity(config.core().identity); result != RCS_OK)
+                qWarning("换网页版的钥匙：%s", rcs_result_message(result));
+        }
+    }
+    // 现在不接受连接：告诉浏览器为什么
     if (!session_) {
-        qInfo("有浏览器要连本机，本机现在不接受连接（%s）", qUtf8Printable(problem_.isEmpty() ? QStringLiteral("没开") : problem_));
+        const QString reason = problem_.isEmpty() ? QString(rc::peer::NotAccepting) : problem_;
+        qInfo("有浏览器要连本机，本机现在不接受连接（%s）", qUtf8Printable(reason));
+        if (webMine()) {
+            webKey_.reset();
+            transport_.switchTo(rc::DirectTransport);
+        }
+        emit webAnswered(ticket, reason);
         return;
     }
-    relayUrl_ = relay;
     switch (transport_.check(QString(), rc::WebTransport, inUse(), true)) {
     case ShareTransport::Verdict::Accept:
         // 已经在用网页版：房间进着就等浏览器来；和转发进程断了凭这张新的再进
@@ -684,15 +729,27 @@ void ShareHost::webViewer(const QUrl &relay, const QString &ticket)
         qInfo("有浏览器要连本机，换成经网页版的转发");
         relayTicket_ = ticket;
         reopen(rc::WebTransport);
-        if (!session_)
+        if (!session_) {
+            emit webAnswered(ticket, problem_.isEmpty() ? QString(rc::peer::Unavailable) : problem_);
             return;
+        }
         break;
     case ShareTransport::Verdict::Busy:
     case ShareTransport::Verdict::NoRelay:
         qInfo("有浏览器要连本机，本机正被别人用另一种方式连着，这次不行");
+        emit webAnswered(ticket, QLatin1StringView(rc::peer::TransportBusy));
         return;
     }
     transport_.attempting(QString());
+    webAnswers_.append(ticket);
+    if (relay_->isConnected())
+        answerWeb({});
+}
+
+void ShareHost::answerWeb(const QString &reason)
+{
+    for (const QString &ticket : std::exchange(webAnswers_, {}))
+        emit webAnswered(ticket, reason);
 }
 
 void ShareHost::receiveSignal(const QString &from, const QString &name, const QString &session, const QString &text,
@@ -956,7 +1013,8 @@ void ShareHost::viewerLeft(int id, bool pathBroke)
     emit stateChanged();
     tellMainViewer();
     applyLowLatency();
-    if (!pathBroke) {
+    // 网页版的人路断了也不会从原路回来（再连要新的通行证，转发进程给新的编号）：算走了
+    if (!pathBroke || transport_.current() == rc::WebTransport) {
         qInfo("%s（%s）断开了", qUtf8Printable(left.info.name), qUtf8Printable(left.info.deviceId));
         emit viewerGone(left.info.deviceId, left.session);
         changePassword("连进来的人走了");

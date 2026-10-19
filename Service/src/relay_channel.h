@@ -35,9 +35,16 @@ public:
     void attach(rcs_session session, std::function<void(quint64 route)> newRoute);
     // 凭一次性的通行证进本机的房间（之前的连接断开）
     void open(const QString &ticket);
+    // 连着或者正在连
     bool isOpen() const;
+    bool isConnected() const;
 
     bool send(uint64_t route, const uint8_t *data, uint32_t size) override;
+
+signals:
+    // 进了房间（浏览器的握手有人接了）；没进成、断了（通行证不对、转发进程没在运行、网络断了）
+    void opened();
+    void lost();
 
 private:
     void flush();

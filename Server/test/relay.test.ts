@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 
 import { buildRelay, MAX_VIEWERS, RelayClose } from '../src/relay/server.js';
-import { MemoryTickets } from './memory.js';
+import { MemoryRelayStatus, MemoryTickets } from './memory.js';
 
 const ROOM = '123456789';
 
@@ -12,9 +12,11 @@ class Client {
     readonly socket: WebSocket;
     readonly #received: Buffer[] = [];
     readonly #waiters: Array<(data: Buffer) => void> = [];
+    readonly #closed: Promise<number>;
 
     constructor(url: string) {
         this.socket = new WebSocket(url);
+        this.#closed = new Promise((resolve) => this.socket.once('close', (code) => resolve(code)));
         this.socket.on('message', (data: Buffer) => {
             const waiter = this.#waiters.shift();
             if (waiter)
@@ -29,15 +31,18 @@ class Client {
             await new Promise((resolve) => this.socket.once('open', resolve));
     }
 
+    // 已经收到、还没取走的
+    drain(): Buffer[] {
+        return this.#received.splice(0);
+    }
+
     next(): Promise<Buffer> {
         const ready = this.#received.shift();
         return ready ? Promise.resolve(ready) : new Promise((resolve) => this.#waiters.push(resolve));
     }
 
     closed(): Promise<number> {
-        if (this.socket.readyState === WebSocket.CLOSED)
-            return Promise.resolve(-1);
-        return new Promise((resolve) => this.socket.once('close', (code) => resolve(code)));
+        return this.#closed;
     }
 }
 
@@ -50,12 +55,14 @@ function routed(route: bigint, text: string): Buffer {
 describe('网页版的转发进程', () => {
     let app: FastifyInstance;
     let tickets: MemoryTickets;
+    let status: MemoryRelayStatus;
     let base: string;
     const clients: Client[] = [];
 
     beforeEach(async () => {
         tickets = new MemoryTickets();
-        app = await buildRelay({ tickets, logger: false });
+        status = new MemoryRelayStatus();
+        app = await buildRelay({ tickets, status, logger: false, maxViewers: 10, viewerBytesPerSecond: 64 * 1024 });
         await app.listen({ host: '127.0.0.1', port: 0 });
         const address = app.server.address();
         if (!address || typeof address === 'string')
@@ -150,6 +157,37 @@ describe('网页版的转发进程', () => {
         await settle();
         const extra = await join('view');
         expect(await extra.closed()).toBe(RelayClose.Full);
+    });
+
+    it('所有房间加起来最多 maxViewers 个浏览器，路数报给服务端', async () => {
+        await join('share');
+        for (let i = 0; i < MAX_VIEWERS; i++)
+            await join('view');
+        await join('view', '987654321');
+        await join('view', '987654321');
+        await settle();
+        expect(status.current).toEqual({ viewers: 10, max: 10 });
+        const extra = await join('view', '555555555');
+        expect(await extra.closed()).toBe(RelayClose.Busy);
+        clients[1]!.socket.close();
+        await settle();
+        expect(status.current?.viewers).toBe(9);
+    });
+
+    it('发给一个浏览器的超过限速的丢掉', async () => {
+        const sharer = await join('share');
+        const viewer = await join('view');
+        await settle();
+        viewer.socket.send(Buffer.from('hi'));
+        const route = (await sharer.next()).readBigUInt64BE(0);
+        // 一秒最多 64 KiB：一下子发 100 KiB，收到的不超过 64 KiB
+        const piece = 'x'.repeat(1024);
+        for (let i = 0; i < 100; i++)
+            sharer.socket.send(routed(route, piece));
+        await settle();
+        const received = viewer.drain().reduce((total, data) => total + data.length, 0);
+        expect(received).toBeGreaterThan(0);
+        expect(received).toBeLessThanOrEqual(64 * 1024);
     });
 
     it('电脑还没进来时浏览器发的丢掉', async () => {

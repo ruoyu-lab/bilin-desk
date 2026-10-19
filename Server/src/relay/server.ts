@@ -2,6 +2,7 @@ import websocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
 
+import { REFRESH_MS, type RelayStatus } from '../relay-load.js';
 import type { Tickets } from '../tickets.js';
 
 // 网页版的转发进程（docs/web.md）：浏览器和被连的电脑都经 WebSocket 连到这里，按房间（被连的设备 ID）配对，
@@ -11,10 +12,15 @@ import type { Tickets } from '../tickets.js';
 // - 观看端（浏览器）：一条消息一个数据报
 // - 分享端（电脑）：一个房间一个，一条消息是 8 字节的路由号（大端）加一个数据报：路由号是这里给每个观看端的编号，
 //   SDK 的 route。空的数据报：发来的是"这个观看端走了"，发出去的是"不要这个观看端了"
-// 对端收不过来（积压超过 MAX_BUFFERED）时丢掉这个数据报，由 SDK 重传、降码率
+// 对端收不过来（积压超过 MAX_BUFFERED）时丢掉这个数据报，由 SDK 重传、降码率。
+// 服务器的带宽是共用的（docs/web.md）：所有房间的浏览器加起来最多 maxViewers 个，满了的进不来；发给一个浏览器的超过
+// viewerBytesPerSecond 的丢掉（SDK 当作丢包，降码率）。现在有几个、最多几个报给服务端（relay-load.ts），满了它直接说人太多
 export interface RelayOptions {
     tickets: Tickets;
+    status: RelayStatus;
     logger: boolean;
+    maxViewers?: number;
+    viewerBytesPerSecond?: number;
     heartbeatMs?: number;
 }
 
@@ -32,11 +38,37 @@ export enum RelayClose {
     Full = 4429,       // 房间里的观看端满了
     SharerGone = 4410, // 被连的电脑走了
     Dropped = 4403,    // 被连的电脑不要这个观看端了
+    Busy = 4503,       // 网页版的路数满了
+}
+
+// 发给一个浏览器的限速：令牌桶，最多攒一秒的量（关键帧一下子大）
+class Bucket {
+    #tokens: number;
+    #last = performance.now();
+
+    constructor(readonly perSecond: number) {
+        this.#tokens = perSecond;
+    }
+
+    take(bytes: number): boolean {
+        const now = performance.now();
+        this.#tokens = Math.min(this.perSecond, this.#tokens + (now - this.#last) * this.perSecond / 1000);
+        this.#last = now;
+        if (this.#tokens < bytes)
+            return false;
+        this.#tokens -= bytes;
+        return true;
+    }
+}
+
+interface Viewer {
+    socket: WebSocket;
+    bucket: Bucket;
 }
 
 interface Room {
     sharer: WebSocket | null;
-    viewers: Map<bigint, WebSocket>;
+    viewers: Map<bigint, Viewer>;
 }
 
 function send(socket: WebSocket, data: Buffer): void {
@@ -57,7 +89,17 @@ export async function buildRelay(options: RelayOptions): Promise<FastifyInstance
     await app.register(websocket, { options: { maxPayload: MAX_MESSAGE, perMessageDeflate: false } });
     const rooms = new Map<string, Room>();
     let nextRoute = 1n;
+    let viewers = 0;
     const heartbeatMs = options.heartbeatMs ?? 30_000;
+    const maxViewers = options.maxViewers ?? 20;
+    const viewerBytesPerSecond = options.viewerBytesPerSecond ?? 1_000_000;
+
+    const report = () => {
+        options.status.setLoad({ viewers, max: maxViewers }).catch((error: unknown) => app.log.error({ err: error }, '报不了网页版的路数'));
+    };
+    const reporter = setInterval(report, REFRESH_MS);
+    app.addHook('onReady', async () => report());
+    app.addHook('onClose', async () => clearInterval(reporter));
 
     const roomOf = (name: string): Room => {
         let room = rooms.get(name);
@@ -93,9 +135,9 @@ export async function buildRelay(options: RelayOptions): Promise<FastifyInstance
                 if (!viewer)
                     return;
                 if (data.length === ROUTE_BYTES)
-                    viewer.close(RelayClose.Dropped, 'dropped');
-                else
-                    send(viewer, data.subarray(ROUTE_BYTES));
+                    viewer.socket.close(RelayClose.Dropped, 'dropped');
+                else if (viewer.bucket.take(data.length - ROUTE_BYTES))
+                    send(viewer.socket, data.subarray(ROUTE_BYTES));
             });
             socket.on('close', () => {
                 if (room.sharer !== socket)
@@ -103,18 +145,25 @@ export async function buildRelay(options: RelayOptions): Promise<FastifyInstance
                 room.sharer = null;
                 // 观看端的 SDK 会重连：电脑回来以后它们拿新的通行证再进
                 for (const viewer of room.viewers.values())
-                    viewer.close(RelayClose.SharerGone, 'sharer gone');
+                    viewer.socket.close(RelayClose.SharerGone, 'sharer gone');
                 forget(ticket.room, room);
                 request.log.info({ room: ticket.room }, '转发：电脑走了');
             });
         } else {
+            if (viewers >= maxViewers) {
+                socket.close(RelayClose.Busy, 'busy');
+                forget(ticket.room, room);
+                return;
+            }
             if (room.viewers.size >= MAX_VIEWERS) {
                 socket.close(RelayClose.Full, 'full');
                 forget(ticket.room, room);
                 return;
             }
             const route = nextRoute++;
-            room.viewers.set(route, socket);
+            room.viewers.set(route, { socket, bucket: new Bucket(viewerBytesPerSecond) });
+            ++viewers;
+            report();
             request.log.info({ room: ticket.room, route: String(route) }, '转发：浏览器进了房间');
             // 电脑还没进来时发的丢掉：SDK 的握手自己会再发
             socket.on('message', (data: Buffer, isBinary) => {
@@ -123,6 +172,8 @@ export async function buildRelay(options: RelayOptions): Promise<FastifyInstance
             });
             socket.on('close', () => {
                 room.viewers.delete(route);
+                --viewers;
+                report();
                 if (room.sharer)
                     send(room.sharer, routed(route, Buffer.alloc(0)));
                 forget(ticket.room, room);

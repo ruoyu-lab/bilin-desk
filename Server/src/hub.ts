@@ -13,6 +13,7 @@ import {
 } from './protocol.js';
 import { hashToken, type Registry } from './registry.js';
 import type { Stats } from './stats.js';
+import type { Tickets } from './tickets.js';
 
 // 一条 WebSocket 连接，Hub 只用到这些
 export interface Peer {
@@ -74,6 +75,8 @@ export interface HubSources {
     mailer: Mailer | null;
     // 每天的数目（管理后台看）
     stats: Stats;
+    // 网页版的一次性通行证：电脑对它的回答记在这里（tickets.ts）；没有时网页版连不了
+    tickets?: Tickets;
 }
 
 export interface HubOptions {
@@ -129,6 +132,7 @@ export class Hub {
     readonly #codes: Codes;
     readonly #mailer: Mailer | null;
     readonly #stats: Stats;
+    readonly #tickets: Tickets | undefined;
     readonly #log: Log;
     readonly #options: HubOptions;
     readonly #devices = new Map<string, Connection>();
@@ -144,6 +148,7 @@ export class Hub {
         this.#codes = sources.codes;
         this.#mailer = sources.mailer;
         this.#stats = sources.stats;
+        this.#tickets = sources.tickets;
         this.#log = log;
         this.#options = options;
         bus.onMessage((deviceId, message) => this.#deliver(deviceId, message));
@@ -264,11 +269,6 @@ export class Hub {
         return receivers > 0;
     }
 
-    // 有浏览器要连设备 to：凭 ticket 进它的房间。不在线时 false
-    async webViewer(to: string, ticket: string): Promise<boolean> {
-        return await this.#bus.publish(to, { type: 'webViewer', ticket }) > 0;
-    }
-
     // 回绝送不到（对方不在线了）就算了：它自己会等不到回答
     async decline(from: string, request: DeclineRequest): Promise<void> {
         await this.#bus.publish(request.to, { type: 'decline', from, session: request.session, reason: request.reason });
@@ -321,14 +321,70 @@ export class Hub {
 
     // 验证码对了才注册，再登录；验证码不对、邮箱注册过时返回失败的原因
     async register(deviceId: string, request: Register): Promise<AccountFailure | null> {
-        if (!await this.#codes.check('register', request.email, request.code))
-            return 'wrongCode';
-        const account = await this.#accounts.create(request.email, request.nickname, request.password);
-        if (account === 'emailTaken')
-            return 'emailTaken';
+        const account = await this.createAccount(request);
+        if (typeof account === 'string')
+            return account;
         this.#log.info({ deviceId, accountId: account.id }, '注册了账号');
         await this.#bind(deviceId, account.id);
         return null;
+    }
+
+    // 验证码对了才建账号（客户端、网页版都是）
+    async createAccount(request: Register): Promise<Account | AccountFailure> {
+        if (!await this.#codes.check('register', request.email, request.code))
+            return 'wrongCode';
+        const account = await this.#accounts.create(request.email, request.nickname, request.password);
+        return account === 'emailTaken' ? 'emailTaken' : account;
+    }
+
+    // ---- 网页版（docs/web.md）：浏览器登录账号，不是设备 ----
+
+    // 输错的密码和客户端一样按地址、按邮箱数
+    async webSignIn(address: string, request: Login): Promise<Account | AccountFailure> {
+        if (await this.passwordLocked(address, request.email))
+            return 'tooMany';
+        const account = await this.#accounts.verify(request.email, request.password);
+        if (account)
+            return account;
+        await this.passwordFailed(address, request.email);
+        return 'wrongPassword';
+    }
+
+    async webResetPassword(request: ResetPassword): Promise<Account | AccountFailure> {
+        if (!await this.#codes.check('resetPassword', request.email, request.code))
+            return 'wrongCode';
+        const account = await this.#accounts.byEmail(request.email);
+        if (!account)
+            return 'noAccount';
+        await this.#accounts.setPassword(account.id, request.password);
+        this.#log.info({ accountId: account.id }, '网页版凭验证码重设了密码');
+        return account;
+    }
+
+    // 账号和它下面的设备（在不在线）；账号注销了：null
+    async webView(accountId: string): Promise<AccountView | null> {
+        const account = await this.#accounts.get(accountId);
+        if (!account)
+            return null;
+        const devices = await this.#registry.devicesOf(accountId);
+        const online = await this.#bus.online(devices.map((d) => d.id));
+        return {
+            account: { email: account.email, nickname: account.nickname },
+            devices: devices.map((d) => ({
+                deviceId: d.id, name: d.name, platform: d.platform, publicKey: d.publicKey, online: online.has(d.id),
+            })),
+        };
+    }
+
+    // 电脑对网页版那张通行证的回答（protocol.ts 的 WebReady）
+    async webReady(ticket: string, reason: string): Promise<void> {
+        await this.#tickets?.answer(ticket, reason);
+    }
+
+    // 有浏览器要连设备 to：凭 ticket 进它的房间；key 是登录了同一个账号的浏览器这次连接用的一次性钥匙（base64），
+    // 别人的浏览器没有。不在线时 false
+    async webViewer(to: string, ticket: string, key?: string): Promise<boolean> {
+        return await this.#bus.publish(to, { type: 'webViewer', ticket, ...(key ? { key } : {}) }) > 0;
     }
 
     // 登录。这台电脑重装过、账号下还有它原来的 ID 时（同一个硬件编号、同一个系统、现在不在线），原来的 ID
@@ -427,17 +483,7 @@ export class Hub {
     // 现在登录的账号、账号下的设备
     async view(deviceId: string): Promise<AccountView> {
         const accountId = await this.#registry.accountOf(deviceId);
-        const account = accountId ? await this.#accounts.get(accountId) : null;
-        if (!accountId || !account)
-            return { account: null, devices: [] };
-        const devices = await this.#registry.devicesOf(accountId);
-        const online = await this.#bus.online(devices.map((d) => d.id));
-        return {
-            account: { email: account.email, nickname: account.nickname },
-            devices: devices.map((d) => ({
-                deviceId: d.id, name: d.name, platform: d.platform, publicKey: d.publicKey, online: online.has(d.id),
-            })),
-        };
+        return (accountId ? await this.webView(accountId) : null) ?? { account: null, devices: [] };
     }
 
     async logout(connection: Connection, deviceId: string): Promise<void> {
@@ -505,7 +551,7 @@ export class Hub {
             connection.send({ type: 'decline', from: message.from, session: message.session, reason: message.reason });
             break;
         case 'webViewer':
-            connection.send({ type: 'webViewer', ticket: message.ticket });
+            connection.send({ type: 'webViewer', ticket: message.ticket, ...(message.key ? { key: message.key } : {}) });
             break;
         case 'accountChanged':
             connection.refreshAccount();
@@ -675,6 +721,9 @@ export class Connection {
             return;
         case 'deleteAccount':
             await this.#deleteAccount(deviceId, message);
+            return;
+        case 'webReady':
+            await this.#hub.webReady(message.ticket, message.reason);
             return;
         }
     }

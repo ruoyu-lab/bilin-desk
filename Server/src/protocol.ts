@@ -28,6 +28,8 @@ export const MACHINE = /^[0-9a-f]{64}$/;
 // 设备密钥的公钥：P-256，0x04 || X || Y 共 65 字节（标准 base64）
 export const PUBLIC_KEY_BYTES = 65;
 export const SESSION = /^[A-Za-z0-9_-]{1,64}$/;
+// 网页版的一次性通行证（tickets.ts）
+export const TICKET = /^[A-Za-z0-9_-]{43}$/;
 export const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 // 邮件里的验证码
 export const CODE = /^\d{6}$/;
@@ -121,6 +123,14 @@ export interface Logout {
     type: 'logout';
 }
 
+// 网页版（docs/web.md）：对 webViewer 的回答。reason 空的是准备好了（进了转发进程里的房间、换好了钥匙），
+// 不然是为什么不行（rc/peer_protocol.h 的原因：notAccepting、transportBusy……）
+export interface WebReady {
+    type: 'webReady';
+    ticket: string;
+    reason: string;
+}
+
 // 把账号下的另一台设备移出账号
 export interface RemoveDevice {
     type: 'removeDevice';
@@ -147,7 +157,7 @@ export interface DeleteAccount {
 
 export type ClientMessage =
     | Hello | SignalRequest | DeclineRequest | Rename | SendCode | Register | Login | ResetPassword | Logout | RemoveDevice
-    | SetNickname | ChangePassword | DeleteAccount;
+    | SetNickname | ChangePassword | DeleteAccount | WebReady;
 
 // ---- 服务器 → 客户端 ----
 
@@ -194,8 +204,9 @@ export type ServerMessage =
         sdk: string;
     }
     | { type: 'decline'; from: string; session: string; reason: string }
-    // 有浏览器（网页版）要连本机：凭 ticket 经转发进程进本机的房间（docs/web.md）
-    | { type: 'webViewer'; ticket: string }
+    // 有浏览器（网页版）要连本机：凭 ticket 经转发进程进本机的房间（docs/web.md）。key（base64 的 32 字节）：
+    // 浏览器登录了本机的账号，这次连接用这把一次性钥匙、不用临时密码（本机"我的设备"那一边，房间是 <ID>/mine）
+    | { type: 'webViewer'; ticket: string; key?: string }
     // offline：对方不在线（或者没有这个 ID）| tooMany：发起的连接太多、连不上的太多，过一会儿再连
     | { type: 'undeliverable'; to: string; session: string; reason: 'offline' | 'tooMany' }
     // 这台设备登录的账号；null：没登录（退出了、被移出了）
@@ -348,6 +359,12 @@ export function parseClientMessage(raw: string): ClientMessage | null {
         if (!text(message.password, MAX_PASSWORD))
             return null;
         return { type: 'deleteAccount', password: message.password };
+    }
+    case 'webReady': {
+        const { ticket, reason } = message;
+        if (!matches(ticket, TICKET) || (reason !== '' && !matches(reason, REASON)))
+            return null;
+        return { type: 'webReady', ticket, reason: reason as string };
     }
     default:
         return null;

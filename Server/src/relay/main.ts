@@ -1,3 +1,4 @@
+import { RedisRelayStatus } from '../relay-load.js';
 import { RedisTickets } from '../tickets.js';
 import { buildRelay } from './server.js';
 
@@ -6,9 +7,13 @@ import { buildRelay } from './server.js';
 const host = process.env.HOST ?? '127.0.0.1';
 const port = Number(process.env.PORT ?? 3200);
 const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
+// 网页版最多几路、发给一个浏览器每秒最多多少字节（服务器的带宽是共用的，docs/web.md）
+const maxViewers = Number(process.env.WEB_MAX_SESSIONS ?? 20);
+const viewerBytesPerSecond = Number(process.env.WEB_MAX_VIEWER_BPS ?? 8_000_000) / 8;
 
 const tickets = new RedisTickets(redisUrl);
-const app = await buildRelay({ tickets, logger: true });
+const status = new RedisRelayStatus(redisUrl);
+const app = await buildRelay({ tickets, status, logger: true, maxViewers, viewerBytesPerSecond });
 await app.listen({ host, port });
 
 let stopping = false;
@@ -18,7 +23,7 @@ async function stop(signal: string): Promise<void> {
     stopping = true;
     app.log.info({ signal }, '停止');
     await app.close();
-    await tickets.close();
+    await Promise.all([tickets.close(), status.close()]);
     process.exit(0);
 }
 process.on('SIGINT', (signal) => void stop(signal));

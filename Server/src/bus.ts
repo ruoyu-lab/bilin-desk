@@ -11,7 +11,7 @@ export type BusMessage =
     }
     | { type: 'decline'; from: string; session: string; reason: string }
     // 有浏览器要连这台设备（ServerMessage 的 webViewer）
-    | { type: 'webViewer'; ticket: string }
+    | { type: 'webViewer'; ticket: string; key?: string }
     // 这台设备在 connection 这条连接上重新登录了：它别的连接都关掉
     | { type: 'replaced'; connection: string }
     // 这台设备的账号变了（登录、退出、被移出），或者账号下的设备有变化（上下线、改名）：重新告诉它
