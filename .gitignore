@@ -19,3 +19,6 @@ Server/admin/dist/
 Website/node_modules/
 Website/dist/
 Website/dist-ssr/
+# 网页版
+Web/node_modules/
+Web/dist/

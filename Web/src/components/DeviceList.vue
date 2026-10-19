@@ -1,0 +1,123 @@
+<script setup lang="ts">
+import { ago, connect, displayId, toggleFavorite, type Device } from '../state'
+import LineIcon from './LineIcon.vue'
+
+// 一行一台设备（我的设备、最近）：系统的图标、名字和设备 ID、在不在线、上次连接，右边收藏和连接
+const props = defineProps<{ devices: Device[] }>()
+</script>
+
+<template>
+  <div class="list">
+    <div v-for="d in props.devices" :key="d.id" class="row" :class="{ offline: !d.online }">
+      <span class="os" :class="d.system"><LineIcon :name="d.system" :size="17" /></span>
+      <div class="main">
+        <div class="name">{{ d.name }}<span v-if="d.mine" class="tag">我的设备</span></div>
+        <div class="meta num">{{ displayId(d.id) }}</div>
+      </div>
+      <div class="state">
+        <span class="dot" :class="{ online: d.online }" />{{ d.online ? '在线' : '离线' }}
+      </div>
+      <div class="last">{{ d.lastConnected ? ago(d.lastConnected) : '没连过' }}</div>
+      <div class="actions">
+        <button class="icon-button" type="button" :class="{ favorite: d.favorite }"
+                :aria-label="d.favorite ? '取消收藏' : '收藏'" :title="d.favorite ? '取消收藏' : '收藏'"
+                @click="toggleFavorite(d)">
+          <LineIcon name="star" :size="16" />
+        </button>
+        <button class="button" type="button" :disabled="!d.online" @click="connect(d)">连接</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.list {
+  padding: 4px;
+  border-radius: var(--card-radius);
+  background: var(--card);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 72px 90px auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  transition: background 0.15s;
+}
+
+.row + .row {
+  box-shadow: 0 -1px 0 var(--border);
+}
+
+.row:hover {
+  background: var(--hover);
+  box-shadow: none;
+}
+
+.row:hover + .row {
+  box-shadow: none;
+}
+
+.row.offline .os {
+  opacity: 0.55;
+}
+
+.name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--fill);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  vertical-align: 1px;
+}
+
+.meta,
+.last {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.meta {
+  margin-top: 2px;
+}
+
+.state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-button.favorite {
+  color: #ffb340;
+}
+
+@media (max-width: 760px) {
+  .row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .state,
+  .last {
+    display: none;
+  }
+}
+</style>

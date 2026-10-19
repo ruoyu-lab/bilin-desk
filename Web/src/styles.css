@@ -1,0 +1,273 @@
+/* 和程序一个样子（App/qml/common/Theme.qml）：白底黑字，没有强调色，卡片用填充色不用描边。
+   外观跟着系统，设置里也能选浅色、深色（<html data-theme>）。不用网络字体、外面的脚本 */
+:root {
+  --bg: #ffffff;
+  --sidebar: #f7f7f9;
+  --card: #f6f7fa;
+  --card-hover: #eff1f5;
+  --surface: #ffffff;
+  /* 卡片上的输入框：浅色时白的，深色时比卡片亮一点 */
+  --field-on-card: #ffffff;
+  --fill: #f1f1f4;
+  --fill-hover: #e9e9ed;
+  --hover: rgba(0, 0, 0, 0.047);
+  --selected: rgba(0, 0, 0, 0.078);
+  --border: #e5e5ea;
+  --text: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-muted: #aeaeb2;
+  --inverse: #1d1d1f;
+  --inverse-hover: #3a3a3c;
+  --inverse-text: #ffffff;
+  --success: #34c759;
+  --danger: #ff3b30;
+  --avatar: #e3e6ec;
+  --avatar-text: #3a3a3c;
+  --win: #e5f0ff;
+  --win-ink: #0a6fe0;
+  --mac: #eceef2;
+  --mac-ink: #3a3a3c;
+  --canvas: #e6e8ec;
+  --scrim: rgba(0, 0, 0, 0.15);
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.14), 0 1px 4px rgba(0, 0, 0, 0.06);
+  --radius: 8px;
+  --card-radius: 12px;
+  --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+
+  color-scheme: light;
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 深色：程序深色时的颜色 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1e1e20;
+    --sidebar: #252527;
+    --card: #29292b;
+    --card-hover: #303033;
+    --surface: #2c2c2e;
+    --field-on-card: #38383b;
+    --fill: #333336;
+    --fill-hover: #3a3a3d;
+    --hover: rgba(255, 255, 255, 0.08);
+    --selected: rgba(255, 255, 255, 0.13);
+    --border: #38383b;
+    --text: #f2f2f4;
+    --text-secondary: #a1a1a6;
+    --text-muted: #6c6c70;
+    --inverse: #f2f2f4;
+    --inverse-hover: #d1d1d6;
+    --inverse-text: #1d1d1f;
+    --success: #30d158;
+    --danger: #ff453a;
+    --avatar: #3a3a3d;
+    --avatar-text: #e5e5ea;
+    --win: #1b2c45;
+    --win-ink: #5aa2ff;
+    --mac: #3a3a3d;
+    --mac-ink: #e5e5ea;
+    --canvas: #141416;
+    --scrim: rgba(0, 0, 0, 0.4);
+    --shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1e1e20;
+  --sidebar: #252527;
+  --card: #29292b;
+  --card-hover: #303033;
+  --surface: #2c2c2e;
+  --field-on-card: #38383b;
+  --fill: #333336;
+  --fill-hover: #3a3a3d;
+  --hover: rgba(255, 255, 255, 0.08);
+  --selected: rgba(255, 255, 255, 0.13);
+  --border: #38383b;
+  --text: #f2f2f4;
+  --text-secondary: #a1a1a6;
+  --text-muted: #6c6c70;
+  --inverse: #f2f2f4;
+  --inverse-hover: #d1d1d6;
+  --inverse-text: #1d1d1f;
+  --success: #30d158;
+  --danger: #ff453a;
+  --avatar: #3a3a3d;
+  --avatar-text: #e5e5ea;
+  --win: #1b2c45;
+  --win-ink: #5aa2ff;
+  --mac: #3a3a3d;
+  --mac-ink: #e5e5ea;
+  --canvas: #141416;
+  --scrim: rgba(0, 0, 0, 0.4);
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.3);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 按钮：灰底；dark 黑底白字（深色时反过来）；ghost 没有底，悬停才有；danger 红字 ---- */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--fill);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.button:hover:not(:disabled) {
+  background: var(--fill-hover);
+}
+.button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.button.dark {
+  background: var(--inverse);
+  color: var(--inverse-text);
+}
+.button.dark:hover:not(:disabled) {
+  background: var(--inverse-hover);
+}
+.button.ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.button.ghost:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+.button.danger {
+  color: var(--danger);
+}
+.button.large {
+  height: 38px;
+  padding: 0 18px;
+  font-size: 14px;
+}
+
+/* 只有图标的按钮 */
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.icon-button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.icon-button.on {
+  background: var(--selected);
+  color: var(--text);
+}
+
+.field {
+  width: 100%;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--fill);
+  font-size: 13px;
+  outline: none;
+  transition: background 0.15s;
+}
+.field::placeholder {
+  color: var(--text-muted);
+}
+.field:focus {
+  background: var(--fill-hover);
+}
+
+.card {
+  border-radius: var(--card-radius);
+  background: var(--card);
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+.error {
+  font-size: 13px;
+  color: var(--danger);
+}
+
+/* 设备系统的小方块（Windows 浅蓝、苹果浅灰） */
+.os {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--mac);
+  color: var(--mac-ink);
+}
+.os.windows {
+  background: var(--win);
+  color: var(--win-ink);
+}
+
+.dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.dot.online {
+  background: var(--success);
+}
