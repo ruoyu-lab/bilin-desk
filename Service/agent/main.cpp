@@ -123,10 +123,13 @@ int main(int argc, char *argv[])
     }
 
     std::vector<std::unique_ptr<rcsdk::Agent>> agents;
-    for (const QLatin1StringView access : {rc::PasswordAccess, rc::DeviceAccess}) {
+    // 后台服务的三个分享会话各有一条链接（Sharing）：别人、我的设备、网页版的我的设备（只在浏览器来连时开着）
+    for (const QLatin1StringView access : {rc::PasswordAccess, rc::DeviceAccess, rc::WebKeyAccess}) {
         rcsdk::AgentConfig config(rc::system_service::agentEndpoint(access).toStdString(), key);
         config.setReconnect(true, 2000);
-        const QString name = access == rc::DeviceAccess ? QStringLiteral("我的设备") : QStringLiteral("别人");
+        const QString name = access == rc::DeviceAccess   ? QStringLiteral("我的设备")
+                             : access == rc::WebKeyAccess ? QStringLiteral("网页版的我的设备")
+                                                          : QStringLiteral("别人");
         agents.push_back(std::make_unique<rcsdk::Agent>(config, [name](const rcs_agent_event &event) {
             qInfo("%s的分享会话：%s（%s）", qUtf8Printable(name), stateName(event.state.value),
                   rcs_result_message(event.state.result));
