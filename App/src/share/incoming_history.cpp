@@ -72,6 +72,7 @@ void IncomingHistory::update()
             {QStringLiteral("sent"), entry.sent},
             {QStringLiteral("version"), entry.version},
             {QStringLiteral("action"), entry.action},
+            {QStringLiteral("by"), entry.by},
         });
     }
     newest_ = state.entries.isEmpty() ? 0 : state.entries.first().id;

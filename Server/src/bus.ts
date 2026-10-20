@@ -1,6 +1,6 @@
 import { Redis } from 'ioredis';
 
-import type { Access, Transport } from './protocol.js';
+import type { Access, Transport, WakeInterface } from './protocol.js';
 
 // 实例之间的消息。每个实例订阅连在自己身上的设备，发给某台设备就是发布到它的频道；
 // publish 返回收到的实例数，0 就是这台设备现在不在线
@@ -12,6 +12,8 @@ export type BusMessage =
     | { type: 'decline'; from: string; session: string; reason: string }
     // 有浏览器要连这台设备（ServerMessage 的 webViewer）
     | { type: 'webViewer'; ticket: string; key?: string }
+    // 请这台电脑叫醒账号下的另一台（ServerMessage 的 wakeRequest）
+    | { type: 'wakeRequest'; request: string; deviceId: string; name: string; by: string; interfaces: WakeInterface[] }
     // 这台设备在 connection 这条连接上重新登录了：它别的连接都关掉
     | { type: 'replaced'; connection: string }
     // 这台设备的账号变了（登录、退出、被移出），或者账号下的设备有变化（上下线、改名）：重新告诉它

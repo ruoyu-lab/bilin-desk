@@ -16,15 +16,16 @@ Item {
     readonly property real minimumWidth: actions.implicitWidth + 40
 
     readonly property var style: Theme.osStyle(device.os)
-    // 网络唤醒（Wake）：叫不醒时为什么；我的设备才有
+    // 网络唤醒（Wake）：叫不醒时为什么，叫过的到哪了（asking | sent | failed）；我的设备才有
     readonly property string wakeProblem: {
         Wake.revision
         return device.mine && device.deviceId ? Wake.problem(device.deviceId) : ""
     }
     readonly property bool wakeable: device.mine && device.presenceKnown && !device.online && wakeProblem.length === 0
-    // 发过唤醒包的那一台：等它上线（device 随设备列表刷新会换成新的对象，按 key 认）
-    property string wokenKey
-    readonly property bool wakeSent: wokenKey === device.key
+    readonly property string wakeState: {
+        Wake.revision
+        return device.mine && device.deviceId ? Wake.state(device.deviceId) : ""
+    }
 
     // 没有值的不显示
     component InfoItem: ColumnLayout {
@@ -156,16 +157,14 @@ Item {
                     text: root.device.favorite ? qsTr("取消收藏") : qsTr("收藏")
                     onClicked: Devices.toggleFavorite(root.device.key)
                 }
-                // 不在线的我的设备：本机叫得醒时可以先叫醒它
+                // 不在线的我的设备：叫得醒时（本机，或者账号下开着的别的电脑帮忙）可以先叫醒它
                 AppButton {
                     visible: root.wakeable
                     iconName: "power"
-                    text: root.wakeSent ? qsTr("已叫醒") : qsTr("唤醒")
-                    enabled: !root.wakeSent
-                    onClicked: {
-                        if (Wake.wake(root.device.deviceId))
-                            root.wokenKey = root.device.key
-                    }
+                    text: root.wakeState === "asking" ? qsTr("正在叫醒…")
+                        : root.wakeState === "sent" ? qsTr("已叫醒") : qsTr("唤醒")
+                    enabled: root.wakeState !== "asking" && root.wakeState !== "sent"
+                    onClicked: Wake.wake(root.device.deviceId)
                 }
                 AppButton {
                     primary: true
@@ -190,8 +189,10 @@ Item {
                 InfoItem {
                     Layout.columnSpan: 2
                     label: qsTr("网络唤醒")
-                    value: !root.device.mine ? "" : root.wakeProblem.length === 0 ? qsTr("睡眠、关机以后能从本机叫醒")
-                                                                                 : root.wakeProblem
+                    value: {
+                        Wake.revision
+                        return root.device.mine && root.device.deviceId ? Wake.status(root.device.deviceId) : ""
+                    }
                 }
             }
 

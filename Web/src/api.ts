@@ -6,12 +6,16 @@ export interface Account {
   nickname: string
 }
 
+// 能不能请别的电脑叫醒它：none（它没告诉过服务器网卡）| disabled（网卡都没开网络唤醒）| ready
+export type WakeState = 'none' | 'disabled' | 'ready'
+
 // 账号下的一台设备
 export interface AccountDevice {
   deviceId: string
   name: string
   platform: string
   online: boolean
+  wake: WakeState
 }
 
 export interface Me {
@@ -40,6 +44,15 @@ const messages: Record<string, string> = {
   busy: '网页版现在用的人太多了，过一会儿再试，或者下载客户端',
   unavailable: '网页版暂时用不了，过一会儿再试',
   noAnswer: '对方没有回应：对方的比邻可能不是最新版本，请对方更新以后再试',
+  // 叫醒我的设备
+  signedOut: '请先登录',
+  notMine: '它不在你的账号下',
+  online: '它已经在线了',
+  noInfo: '它还没告诉服务器网卡：要装上新版本、登录着账号上线一次',
+  disabled: '它没有打开网络唤醒',
+  noHelper: '账号下没有开着的电脑能帮忙：开着的要更新到新版本',
+  elsewhere: '账号下开着的电脑都不和它在同一个网络里',
+  failed: '帮忙的电脑发不出唤醒包',
 }
 
 // 电脑说不行的原因（rc/peer_protocol.h）
@@ -79,3 +92,6 @@ export const resetPassword = (email: string, code: string, password: string) =>
 // 要连 deviceId：电脑准备好了才回答（进了转发进程里的房间）。key（base64）：浏览器登录了那台电脑的账号，
 // 这次连接用它，不要临时密码
 export const connect = (deviceId: string) => call<{ ticket: string; key?: string }>('POST', 'connect', { deviceId })
+
+// 叫醒睡着的我的设备：账号下开着的别的电脑帮忙发唤醒包，回答是哪一台发的
+export const wake = (deviceId: string) => call<{ helper: string }>('POST', 'wake', { deviceId })

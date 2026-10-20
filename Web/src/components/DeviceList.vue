@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ago, connect, displayId, toggleFavorite, type Device } from '../state'
+import { ago, connect, displayId, toggleFavorite, wake, wakeProblem, wakes, type Device } from '../state'
 import LineIcon from './LineIcon.vue'
 
 // 一行一台设备（我的设备、收藏、最近）：系统的图标、名字和设备 ID、在不在线（我的设备才知道）、上次连接，
-// 右边收藏和连接；最近里能去掉一台（removable）
+// 右边收藏和连接；最近里能去掉一台（removable）。不在线的我的设备叫得醒时"连接"换成"唤醒"，叫得怎么样写在 ID 后面
 const props = defineProps<{ devices: Device[]; removable?: boolean }>()
 const emit = defineEmits<{ remove: [device: Device] }>()
+
+const wakeable = (d: Device) => d.mine && d.online === false && (wakes[d.id] !== undefined || !wakeProblem(d))
+const waking = (d: Device) => wakes[d.id]?.state === 'asking' || wakes[d.id]?.state === 'sent'
 </script>
 
 <template>
@@ -14,7 +17,10 @@ const emit = defineEmits<{ remove: [device: Device] }>()
       <span class="os" :class="d.system"><LineIcon :name="d.system === 'other' ? 'monitor' : d.system" :size="17" /></span>
       <div class="main">
         <div class="name">{{ d.name }}<span v-if="d.mine" class="tag">我的设备</span></div>
-        <div class="meta num">{{ displayId(d.id) }}</div>
+        <div class="meta">
+          <span class="num">{{ displayId(d.id) }}</span>
+          <span v-if="wakes[d.id]" :class="{ error: wakes[d.id]?.state === 'failed' }"> · {{ wakes[d.id]?.note }}</span>
+        </div>
       </div>
       <div class="state">
         <template v-if="d.online !== null">
@@ -32,7 +38,11 @@ const emit = defineEmits<{ remove: [device: Device] }>()
                 @click="emit('remove', d)">
           <LineIcon name="x" :size="15" />
         </button>
-        <button class="button" type="button" :disabled="d.online === false" @click="connect(d)">连接</button>
+        <button v-if="wakeable(d)" class="button" type="button" :disabled="waking(d)" @click="wake(d)">
+          {{ wakes[d.id]?.state === 'asking' ? '正在叫醒…' : wakes[d.id]?.state === 'sent' ? '已叫醒' : '唤醒' }}
+        </button>
+        <button v-else class="button" type="button" :disabled="d.online === false"
+                :title="d.mine && d.online === false ? wakeProblem(d) : ''" @click="connect(d)">连接</button>
       </div>
     </div>
   </div>
@@ -98,7 +108,14 @@ const emit = defineEmits<{ remove: [device: Device] }>()
 }
 
 .meta {
+  overflow: hidden;
   margin-top: 2px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta .error {
+  font-size: inherit;
 }
 
 .state {

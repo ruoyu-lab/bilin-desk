@@ -17,6 +17,11 @@
 // 和 devices（账号下所有设备、在不在线），有变化时再收到一次。登录着的设备可以改昵称、改密码（要旧密码）、
 // 注销账号（要密码：账号删掉，挂在下面的设备都不再属于它）
 //
+// 网络唤醒（docs/devices-and-accounts.md 的"远程唤醒"）：登录着账号的电脑把自己能唤醒的网卡告诉服务器（wakeInfo），
+// 服务器存着（退出、被移出账号时删掉）。账号下的一台睡着了、关机了，账号下别的设备（wake）或者网页版要叫醒它时，
+// 服务器把它的网卡转给账号下开着的别的电脑（wakeRequest），和它在同一个网段的那台从本机发唤醒包，回答发没发（wakeAnswer）；
+// 服务器把结果告诉要叫醒它的一方（wakeResult）。网卡信息只给这几台电脑，账号下的设备列表里只说叫不叫得醒（wake）
+//
 // 限速（免得有人挨个试设备 ID、密码）：同一个地址、同一台设备发起的连接，连不上的（对方不在线、没有这个 ID），
 // 同一个地址登记的新设备，同一个地址、同一个邮箱输错的密码、要的验证码，在一段时间里超过了上限就先不让做（tooMany）
 
@@ -51,6 +56,31 @@ export type Access = (typeof ACCESSES)[number];
 // 验证码是干什么用的：注册 | 找回密码
 export const CODE_PURPOSES = ['register', 'resetPassword'] as const;
 export type CodePurpose = (typeof CODE_PURPOSES)[number];
+
+// 能唤醒一台电脑的一块网卡：MAC 地址（小写，冒号隔开）、它的 IPv4 地址和网段、网线还是 Wi-Fi、系统里开没开网络唤醒
+// （unknown：系统不说）
+export const WAKE_LINKS = ['ethernet', 'wifi'] as const;
+export const WAKE_SETTINGS = ['enabled', 'disabled', 'unknown'] as const;
+export interface WakeInterface {
+    mac: string;
+    address: string;
+    prefix: number;
+    link: (typeof WAKE_LINKS)[number];
+    wake: (typeof WAKE_SETTINGS)[number];
+}
+// 一台电脑最多说几块（SDK 的 RCS_POWER_INTERFACES_MAX）
+export const MAX_WAKE_INTERFACES = 8;
+const MAC = /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/;
+const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+// 帮忙叫醒的电脑的回答：sent（发了唤醒包）| elsewhere（它和本机不在同一个网段）| failed（系统不让发）
+export const WAKE_ANSWERS = ['sent', 'elsewhere', 'failed'] as const;
+export type WakeAnswerResult = (typeof WAKE_ANSWERS)[number];
+// 叫醒的结果：sent（helper 那台发了唤醒包）| online（它在线，不用叫）| noInfo（它没告诉过服务器网卡：要装上新版本、
+// 登录着账号上线一次）| disabled（它的网卡都没开网络唤醒）| noHelper（账号下没有开着的、能帮忙的别的电脑）
+// | elsewhere（开着的都不和它在同一个网段）| failed（帮忙的电脑系统不让发）| tooMany（叫得太频繁）| notMine（不是本账号的）
+export type WakeResult = 'sent' | 'online' | 'noInfo' | 'disabled' | 'noHelper' | 'elsewhere' | 'failed' | 'tooMany' | 'notMine';
+// 账号下的设备叫不叫得醒：none（没告诉过网卡）| disabled（网卡都没开网络唤醒）| ready（能请别的电脑帮忙叫）
+export type WakeState = 'none' | 'disabled' | 'ready';
 
 // ---- 客户端 → 服务器 ----
 
@@ -131,6 +161,25 @@ export interface WebReady {
     reason: string;
 }
 
+// 本机能唤醒它的网卡（空的：没有、系统不说）。登录着账号时发，变了再发
+export interface WakeInfo {
+    type: 'wakeInfo';
+    interfaces: WakeInterface[];
+}
+
+// 叫醒账号下的设备 deviceId，服务器回 wakeResult
+export interface Wake {
+    type: 'wake';
+    deviceId: string;
+}
+
+// 对 wakeRequest 的回答
+export interface WakeAnswer {
+    type: 'wakeAnswer';
+    request: string;
+    result: WakeAnswerResult;
+}
+
 // 把账号下的另一台设备移出账号
 export interface RemoveDevice {
     type: 'removeDevice';
@@ -157,7 +206,7 @@ export interface DeleteAccount {
 
 export type ClientMessage =
     | Hello | SignalRequest | DeclineRequest | Rename | SendCode | Register | Login | ResetPassword | Logout | RemoveDevice
-    | SetNickname | ChangePassword | DeleteAccount | WebReady;
+    | SetNickname | ChangePassword | DeleteAccount | WebReady | WakeInfo | Wake | WakeAnswer;
 
 // ---- 服务器 → 客户端 ----
 
@@ -181,6 +230,7 @@ export interface AccountDevice {
     platform: string;
     publicKey: string;
     online: boolean;
+    wake: WakeState;
 }
 
 // P2P 和中继用的服务器（"主机:端口"）：STUN 告诉设备自己的公网地址；TURN 是中继，transport 是设备到它怎么走，
@@ -207,6 +257,11 @@ export type ServerMessage =
     // 有浏览器（网页版）要连本机：凭 ticket 经转发进程进本机的房间（docs/web.md）。key（base64 的 32 字节）：
     // 浏览器登录了本机的账号，这次连接用这把一次性钥匙、不用临时密码（本机"我的设备"那一边，房间是 <ID>/mine）
     | { type: 'webViewer'; ticket: string; key?: string }
+    // 账号下的设备 deviceId（名字 name）睡着了，请本机叫醒它：它的网卡和本机在同一个网段时发唤醒包，回 wakeAnswer。
+    // by：谁要叫醒它（账号下那台设备的名字；网页版是空的），本机的连接记录里记一笔
+    | { type: 'wakeRequest'; request: string; deviceId: string; name: string; by: string; interfaces: WakeInterface[] }
+    // 对 wake 的回答；helper：发了唤醒包的那台的名字（sent 时）
+    | { type: 'wakeResult'; deviceId: string; result: WakeResult; helper: string }
     // offline：对方不在线（或者没有这个 ID）| tooMany：发起的连接太多、连不上的太多，过一会儿再连
     | { type: 'undeliverable'; to: string; session: string; reason: 'offline' | 'tooMany' }
     // 这台设备登录的账号；null：没登录（退出了、被移出了）
@@ -268,6 +323,17 @@ function isPublicKey(value: unknown): value is string {
 
 function password(value: unknown): value is string {
     return typeof value === 'string' && value.length >= MIN_PASSWORD && value.length <= MAX_PASSWORD;
+}
+
+function wakeInterface(value: unknown): WakeInterface | null {
+    if (!isRecord(value))
+        return null;
+    const { mac, address, prefix, link, wake } = value;
+    if (!matches(mac, MAC) || !matches(address, IPV4) || !Number.isInteger(prefix) || (prefix as number) < 0
+        || (prefix as number) > 32 || !WAKE_LINKS.includes(link as WakeInterface['link'])
+        || !WAKE_SETTINGS.includes(wake as WakeInterface['wake']))
+        return null;
+    return { mac, address, prefix: prefix as number, link: link as WakeInterface['link'], wake: wake as WakeInterface['wake'] };
 }
 
 // 不合格的（不是 JSON 对象、不认识的 type、缺字段、格式不对、太长）返回 null
@@ -365,6 +431,27 @@ export function parseClientMessage(raw: string): ClientMessage | null {
         if (!matches(ticket, TICKET) || (reason !== '' && !matches(reason, REASON)))
             return null;
         return { type: 'webReady', ticket, reason: reason as string };
+    }
+    case 'wakeInfo': {
+        const { interfaces } = message;
+        if (!Array.isArray(interfaces) || interfaces.length > MAX_WAKE_INTERFACES)
+            return null;
+        const parsed = interfaces.map(wakeInterface);
+        if (parsed.some((i) => i === null))
+            return null;
+        return { type: 'wakeInfo', interfaces: parsed as WakeInterface[] };
+    }
+    case 'wake': {
+        const { deviceId } = message;
+        if (!matches(deviceId, DEVICE_ID))
+            return null;
+        return { type: 'wake', deviceId };
+    }
+    case 'wakeAnswer': {
+        const { request, result } = message;
+        if (!matches(request, TICKET) || !WAKE_ANSWERS.includes(result as WakeAnswerResult))
+            return null;
+        return { type: 'wakeAnswer', request, result: result as WakeAnswerResult };
     }
     default:
         return null;

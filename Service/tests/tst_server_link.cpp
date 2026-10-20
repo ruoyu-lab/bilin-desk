@@ -394,6 +394,122 @@ private slots:
         QVERIFY(link.trustedKeys() == QList<QByteArray>{});
     }
 
+    // 远程唤醒：登录着账号时把本机能唤醒它的网卡告诉服务器，每条连接、每个账号说一次，变了再说
+    void tellsItsNetworkCardsWhileSignedIn()
+    {
+        QTemporaryDir directory;
+        DeviceStore store(directory.path(), testDeviceKey);
+        FakeServer fake;
+        ServerLink link(store, fake.url(), Fast);
+        link.start();
+        QTRY_COMPARE(link.state(), ServerLink::State::Online);
+        const auto told = [&fake] {
+            QList<QJsonArray> interfaces;
+            for (const QJsonObject &message : std::as_const(fake.hellos)) {
+                if (message.value(u"type").toString() == u"wakeInfo")
+                    interfaces.append(message.value(u"interfaces").toArray());
+            }
+            return interfaces;
+        };
+        const QJsonObject signedIn{{QStringLiteral("type"), QStringLiteral("account")},
+                                   {QStringLiteral("account"), QJsonObject{{QStringLiteral("email"), QStringLiteral("li@example.com")},
+                                                                           {QStringLiteral("nickname"), QStringLiteral("梨茶")}}}};
+        rc::server::WakeInterface wired;
+        wired.mac = QByteArray::fromHex("aabbccddee01");
+        wired.address = QStringLiteral("192.168.1.20");
+        wired.prefix = 24;
+        wired.wake = rc::server::WakeInterface::Setting::Enabled;
+
+        // 没登录账号：不说
+        link.setWakeInterfaces({wired});
+        FakeServer::send(fake.current, {{QStringLiteral("type"), QStringLiteral("account")}, {QStringLiteral("account"), QJsonValue()}});
+        QTRY_VERIFY(link.account().known);
+        QVERIFY(told().isEmpty());
+        // 登录了：说一次；账号下的设备有变化（又来一次 account）不再说
+        FakeServer::send(fake.current, signedIn);
+        QTRY_COMPARE(told().size(), 1);
+        QCOMPARE(told().first(), (QJsonArray{QJsonObject{{QStringLiteral("mac"), QStringLiteral("aa:bb:cc:dd:ee:01")},
+                                                         {QStringLiteral("address"), QStringLiteral("192.168.1.20")},
+                                                         {QStringLiteral("prefix"), 24},
+                                                         {QStringLiteral("link"), QStringLiteral("ethernet")},
+                                                         {QStringLiteral("wake"), QStringLiteral("enabled")}}}));
+        FakeServer::send(fake.current, signedIn);
+        FakeServer::send(fake.current, {{QStringLiteral("type"), QStringLiteral("passwordChanged")}});
+        QSignalSpy passwordChanged(&link, &ServerLink::passwordChanged);
+        QTRY_COMPARE(passwordChanged.count(), 1);
+        QCOMPARE(told().size(), 1);
+        // 网卡变了：再说
+        rc::server::WakeInterface wifi = wired;
+        wifi.mac = QByteArray::fromHex("aabbccddee02");
+        wifi.wifi = true;
+        link.setWakeInterfaces({wired, wifi});
+        QTRY_COMPARE(told().size(), 2);
+        QCOMPARE(told().last().size(), 2);
+        // 重新连上：服务器说了账号以后再说
+        fake.current->close();
+        QTRY_COMPARE(link.state(), ServerLink::State::Offline);
+        QTRY_COMPARE(link.state(), ServerLink::State::Online);
+        FakeServer::send(fake.current, signedIn);
+        QTRY_COMPARE(told().size(), 3);
+    }
+
+    // 服务器请本机帮忙叫醒账号下的一台、本机请服务器叫醒一台：照原样转
+    void passesWakeRequestsAndResults()
+    {
+        QTemporaryDir directory;
+        DeviceStore store(directory.path(), testDeviceKey);
+        FakeServer fake;
+        ServerLink link(store, fake.url(), Fast);
+        link.start();
+        QTRY_COMPARE(link.state(), ServerLink::State::Online);
+
+        QList<rc::server::WakeInterface> asked;
+        QString askedBy;
+        connect(&link, &ServerLink::wakeRequested, this,
+                [&](const QString &, const QString &, const QString &, const QString &by,
+                    const QList<rc::server::WakeInterface> &interfaces) {
+                    askedBy = by;
+                    asked = interfaces;
+                });
+        // 不合格的网卡（MAC 不是 6 字节）跳过
+        FakeServer::send(fake.current, {{QStringLiteral("type"), QStringLiteral("wakeRequest")},
+                                        {QStringLiteral("request"), QStringLiteral("r1")},
+                                        {QStringLiteral("deviceId"), QStringLiteral("222222222")},
+                                        {QStringLiteral("name"), QStringLiteral("客厅电脑")},
+                                        {QStringLiteral("by"), QStringLiteral("书房的 Mac")},
+                                        {QStringLiteral("interfaces"), QJsonArray{
+                                            QJsonObject{{QStringLiteral("mac"), QStringLiteral("aa:bb:cc:dd:ee:01")},
+                                                        {QStringLiteral("address"), QStringLiteral("192.168.1.20")},
+                                                        {QStringLiteral("prefix"), 24},
+                                                        {QStringLiteral("link"), QStringLiteral("wifi")},
+                                                        {QStringLiteral("wake"), QStringLiteral("unknown")}},
+                                            QJsonObject{{QStringLiteral("mac"), QStringLiteral("aa:bb")},
+                                                        {QStringLiteral("address"), QStringLiteral("192.168.1.21")},
+                                                        {QStringLiteral("prefix"), 24}}}}});
+        QTRY_COMPARE(asked.size(), 1);
+        QCOMPARE(askedBy, QStringLiteral("书房的 Mac"));
+        QCOMPARE(asked.first().mac, QByteArray::fromHex("aabbccddee01"));
+        QVERIFY(asked.first().wifi);
+        QCOMPARE(asked.first().wake, rc::server::WakeInterface::Setting::Unknown);
+
+        link.sendWakeAnswer(QStringLiteral("r1"), rc::server::WakeSent);
+        QVERIFY(link.requestWake(QStringLiteral("333333333")));
+        QTRY_COMPARE(fake.hellos.size(), 3);
+        QCOMPARE(fake.hellos.at(1), (QJsonObject{{QStringLiteral("type"), QStringLiteral("wakeAnswer")},
+                                                 {QStringLiteral("request"), QStringLiteral("r1")},
+                                                 {QStringLiteral("result"), QStringLiteral("sent")}}));
+        QCOMPARE(fake.hellos.at(2), (QJsonObject{{QStringLiteral("type"), QStringLiteral("wake")},
+                                                 {QStringLiteral("deviceId"), QStringLiteral("333333333")}}));
+
+        QSignalSpy result(&link, &ServerLink::wakeResultReceived);
+        FakeServer::send(fake.current, {{QStringLiteral("type"), QStringLiteral("wakeResult")},
+                                        {QStringLiteral("deviceId"), QStringLiteral("333333333")},
+                                        {QStringLiteral("result"), QStringLiteral("sent")},
+                                        {QStringLiteral("helper"), QStringLiteral("书房的 Windows")}});
+        QTRY_COMPARE(result.count(), 1);
+        QCOMPARE(result.at(0), (QVariantList{QStringLiteral("333333333"), QStringLiteral("sent"), QStringLiteral("书房的 Windows")}));
+    }
+
     // 没登录账号：服务器一说就知道了（没有信任的设备），账号本身没变也要通知
     void knowsNoAccount()
     {

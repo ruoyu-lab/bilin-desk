@@ -75,6 +75,8 @@ signals:
     void resetPasswordRequested(const QString &email, const QString &code, const QString &password);
     void signOutRequested();
     void removeDeviceRequested(const QString &deviceId);
+    // 请服务器叫醒账号下睡着的设备 deviceId（远程唤醒）
+    void wakeDeviceRequested(const QString &deviceId);
     // 改昵称、改密码、注销账号
     void nicknameRequested(const QString &nickname);
     void clearHistoryRequested();

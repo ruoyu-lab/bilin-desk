@@ -225,7 +225,9 @@ Rectangle {
                 case "failed":
                 case "needPin": return root.session.reason
                 case "restarting": return qsTr("开机后会自动重新连上，最多等 5 分钟")
-                case "waking": return qsTr("醒了就自动连上，最多等 3 分钟")
+                // 叫得怎么样了（从本机发的，还是哪台帮忙发的）
+                case "waking": return (root.session.reason.length > 0 ? root.session.reason + "\n" : "")
+                                      + qsTr("醒了就自动连上，最多等 3 分钟")
                 case "asleep": return root.canWake ? "" : qsTr("有人唤醒它以后，点“重新连接”")
                 }
                 return ""

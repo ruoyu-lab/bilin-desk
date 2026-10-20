@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rc/protocol.h>
+#include <rc/server_protocol.h>
 #include <rc/transport.h>
 
 #include <QElapsedTimer>
@@ -20,6 +21,8 @@ class DeviceStore;
 // - 每 30 秒 ping 一次，75 秒没听到回应就当断了（睡眠醒来、网络换了，TCP 自己不一定知道）
 // - 服务器说 ID 已经属于别的设备：换一个新 ID 马上再登记
 // - 服务器说这台设备从别处又登录了：这次运行不再重连，免得两边互相把对方挤下去
+// - 登录着账号时把本机能唤醒它的网卡告诉服务器（远程唤醒：本机睡着时账号下别的电脑帮忙叫醒），每条连接、每个账号说一次，
+//   变了再说
 // - wss:// 带着证书时只认这一张（服务器自己签的，没有域名）：系统信任的证书机构都不算数，别的证书一律不连
 class ServerLink : public QObject
 {
@@ -71,6 +74,13 @@ public:
 
     rc::IceServers ice() const { return ice_; }
 
+    // 远程唤醒（docs/devices-and-accounts.md）。interfaces：本机能唤醒它的网卡（WakeHelper 列的）
+    void setWakeInterfaces(const QList<rc::server::WakeInterface> &interfaces);
+    // 请服务器叫醒账号下的设备 deviceId，结果是 wakeResultReceived。没登录服务器时发不出去，返回 false
+    bool requestWake(const QString &deviceId);
+    // 对 wakeRequested 的回答：rc::server 的 WakeSent | WakeElsewhere | WakeFailed
+    void sendWakeAnswer(const QString &request, QLatin1StringView result);
+
 signals:
     void stateChanged();
     // 设备 from（名字 name）发来的信令
@@ -89,6 +99,12 @@ signals:
     void passwordChanged();
     void codeSent(const QString &purpose);
     void iceChanged();
+    // 服务器请本机叫醒账号下的设备 deviceId（名字 name）：by 是要叫醒它的那台的名字（网页版是空的），
+    // interfaces 是它能唤醒自己的网卡
+    void wakeRequested(const QString &request, const QString &deviceId, const QString &name, const QString &by,
+                       const QList<rc::server::WakeInterface> &interfaces);
+    // 叫醒设备 deviceId 的结果（Server/src/protocol.ts 的 WakeResult）；helper：发了唤醒包的那台的名字
+    void wakeResultReceived(const QString &deviceId, const QString &result, const QString &helper);
 
 private:
     void open();
@@ -106,6 +122,8 @@ private:
     // 服务器发来的 P2P 和中继用的服务器（rc/server_protocol.h 的 Welcome、Ice）
     void setIce(const QJsonObject &json);
     void turnExpired();
+    // 登录着服务器和账号、本机的网卡列好了、还没告诉服务器（或者变了）：告诉它
+    void sendWakeInfo();
 
     DeviceStore &store_;
     const QUrl url_;
@@ -122,6 +140,9 @@ private:
     // 启动以后服务器告诉过本机账号了：没登录账号，或者账号下的设备（登录上以后才发，比 welcome 晚）
     bool accountKnown_ = false;
     rc::IceServers ice_;
+    // 本机能唤醒它的网卡：还没列出来时 nullopt；这条连接上、现在的账号下告诉过服务器的
+    std::optional<QList<rc::server::WakeInterface>> wakeInterfaces_;
+    std::optional<QList<rc::server::WakeInterface>> wakeSent_;
     int retryMs_;
     bool reconnectNow_ = false; // 换了 ID：连接关掉后马上再连
     bool stopped_ = false;      // 被别处挤下去了：不再重连

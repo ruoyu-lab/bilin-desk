@@ -149,6 +149,31 @@ bool ServerLink::deleteAccount(const QString &password)
     return sendOnline(server::deleteAccount(password));
 }
 
+void ServerLink::setWakeInterfaces(const QList<rc::server::WakeInterface> &interfaces)
+{
+    wakeInterfaces_ = interfaces;
+    sendWakeInfo();
+}
+
+bool ServerLink::requestWake(const QString &deviceId)
+{
+    return sendOnline(server::wake(deviceId));
+}
+
+void ServerLink::sendWakeAnswer(const QString &request, QLatin1StringView result)
+{
+    sendOnline(server::wakeAnswer(request, result));
+}
+
+// 服务器只记登录着账号的设备的网卡，换了账号就删掉：换了账号要再说一次
+void ServerLink::sendWakeInfo()
+{
+    if (state_ != State::Online || !account_.signedIn || !wakeInterfaces_ || wakeSent_ == wakeInterfaces_)
+        return;
+    send(server::wakeInfo(*wakeInterfaces_));
+    wakeSent_ = wakeInterfaces_;
+}
+
 void ServerLink::received(const QString &text)
 {
     heard_.restart();
@@ -204,11 +229,14 @@ void ServerLink::received(const QString &text)
             state.devices = account_.devices;
         // 没登录账号的这就知道了，登录了的等 devices
         const bool known = accountKnown_ || !state.signedIn;
+        if (state.signedIn != account_.signedIn || state.email != account_.email)
+            wakeSent_.reset();
         if (state != account_ || known != accountKnown_) {
             account_ = state;
             accountKnown_ = known;
             emit accountChanged();
         }
+        sendWakeInfo();
     } else if (type == server::Devices) {
         QList<rc::protocol::AccountDevice> devices;
         for (const QJsonValue &device : message.value(QLatin1StringView("devices")).toArray())
@@ -228,6 +256,16 @@ void ServerLink::received(const QString &text)
         emit undeliverable(message.value(QLatin1StringView("to")).toString(),
                            message.value(QLatin1StringView("session")).toString(),
                            message.value(QLatin1StringView("reason")).toString());
+    } else if (type == server::WakeRequest) {
+        emit wakeRequested(message.value(QLatin1StringView("request")).toString(),
+                           message.value(QLatin1StringView("deviceId")).toString(),
+                           message.value(QLatin1StringView("name")).toString(),
+                           message.value(QLatin1StringView("by")).toString(),
+                           server::wakeInterfacesFromJson(message.value(QLatin1StringView("interfaces")).toArray()));
+    } else if (type == server::WakeResult) {
+        emit wakeResultReceived(message.value(QLatin1StringView("deviceId")).toString(),
+                                message.value(QLatin1StringView("result")).toString(),
+                                message.value(QLatin1StringView("helper")).toString());
     } else if (type == server::Replaced) {
         qWarning("这台设备的 ID 在别处登录了：这次不再连服务器");
         stopped_ = true;
@@ -272,8 +310,10 @@ void ServerLink::setState(State state)
     if (state == state_)
         return;
     state_ = state;
-    if (state_ == State::Offline)
+    if (state_ == State::Offline) {
         forgetPresence();
+        wakeSent_.reset();
+    }
     emit stateChanged();
 }
 

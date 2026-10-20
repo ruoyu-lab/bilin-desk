@@ -68,6 +68,9 @@ ToolGroup {
                 case "signOut": return qsTr("%1 远程注销了本机的用户").arg(who)
                 }
                 return ""
+            case "wake":
+                return entry.by.length > 0 ? qsTr("%1 请本机帮忙叫醒了 %2").arg(entry.by).arg(who)
+                                           : qsTr("网页版请本机帮忙叫醒了 %1").arg(who)
             }
             return ""
         }

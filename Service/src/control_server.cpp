@@ -127,6 +127,8 @@ void ControlServer::handle(qintptr socket, const QJsonObject &message)
         emit signOutRequested();
     else if (command == protocol::RemoveDevice)
         emit removeDeviceRequested(message.value(QLatin1StringView("deviceId")).toString());
+    else if (command == protocol::Wake)
+        emit wakeDeviceRequested(message.value(QLatin1StringView("deviceId")).toString());
     else if (command == protocol::InstallUpdate)
         emit installUpdateRequested();
     else if (command == protocol::CheckUpdate)

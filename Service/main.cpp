@@ -13,6 +13,7 @@
 #include "signaling.h"
 #include "system_mode.h"
 #include "updater.h"
+#include "wake_helper.h"
 
 #include <rc/ipc/endpoint.h>
 #include <rc/log_file.h>
@@ -233,6 +234,23 @@ int main(int argc, char *argv[])
             history.transferred(*peer, transfer);
     });
     QObject::connect(&server, &ControlServer::clearHistoryRequested, &history, &ConnectionHistory::clear);
+
+    // 远程唤醒（docs/devices-and-accounts.md）：本机能唤醒它的网卡告诉服务器（每次连上都重新列：网络可能换了）；
+    // 账号下的设备睡着了、别处要叫醒它时，和它在同一个网段就帮忙发唤醒包，连接记录里记一笔
+    WakeHelper wakeHelper;
+    QObject::connect(&serverLink, &ServerLink::stateChanged, &wakeHelper, [&] {
+        if (serverLink.state() == ServerLink::State::Online)
+            wakeHelper.listInterfaces();
+    });
+    QObject::connect(&wakeHelper, &WakeHelper::interfacesListed, &serverLink, &ServerLink::setWakeInterfaces);
+    QObject::connect(&serverLink, &ServerLink::wakeRequested, &wakeHelper,
+                     [&](const QString &request, const QString &deviceId, const QString &name, const QString &by,
+                         const QList<rc::server::WakeInterface> &interfaces) {
+                         const QLatin1StringView result = wakeHelper.wake(interfaces);
+                         serverLink.sendWakeAnswer(request, result);
+                         if (result == rc::server::WakeSent)
+                             history.woke(deviceId, name, by);
+                     });
 
     // 账号：经服务器，结果给界面
     service_wiring::connectAccount(server, serverLink);

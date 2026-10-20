@@ -86,6 +86,16 @@ void ConnectionHistory::power(const protocol::SharePeer &peer, const QString &ac
     add(std::move(entry));
 }
 
+void ConnectionHistory::woke(const QString &deviceId, const QString &name, const QString &by)
+{
+    protocol::HistoryEntry entry;
+    entry.kind = QStringLiteral("wake");
+    entry.deviceId = deviceId;
+    entry.name = name;
+    entry.by = by;
+    add(std::move(entry));
+}
+
 void ConnectionHistory::transferred(const protocol::SharePeer &peer, const rc::Transfer &transfer)
 {
     protocol::HistoryEntry entry;

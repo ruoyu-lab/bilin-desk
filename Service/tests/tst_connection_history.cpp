@@ -92,6 +92,25 @@ private slots:
         QCOMPARE(entries.at(0).action, QStringLiteral("restart"));
     }
 
+    // 本机帮忙叫醒了我的设备：谁要叫醒它的（网页版是空的），存下来下次还在
+    void recordsWakes()
+    {
+        QTemporaryDir directory;
+        const QString file = directory.filePath(QStringLiteral("history.json"));
+        {
+            ConnectionHistory history(file);
+            history.woke(QStringLiteral("392955715"), QStringLiteral("书房的台式机"), QStringLiteral("梨茶的 iPad"));
+            history.woke(QStringLiteral("392955715"), QStringLiteral("书房的台式机"), {});
+        }
+        const auto entries = ConnectionHistory(file).state().entries;
+        QCOMPARE(entries.size(), 2);
+        QCOMPARE(entries.at(0).kind, QStringLiteral("wake"));
+        QCOMPARE(entries.at(0).by, QString());
+        QCOMPARE(entries.at(1).deviceId, QStringLiteral("392955715"));
+        QCOMPARE(entries.at(1).name, QStringLiteral("书房的台式机"));
+        QCOMPARE(entries.at(1).by, QStringLiteral("梨茶的 iPad"));
+    }
+
     // 存在文件里，下次还在；上次还"连着"的当作那时断了；编号接着往下
     void survivesARestart()
     {

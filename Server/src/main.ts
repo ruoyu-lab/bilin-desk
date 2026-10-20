@@ -16,6 +16,7 @@ import { Releases, releaseKey } from './releases.js';
 import { buildServer } from './server.js';
 import { RedisRelayStatus } from './relay-load.js';
 import { RedisTickets } from './tickets.js';
+import { RedisWakes } from './wakes.js';
 import { RedisWebSessions } from './web-sessions.js';
 
 // 配置都从环境变量来（PM2 的 ecosystem.config.cjs 里设）
@@ -43,13 +44,14 @@ const stats = new RedisStats(redisUrl);
 const tickets = new RedisTickets(redisUrl);
 const webSessions = new RedisWebSessions(redisUrl);
 const relayStatus = new RedisRelayStatus(redisUrl);
+const wakes = new RedisWakes(redisUrl);
 const releases = new Releases(updatesDirectory, releaseKey(await readFile(releaseKeyFile, 'utf8')));
 
 // 发邮件的日志在 Fastify 建好以前还没有：先交给一个转发的，建好以后接上
 const mailLog = { info: (object: object, message: string) => app.log.info(object, message) };
 const mailer = await loadMailer(process.env, mailLog);
 const { app } = await buildServer({
-    registry, accounts, bus, limiter, codes, mailer, stats, releases, logger: true, hub: { ...defaultHubOptions, ice },
+    registry, accounts, bus, limiter, codes, mailer, stats, wakes, releases, logger: true, hub: { ...defaultHubOptions, ice },
     feedback: { store: feedback, adminUrl: `${adminUrl}#feedback` },
     web: { tickets, sessions: webSessions, relay: relayStatus },
 });
@@ -73,7 +75,7 @@ async function stop(signal: string): Promise<void> {
     await limiter.close();
     await codes.close();
     await stats.close();
-    await Promise.all([tickets.close(), webSessions.close(), relayStatus.close()]);
+    await Promise.all([tickets.close(), webSessions.close(), relayStatus.close(), wakes.close()]);
     await mongo.close();
     process.exit(0);
 }

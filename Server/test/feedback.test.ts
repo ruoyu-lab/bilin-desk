@@ -6,6 +6,7 @@ import { hashToken } from '../src/registry.js';
 import { buildServer } from '../src/server.js';
 import {
     MemoryAccounts, MemoryBroker, MemoryCodes, MemoryFeedback, MemoryLimiter, MemoryMailer, MemoryRegistry, MemoryStats,
+    MemoryWakes,
 } from './memory.js';
 
 const DEVICE = '123456789';
@@ -39,7 +40,7 @@ describe('反馈', () => {
         });
         ({ app } = await buildServer({
             registry, accounts, bus: new MemoryBroker().bus(), limiter: new MemoryLimiter(), codes: new MemoryCodes(),
-            mailer, stats, logger: false, feedback: { store: feedback, adminUrl: ADMIN_URL },
+            mailer, stats, wakes: new MemoryWakes(), logger: false, feedback: { store: feedback, adminUrl: ADMIN_URL },
         }));
     });
 

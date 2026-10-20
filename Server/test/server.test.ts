@@ -5,7 +5,7 @@ import WebSocket from 'ws';
 import { defaultHubOptions } from '../src/hub.js';
 import type { ServerMessage } from '../src/protocol.js';
 import { buildServer } from '../src/server.js';
-import { MemoryAccounts, MemoryBroker, MemoryCodes, MemoryLimiter, MemoryRegistry, MemoryStats } from './memory.js';
+import { MemoryAccounts, MemoryBroker, MemoryCodes, MemoryLimiter, MemoryRegistry, MemoryStats, MemoryWakes } from './memory.js';
 
 // 真的起两个服务端（两个"实例"），用真的 WebSocket 连上去
 class Client {
@@ -68,7 +68,7 @@ describe('server', () => {
         for (let i = 0; i < 2; ++i) {
             const { app } = await buildServer({
                 registry, accounts, bus: broker.bus(), limiter: new MemoryLimiter(), codes: new MemoryCodes(), mailer: null, stats: new MemoryStats(),
-                logger: false,
+                wakes: new MemoryWakes(), logger: false,
             });
             await app.listen({ host: '127.0.0.1', port: 0 });
             const address = app.server.address();
@@ -122,7 +122,7 @@ describe('server', () => {
         const { app } = await buildServer({
             registry: new MemoryRegistry(), accounts: new MemoryAccounts(), bus: new MemoryBroker().bus(),
             limiter: new MemoryLimiter(), codes: new MemoryCodes(), mailer: null, stats: new MemoryStats(), logger: false,
-            hub: { ...defaultHubOptions, ice },
+            wakes: new MemoryWakes(), hub: { ...defaultHubOptions, ice },
         });
         await app.listen({ host: '127.0.0.1', port: 0 });
         apps.push(app);

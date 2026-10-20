@@ -1,6 +1,7 @@
 #include "rc/server_protocol.h"
 
 #include <QByteArray>
+#include <QHostAddress>
 #include <QRandomGenerator>
 #include <QSysInfo>
 
@@ -10,6 +11,20 @@ namespace {
 
 constexpr qsizetype TokenBytes = 32;
 constexpr qsizetype TokenLength = 43;
+constexpr qsizetype MacBytes = 6;
+
+QString settingName(WakeInterface::Setting setting)
+{
+    switch (setting) {
+    case WakeInterface::Setting::Enabled:
+        return QStringLiteral("enabled");
+    case WakeInterface::Setting::Disabled:
+        return QStringLiteral("disabled");
+    case WakeInterface::Setting::Unknown:
+        break;
+    }
+    return QStringLiteral("unknown");
+}
 
 } // namespace
 
@@ -117,6 +132,52 @@ QJsonObject registerAccount(const QString &email, const QString &password, const
     };
 }
 
+QJsonObject WakeInterface::toJson() const
+{
+    return {
+        {QStringLiteral("mac"), QString::fromLatin1(mac.toHex(':'))},
+        {QStringLiteral("address"), address},
+        {QStringLiteral("prefix"), prefix},
+        {QStringLiteral("link"), wifi ? QStringLiteral("wifi") : QStringLiteral("ethernet")},
+        {QStringLiteral("wake"), settingName(wake)},
+    };
+}
+
+std::optional<WakeInterface> WakeInterface::fromJson(const QJsonObject &json)
+{
+    WakeInterface item;
+    item.mac = QByteArray::fromHex(json.value(QLatin1StringView("mac")).toString().toLatin1());
+    item.address = json.value(QLatin1StringView("address")).toString();
+    item.prefix = json.value(QLatin1StringView("prefix")).toInt(-1);
+    item.wifi = json.value(QLatin1StringView("link")).toString() == u"wifi";
+    const QString wake = json.value(QLatin1StringView("wake")).toString();
+    item.wake = wake == u"enabled"    ? Setting::Enabled
+                : wake == u"disabled" ? Setting::Disabled
+                                      : Setting::Unknown;
+    if (item.mac.size() != MacBytes || QHostAddress(item.address).protocol() != QAbstractSocket::IPv4Protocol
+        || item.prefix < 0 || item.prefix > 32)
+        return std::nullopt;
+    return item;
+}
+
+QJsonArray wakeInterfacesToJson(const QList<WakeInterface> &interfaces)
+{
+    QJsonArray array;
+    for (const WakeInterface &item : interfaces)
+        array.append(item.toJson());
+    return array;
+}
+
+QList<WakeInterface> wakeInterfacesFromJson(const QJsonArray &array)
+{
+    QList<WakeInterface> interfaces;
+    for (const QJsonValue &value : array) {
+        if (const std::optional<WakeInterface> item = WakeInterface::fromJson(value.toObject()))
+            interfaces.append(*item);
+    }
+    return interfaces;
+}
+
 QJsonObject signIn(const QString &email, const QString &password)
 {
     return {
@@ -171,6 +232,31 @@ QJsonObject deleteAccount(const QString &password)
     return {
         {QStringLiteral("type"), QStringLiteral("deleteAccount")},
         {QStringLiteral("password"), password},
+    };
+}
+
+QJsonObject wakeInfo(const QList<WakeInterface> &interfaces)
+{
+    return {
+        {QStringLiteral("type"), QStringLiteral("wakeInfo")},
+        {QStringLiteral("interfaces"), wakeInterfacesToJson(interfaces)},
+    };
+}
+
+QJsonObject wake(const QString &deviceId)
+{
+    return {
+        {QStringLiteral("type"), QStringLiteral("wake")},
+        {QStringLiteral("deviceId"), deviceId},
+    };
+}
+
+QJsonObject wakeAnswer(const QString &request, QLatin1StringView result)
+{
+    return {
+        {QStringLiteral("type"), QStringLiteral("wakeAnswer")},
+        {QStringLiteral("request"), request},
+        {QStringLiteral("result"), QString(result)},
     };
 }
 

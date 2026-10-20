@@ -255,6 +255,7 @@ private:
     void stateEvent(rcs_state state);
     void admissionEvent(rcs_admission_state state, rcs_result result, const QString &message);
     void setStatus(const QString &status, const QString &reason = {});
+    QString wakeNote() const;
     // 正在连的时候显示什么：对方在重启、注销时还是 restarting、signingOut
     QString connectingStatus() const;
     // 对方答应的电源操作开始了，连接断了

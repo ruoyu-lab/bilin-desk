@@ -2,10 +2,15 @@
 
 #include "rc/transport.h"
 
+#include <QByteArray>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QLatin1StringView>
+#include <QList>
 #include <QString>
 #include <QStringView>
+
+#include <optional>
 
 // 后台服务和服务器之间的消息：WebSocket 上一条文字消息是一个 JSON 对象，type 说明是哪一种。
 // 服务器那一边在 Server/src/protocol.ts，改了两边一起改。
@@ -16,6 +21,8 @@
 // signIn、resetPassword（凭验证码设新密码）把本机挂到账号下，signOut 拿下来，removeDevice 把账号下别的设备拿下来；
 // 服务器随即（以后有变化时也）发来 account 和 devices。登录着时 setNickname 改昵称，changePassword 改密码（要旧密码，
 // 成了回 passwordChanged），deleteAccount 注销账号（要密码，成了回 account 为 null）。
+// 远程唤醒（docs/devices-and-accounts.md）：登录着账号时 wakeInfo 告诉服务器本机能唤醒它的网卡；wake 请服务器叫醒
+// 账号下睡着的一台，回答是 wakeResult；服务器请本机帮忙叫醒账号下的一台时发来 wakeRequest，本机回 wakeAnswer。
 // 服务器限速：试得太多时 rejected、accountFailed、undeliverable 的 reason 是 tooMany
 namespace rc::server {
 
@@ -57,6 +64,38 @@ inline constexpr QLatin1StringView Replaced{"replaced"};
 // 公钥：换回它、用同一个令牌重新登录。服务器随后关掉这条连接
 inline constexpr QLatin1StringView Renumbered{"renumbered"};
 
+// request、deviceId、name、by、interfaces：账号下的设备 deviceId（名字 name）睡着了，请本机叫醒它（by：要叫醒它的
+// 那台设备的名字，网页版是空的）。interfaces 是它能唤醒自己的网卡（WakeInterface）；本机回 wakeAnswer
+inline constexpr QLatin1StringView WakeRequest{"wakeRequest"};
+// deviceId、result、helper：对 wake 的回答（result 见 Server/src/protocol.ts 的 WakeResult，helper 是发了唤醒包的那台）
+inline constexpr QLatin1StringView WakeResult{"wakeResult"};
+// wakeAnswer 的 result：发了唤醒包 | 本机和它不在同一个网段 | 系统不让发
+inline constexpr QLatin1StringView WakeSent{"sent"};
+inline constexpr QLatin1StringView WakeElsewhere{"elsewhere"};
+inline constexpr QLatin1StringView WakeFailed{"failed"};
+
+// 能唤醒一台电脑的一块网卡（Server/src/protocol.ts 的 WakeInterface）
+struct WakeInterface
+{
+    enum class Setting { Unknown, Enabled, Disabled };
+
+    QByteArray mac;  // 6 字节
+    QString address; // IPv4 地址
+    int prefix = 0;  // 网段：0~32
+    bool wifi = false;
+    Setting wake = Setting::Unknown; // 系统里开没开网络唤醒
+
+    QJsonObject toJson() const;
+    // 不合格的（MAC 不是 6 字节、地址不是 IPv4、网段不对）：nullopt
+    static std::optional<WakeInterface> fromJson(const QJsonObject &json);
+
+    friend bool operator==(const WakeInterface &, const WakeInterface &) = default;
+};
+
+QJsonArray wakeInterfacesToJson(const QList<WakeInterface> &interfaces);
+// 不合格的跳过
+QList<WakeInterface> wakeInterfacesFromJson(const QJsonArray &array);
+
 // 服务器收的名字最长 64 个字
 inline constexpr qsizetype MaxNameLength = 64;
 
@@ -89,5 +128,11 @@ QJsonObject removeDevice(const QString &deviceId);
 QJsonObject setNickname(const QString &nickname);
 QJsonObject changePassword(const QString &oldPassword, const QString &newPassword);
 QJsonObject deleteAccount(const QString &password);
+// 本机能唤醒它的网卡
+QJsonObject wakeInfo(const QList<WakeInterface> &interfaces);
+// 叫醒账号下的设备 deviceId
+QJsonObject wake(const QString &deviceId);
+// 对 wakeRequest 的回答：result 是 WakeSent | WakeElsewhere | WakeFailed
+QJsonObject wakeAnswer(const QString &request, QLatin1StringView result);
 
 } // namespace rc::server

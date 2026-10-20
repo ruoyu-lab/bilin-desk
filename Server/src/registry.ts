@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { type Collection, MongoServerError } from 'mongodb';
 
+import type { WakeInterface } from './protocol.js';
+
 export interface DeviceClaim {
     id: string;
     tokenHash: string;
@@ -21,6 +23,8 @@ export interface DeviceRecord {
     platform: string;
     publicKey: string;
     machine: string;
+    // 它能唤醒自己的网卡（protocol.ts 的 wakeInfo）：登录着账号时它告诉的，没告诉过时是空的
+    wake: WakeInterface[];
 }
 
 // ok：这个 ID 是它的（第一次登记，或者令牌对得上）；taken：已经属于别的设备
@@ -38,8 +42,10 @@ export interface Registry {
     // 这些设备连着（还在用）
     seen(ids: string[]): Promise<void>;
     rename(id: string, name: string): Promise<void>;
-    // 挂到账号下；null：退出账号
+    // 挂到账号下；null：退出账号。换了账号（退出、被移出也是）记着的网卡删掉：只给同一个账号下的设备用
     bind(id: string, accountId: string | null): Promise<void>;
+    // 它能唤醒自己的网卡（登录着账号的设备说的）
+    setWake(id: string, interfaces: WakeInterface[]): Promise<void>;
     accountOf(id: string): Promise<string | null>;
     device(id: string): Promise<DeviceRecord | null>;
     devicesOf(accountId: string): Promise<DeviceRecord[]>;
@@ -64,11 +70,16 @@ export interface DeviceDocument {
     machine: string;
     publicKey: string;
     accountId: string | null;
+    wake?: WakeInterface[];
     createdAt: Date;
     lastSeenAt: Date;
 }
 
 const DUPLICATE_KEY = 11000;
+
+function record(d: DeviceDocument): DeviceRecord {
+    return { id: d._id, name: d.name, platform: d.platform, publicKey: d.publicKey, machine: d.machine, wake: d.wake ?? [] };
+}
 
 export class MongoRegistry implements Registry {
     readonly #devices: Collection<DeviceDocument>;
@@ -132,7 +143,11 @@ export class MongoRegistry implements Registry {
     }
 
     async bind(id: string, accountId: string | null): Promise<void> {
-        await this.#devices.updateOne({ _id: id }, { $set: { accountId } });
+        await this.#devices.updateOne({ _id: id }, { $set: { accountId }, $unset: { wake: '' } });
+    }
+
+    async setWake(id: string, interfaces: WakeInterface[]): Promise<void> {
+        await this.#devices.updateOne({ _id: id }, { $set: { wake: interfaces } });
     }
 
     async accountOf(id: string): Promise<string | null> {
@@ -142,14 +157,12 @@ export class MongoRegistry implements Registry {
 
     async device(id: string): Promise<DeviceRecord | null> {
         const d = await this.#devices.findOne({ _id: id });
-        return d ? { id: d._id, name: d.name, platform: d.platform, publicKey: d.publicKey, machine: d.machine } : null;
+        return d ? record(d) : null;
     }
 
     async devicesOf(accountId: string): Promise<DeviceRecord[]> {
         const devices = await this.#devices.find({ accountId }).sort({ createdAt: 1 }).toArray();
-        return devices.map((d) => ({
-            id: d._id, name: d.name, platform: d.platform, publicKey: d.publicKey, machine: d.machine,
-        }));
+        return devices.map(record);
     }
 
     async adopt(to: string, from: string): Promise<void> {
@@ -164,6 +177,6 @@ export class MongoRegistry implements Registry {
     }
 
     async unbindAll(accountId: string): Promise<void> {
-        await this.#devices.updateMany({ accountId }, { $set: { accountId: null } });
+        await this.#devices.updateMany({ accountId }, { $set: { accountId: null }, $unset: { wake: '' } });
     }
 }

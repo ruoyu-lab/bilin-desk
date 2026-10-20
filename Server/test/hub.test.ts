@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CloseCode, defaultHubOptions, Hub, type Connection, type Log } from '../src/hub.js';
 import { turnCredentials } from '../src/ice.js';
 import { hashToken } from '../src/registry.js';
-import type { Access, AccountDevice, ServerMessage, Transport } from '../src/protocol.js';
-import { MemoryAccounts, MemoryBroker, MemoryCodes, MemoryLimiter, MemoryMailer, MemoryRegistry, MemoryStats } from './memory.js';
+import type { Access, AccountDevice, ServerMessage, Transport, WakeInterface } from '../src/protocol.js';
+import {
+    MemoryAccounts, MemoryBroker, MemoryCodes, MemoryLimiter, MemoryMailer, MemoryRegistry, MemoryStats, MemoryWakes,
+} from './memory.js';
 
 const silent: Log = { info() {}, warn() {}, error() {} };
 
@@ -76,16 +78,22 @@ describe('Hub', () => {
     let codes: MemoryCodes;
     let mailer: MemoryMailer;
     let stats: MemoryStats;
+    let wakes: MemoryWakes;
     // 两个实例，共用登记表、账号和 Redis
     let first: Hub;
     let second: Hub;
     const hubs: Hub[] = [];
 
     // 同一个邮箱再要验证码不用等（测试里同一个邮箱会注册好几次）；要等的另有测试
-    const testOptions = { ...defaultHubOptions, limits: { ...defaultHubOptions.limits, codeIntervalS: 0 } };
+    // 远程唤醒同一台不用隔 10 秒，帮忙的电脑的回答等得短一些
+    const testOptions = {
+        ...defaultHubOptions, limits: { ...defaultHubOptions.limits, codeIntervalS: 0, wakeIntervalS: 0 }, wakeWaitMs: 300,
+        wakePollMs: 10,
+    };
 
     function hub(options = testOptions, mail: MemoryMailer | null = mailer): Hub {
-        const created = new Hub({ registry, accounts, bus: broker.bus(), limiter, codes, mailer: mail, stats }, silent, options);
+        const created = new Hub({ registry, accounts, bus: broker.bus(), limiter, codes, mailer: mail, stats, wakes }, silent,
+                                 options);
         hubs.push(created);
         return created;
     }
@@ -144,6 +152,7 @@ describe('Hub', () => {
         codes = new MemoryCodes();
         mailer = new MemoryMailer();
         stats = new MemoryStats();
+        wakes = new MemoryWakes();
         first = hub();
         second = hub();
     });
@@ -334,7 +343,7 @@ describe('Hub', () => {
         await until(() => device.peer.last('account')?.account !== null);
         expect(device.peer.last('account')).toEqual({ type: 'account', account: { email: 'li@example.com', nickname: '梨茶' } });
         expect(devicesIn(device)).toEqual([
-            { deviceId: '111111111', name: '电脑', platform: 'macOS', publicKey: publicKey(1), online: true },
+            { deviceId: '111111111', name: '电脑', platform: 'macOS', publicKey: publicKey(1), online: true, wake: 'none' },
         ]);
     });
 
@@ -638,5 +647,117 @@ describe('Hub', () => {
         await until(() => windows.peer.last('account')?.account?.email === 'li@example.com');
         expect(await accounts.verify('li@example.com', 'password1')).toBeNull();
         expect(await accounts.verify('li@example.com', 'password9')).not.toBeNull();
+    });
+
+    // ---- 远程唤醒 ----
+
+    const nic = (mac: string, wake: WakeInterface['wake'] = 'enabled'): WakeInterface =>
+        ({ mac, address: '192.168.1.20', prefix: 24, link: 'ethernet', wake });
+
+    // 一个账号下的三台：mac 要叫醒别的，windows 帮忙，pc 说了能唤醒它的网卡以后睡着了（下线）
+    async function household(interfaces: WakeInterface[], [one, two] = [first, second]) {
+        const mac = await login(one, '111111111', 1);
+        await register(mac, 'li@example.com', 'password1', '梨茶');
+        await until(() => mac.peer.last('account')?.account !== null);
+        const windows = await login(two, '222222222', 2);
+        send(windows, { type: 'rename', name: '书房的 Windows' });
+        send(windows, { type: 'login', email: 'li@example.com', password: 'password1' });
+        const pc = await login(one, '333333333', 3);
+        send(pc, { type: 'login', email: 'li@example.com', password: 'password1' });
+        await until(() => devicesIn(mac).length === 3);
+        send(pc, { type: 'wakeInfo', interfaces });
+        await settle();
+        pc.connection.closed();
+        await until(() => devicesIn(mac).find((d) => d.deviceId === '333333333')?.online === false);
+        return { mac, windows };
+    }
+
+    async function wake(device: { connection: Connection; peer: FakePeer }, deviceId = '333333333') {
+        const from = device.peer.sent.length;
+        send(device, { type: 'wake', deviceId });
+        return next(device, from, 'wakeResult');
+    }
+
+    // 帮忙的电脑收到下一个唤醒请求，回答 result
+    async function answerNext(helper: { connection: Connection; peer: FakePeer }, from: number,
+                              result: 'sent' | 'elsewhere' | 'failed') {
+        const request = await next(helper, from, 'wakeRequest');
+        send(helper, { type: 'wakeAnswer', request: request.request, result });
+        return request;
+    }
+
+    it('keeps the network cards a signed-in device tells, until it leaves the account', async () => {
+        // 没登录账号的不记
+        const alone = await login(second, '444444444', 4);
+        send(alone, { type: 'wakeInfo', interfaces: [nic('aa:bb:cc:dd:ee:04')] });
+        await settle();
+        expect((await registry.device('444444444'))?.wake).toEqual([]);
+
+        const { mac } = await household([nic('aa:bb:cc:dd:ee:01')]);
+        expect((await registry.device('333333333'))?.wake).toEqual([nic('aa:bb:cc:dd:ee:01')]);
+        // 账号下的设备只知道叫不叫得醒，不知道网卡
+        expect(devicesIn(mac).map((d) => d.wake)).toEqual(['none', 'none', 'ready']);
+        send(mac, { type: 'removeDevice', deviceId: '333333333' });
+        await until(() => devicesIn(mac).length === 2);
+        expect((await registry.device('333333333'))?.wake).toEqual([]);
+    });
+
+    it('wakes a sleeping device through another computer of the account', async () => {
+        const { mac, windows } = await household([nic('aa:bb:cc:dd:ee:01'), nic('aa:bb:cc:dd:ee:02', 'disabled')]);
+        const asked = windows.peer.sent.length;
+        const from = mac.peer.sent.length;
+        send(mac, { type: 'wake', deviceId: '333333333' });
+        // 只转开着网络唤醒（或者系统不说）的网卡；要叫醒它的那台自己不帮忙
+        expect(await answerNext(windows, asked, 'sent')).toMatchObject({
+            deviceId: '333333333', name: '电脑', by: '电脑', interfaces: [nic('aa:bb:cc:dd:ee:01')],
+        });
+        expect(mac.peer.last('wakeRequest')).toBeUndefined();
+        expect(await next(mac, from, 'wakeResult'))
+            .toEqual({ type: 'wakeResult', deviceId: '333333333', result: 'sent', helper: '书房的 Windows' });
+    });
+
+    it('says why a device cannot be woken', async () => {
+        const { mac, windows } = await household([nic('aa:bb:cc:dd:ee:01')]);
+        // 帮忙的电脑和它不在同一个网段、系统不让发
+        for (const answer of ['elsewhere', 'failed'] as const) {
+            const asked = windows.peer.sent.length;
+            const from = mac.peer.sent.length;
+            send(mac, { type: 'wake', deviceId: '333333333' });
+            await answerNext(windows, asked, answer);
+            expect((await next(mac, from, 'wakeResult')).result).toBe(answer);
+        }
+        // 开着的电脑不回答（旧版本）、都下线了
+        expect((await wake(mac)).result).toBe('noHelper');
+        windows.connection.closed();
+        await until(() => devicesIn(mac).find((d) => d.deviceId === '222222222')?.online === false);
+        expect((await wake(mac)).result).toBe('noHelper');
+        // 在线的不用叫；别的账号的叫不了
+        expect((await wake(mac, '111111111')).result).toBe('online');
+        await login(second, '555555555', 5);
+        expect((await wake(mac, '555555555')).result).toBe('notMine');
+    });
+
+    it('needs the device to have told network cards that can wake it', async () => {
+        const { mac } = await household([nic('aa:bb:cc:dd:ee:01', 'disabled')]);
+        expect(devicesIn(mac).find((d) => d.deviceId === '333333333')?.wake).toBe('disabled');
+        expect((await wake(mac)).result).toBe('disabled');
+        // 没说过网卡的（旧版本）
+        const tablet = await login(first, '666666666', 6);
+        send(tablet, { type: 'login', email: 'li@example.com', password: 'password1' });
+        await until(() => devicesIn(mac).length === 4);
+        tablet.connection.closed();
+        await until(() => devicesIn(mac).find((d) => d.deviceId === '666666666')?.online === false);
+        expect((await wake(mac, '666666666')).result).toBe('noInfo');
+    });
+
+    it('limits how often a device is woken', async () => {
+        const strict = [strictHub({ wakeIntervalS: 10 }), strictHub({ wakeIntervalS: 10 })] as const;
+        const { mac, windows } = await household([nic('aa:bb:cc:dd:ee:01')], [...strict]);
+        const asked = windows.peer.sent.length;
+        const from = mac.peer.sent.length;
+        send(mac, { type: 'wake', deviceId: '333333333' });
+        await answerNext(windows, asked, 'sent');
+        expect((await next(mac, from, 'wakeResult')).result).toBe('sent');
+        expect((await wake(mac)).result).toBe('tooMany');
     });
 });

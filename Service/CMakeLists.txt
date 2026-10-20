@@ -71,6 +71,8 @@ qt_add_executable(rcservice
     src/sharing.h
     src/sharing.cpp
     src/system_mode.h
+    src/wake_helper.h
+    src/wake_helper.cpp
 )
 target_link_libraries(rcservice PRIVATE rcservicecore RemoteControl::Core RemoteControl::Clipboard RemoteControl::Power
                       RemoteControl::Thumbnail rcfiles)

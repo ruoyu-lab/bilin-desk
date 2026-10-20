@@ -11,7 +11,7 @@ const devices = computed(() => [...myDevices()].sort((a, b) => Number(b.online) 
 <template>
   <div class="page">
     <h1>我的设备</h1>
-    <p class="intro muted">同一个账号登录的电脑，不用密码就能连。电脑睡眠、关机时网页叫不醒，要用同一个局域网里的客户端。</p>
+    <p class="intro muted">同一个账号登录的电脑，不用密码就能连。睡着了的电脑，可以请和它在同一个网络里、开着的另一台电脑帮忙叫醒。</p>
     <DeviceList v-if="devices.length > 0" :devices="devices" />
     <div v-else-if="!state.loaded" class="card empty"><p class="muted">正在读取…</p></div>
     <div v-else-if="!state.account" class="card empty">

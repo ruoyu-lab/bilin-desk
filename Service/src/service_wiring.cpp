@@ -60,6 +60,17 @@ void connectAccount(ControlServer &server, ServerLink &link)
                      [&link, noServer](const QString &password) { noServer(link.deleteAccount(password)); });
     QObject::connect(&link, &ServerLink::passwordChanged, &server,
                      [&server] { server.sendEvent(protocol::PasswordChanged, {}); });
+
+    const auto wakeResult = [&server](const QString &deviceId, const QString &result, const QString &helper) {
+        server.sendEvent(protocol::WakeResult, {{QStringLiteral("deviceId"), deviceId},
+                                                {QStringLiteral("result"), result},
+                                                {QStringLiteral("helper"), helper}});
+    };
+    QObject::connect(&server, &ControlServer::wakeDeviceRequested, &link, [&link, wakeResult](const QString &deviceId) {
+        if (!link.requestWake(deviceId))
+            wakeResult(deviceId, protocol::NoServer, {});
+    });
+    QObject::connect(&link, &ServerLink::wakeResultReceived, &server, wakeResult);
 }
 
 void publishNetwork(ControlServer &server, ServerLink &link, LanDiscovery &discovery)

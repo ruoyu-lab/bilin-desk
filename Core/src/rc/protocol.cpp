@@ -140,6 +140,7 @@ QJsonObject AccountDevice::toJson() const
         {QStringLiteral("platform"), platform},
         {QStringLiteral("publicKey"), publicKey},
         {QStringLiteral("online"), online},
+        {QStringLiteral("wake"), wake},
     };
 }
 
@@ -147,7 +148,7 @@ AccountDevice AccountDevice::fromJson(const QJsonObject &json)
 {
     return {json.value(QLatin1StringView("deviceId")).toString(), json.value(QLatin1StringView("name")).toString(),
             json.value(QLatin1StringView("platform")).toString(), json.value(QLatin1StringView("publicKey")).toString(),
-            json.value(QLatin1StringView("online")).toBool()};
+            json.value(QLatin1StringView("online")).toBool(), json.value(QLatin1StringView("wake")).toString()};
 }
 
 QJsonObject AccountState::toJson() const
@@ -215,6 +216,7 @@ QJsonObject HistoryEntry::toJson() const
         {QStringLiteral("sent"), sent},
         {QStringLiteral("version"), version},
         {QStringLiteral("action"), action},
+        {QStringLiteral("by"), by},
     };
 }
 
@@ -235,6 +237,7 @@ HistoryEntry HistoryEntry::fromJson(const QJsonObject &json)
     entry.sent = json.value(QLatin1StringView("sent")).toBool();
     entry.version = json.value(QLatin1StringView("version")).toString();
     entry.action = json.value(QLatin1StringView("action")).toString();
+    entry.by = json.value(QLatin1StringView("by")).toString();
     return entry;
 }
 

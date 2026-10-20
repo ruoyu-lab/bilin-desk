@@ -13,6 +13,8 @@ export interface Device {
   online: boolean | null
   // 我的设备：同一个账号下的，不用密码
   mine: boolean
+  // 能不能请别的电脑叫醒它（我的设备才有，服务器说的）
+  wake: api.WakeState | null
   favorite: boolean
   // 上次在这个浏览器里连接的时间（ISO）；没连过时为空
   lastConnected: string
@@ -157,12 +159,12 @@ export const devices = computed<Device[]>(() => {
     if (system === 'other') continue
     const found = state.records.find((r) => r.id === d.deviceId)
     all.set(d.deviceId, {
-      id: d.deviceId, name: d.name, system, online: d.online, mine: true,
+      id: d.deviceId, name: d.name, system, online: d.online, mine: true, wake: d.wake,
       favorite: found?.favorite ?? false, lastConnected: found?.lastConnected ?? '',
     })
   }
   for (const r of state.records) {
-    if (!all.has(r.id)) all.set(r.id, { ...r, online: null, mine: false })
+    if (!all.has(r.id)) all.set(r.id, { ...r, online: null, mine: false, wake: null })
   }
   return [...all.values()]
 })
@@ -183,6 +185,60 @@ export function recentDevices(): Device[] {
 export function favoriteDevices(): Device[] {
   return devices.value.filter((d) => d.favorite).sort((a, b) => Number(b.online === true) - Number(a.online === true))
 }
+
+// ---- 叫醒睡着的我的设备（docs/devices-and-accounts.md 的"远程唤醒"）：浏览器发不了唤醒包，
+// 请账号下开着的别的电脑帮忙（服务端的 POST /web/wake）----
+
+export interface WakeAttempt {
+  // asking：在等服务器回答 | sent：唤醒包发出去了，等它上线 | failed
+  state: 'asking' | 'sent' | 'failed'
+  note: string
+}
+
+// 叫过的：设备 ID → 到哪了。它上线了、等够了就忘掉
+export const wakes = reactive<Record<string, WakeAttempt>>({})
+// 发出去以后隔多久问一次它上线没有、最多等多久
+const WAKE_POLL_MS = 5_000
+const WAKE_WAIT_MS = 3 * 60_000
+
+// 能不能叫醒不在线的我的设备：能时为空，不然是为什么
+export function wakeProblem(device: Device): string {
+  if (device.wake === 'disabled') return '它没有打开网络唤醒'
+  if (device.wake !== 'ready') return '它还没告诉服务器网卡：要装上新版本、登录着账号上线一次'
+  const helper = state.accountDevices.some((d) => d.deviceId !== device.id && d.online && systemOf(d.platform) !== 'other')
+  return helper ? '' : '账号下没有开着的电脑能帮忙叫醒它'
+}
+
+export async function wake(device: Device): Promise<void> {
+  wakes[device.id] = { state: 'asking', note: '正在请账号下开着的电脑帮忙叫醒…' }
+  try {
+    const { helper } = await api.wake(device.id)
+    wakes[device.id] = { state: 'sent', note: `已请“${helper}”帮忙发出唤醒包，等它上线` }
+    watchWake(device.id)
+  } catch (e) {
+    wakes[device.id] = { state: 'failed', note: e instanceof api.ApiError ? e.message : '没叫成，过一会儿再试' }
+  }
+}
+
+// 发出去了：隔几秒问一次服务器它上线没有，等够了就忘掉这一次（又能点"唤醒"）
+function watchWake(id: string): void {
+  const until = Date.now() + WAKE_WAIT_MS
+  const timer = window.setInterval(() => {
+    if (wakes[id]?.state !== 'sent' || Date.now() > until) {
+      window.clearInterval(timer)
+      if (wakes[id]?.state === 'sent') delete wakes[id]
+      return
+    }
+    void refresh()
+  }, WAKE_POLL_MS)
+}
+
+// 叫过的上线了：忘掉那一次
+watch(() => state.accountDevices, (devices) => {
+  for (const d of devices) {
+    if (d.online) delete wakes[d.deviceId]
+  }
+})
 
 // ---- 外观：跟随系统 | 浅色 | 深色，记在这个浏览器里 ----
 

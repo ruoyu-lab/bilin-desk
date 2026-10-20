@@ -6,7 +6,7 @@ import type { ServerMessage } from '../src/protocol.js';
 import { buildServer } from '../src/server.js';
 import {
     MemoryAccounts, MemoryBroker, MemoryCodes, MemoryLimiter, MemoryMailer, MemoryRegistry, MemoryRelayStatus,
-    MemoryStats, MemoryTickets, MemoryWebSessions,
+    MemoryStats, MemoryTickets, MemoryWakes, MemoryWebSessions,
 } from './memory.js';
 
 const DEVICE = '222222222';
@@ -38,6 +38,15 @@ class Device {
                                           platform: 'Windows', version: '0.1.5-beta', machine: '' }));
         expect((await this.next()).type).toBe('welcome');
         expect((await this.next()).type).toBe('account');
+    }
+
+    // 下一条 type（别的跳过）
+    async nextOf<T extends ServerMessage['type']>(type: T): Promise<Extract<ServerMessage, { type: T }>> {
+        for (;;) {
+            const message = await this.next();
+            if (message.type === type)
+                return message as Extract<ServerMessage, { type: T }>;
+        }
     }
 
     next(): Promise<ServerMessage> {
@@ -72,7 +81,7 @@ describe('网页版的接口', () => {
         mailer = new MemoryMailer();
         ({ app } = await buildServer({
             registry, accounts, bus: new MemoryBroker().bus(), limiter: new MemoryLimiter(), codes: new MemoryCodes(), mailer,
-            stats: new MemoryStats(), logger: false,
+            stats: new MemoryStats(), wakes: new MemoryWakes(), logger: false,
             web: { tickets, sessions: new MemoryWebSessions(), relay, answerWaitMs: 400, answerPollMs: 20 },
         }));
         await app.listen({ host: '127.0.0.1', port: 0 });
@@ -129,7 +138,7 @@ describe('网页版的接口', () => {
         const account = await accounts.byEmail(EMAIL);
         await registry.bind(DEVICE, account!.id);
         expect((await app.inject({ url: '/web/me', headers: { cookie } })).json().devices)
-            .toEqual([{ deviceId: DEVICE, name: '书房的电脑', platform: 'Windows', online: true }]);
+            .toEqual([{ deviceId: DEVICE, name: '书房的电脑', platform: 'Windows', online: true, wake: 'none' }]);
     });
 
     it('注册：先发验证码，对了就登录', async () => {
@@ -200,5 +209,30 @@ describe('网页版的接口', () => {
         expect((await post('connect', { deviceId: DEVICE })).json()).toEqual({ error: 'busy' });
         relay.current = null;
         expect((await post('connect', { deviceId: DEVICE })).json()).toEqual({ error: 'unavailable' });
+    });
+
+    it('叫醒我的设备：账号下开着的电脑帮忙发唤醒包；没登录、不是我的设备时不行', async () => {
+        const cookie = await signedIn();
+        const accountId = (await accounts.byEmail(EMAIL))!.id;
+        const helper = await online();
+        await registry.bind(DEVICE, accountId);
+        const target = '333333333';
+        await registry.claim({ id: target, tokenHash: 'h', name: '客厅的电脑', platform: 'macOS', version: '0.1.5-beta',
+                               machine: '', publicKey: '' });
+        await registry.bind(target, accountId);
+        const nic = { mac: 'aa:bb:cc:dd:ee:01', address: '192.168.1.20', prefix: 24, link: 'ethernet', wake: 'enabled' } as const;
+        await registry.setWake(target, [nic]);
+        expect((await app.inject({ url: '/web/me', headers: { cookie } })).json().devices
+            .find((d: { deviceId: string }) => d.deviceId === target)).toMatchObject({ online: false, wake: 'ready' });
+
+        const waking = post('wake', { deviceId: target }, cookie);
+        const request = await helper.nextOf('wakeRequest');
+        // 网页版要叫醒的：by 是空的
+        expect(request).toMatchObject({ deviceId: target, name: '客厅的电脑', by: '', interfaces: [nic] });
+        helper.socket.send(JSON.stringify({ type: 'wakeAnswer', request: request.request, result: 'sent' }));
+        expect((await waking).json()).toEqual({ helper: '书房的电脑' });
+
+        expect((await post('wake', { deviceId: target })).json()).toEqual({ error: 'signedOut' });
+        expect((await post('wake', { deviceId: '444444444' }, cookie)).json()).toEqual({ error: 'notMine' });
     });
 });

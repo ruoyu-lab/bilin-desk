@@ -11,11 +11,12 @@ AppMenu {
     signal connectRequested()
     signal detailsRequested()
 
-    // 不在线的我的设备、本机叫得醒时（DeviceWake）：先叫醒它
+    // 不在线的我的设备、叫得醒时（DeviceWake：本机，或者账号下开着的别的电脑帮忙）：先叫醒它；正在叫、刚叫过的不再叫
     readonly property bool wakeable: {
         Wake.revision
         return device.mine === true && device.presenceKnown === true && !device.online && !!device.deviceId
                && Wake.problem(device.deviceId).length === 0
+               && Wake.state(device.deviceId) !== "asking" && Wake.state(device.deviceId) !== "sent"
     }
 
     AppMenuItem { text: qsTr("连接"); onTriggered: root.connectRequested() }

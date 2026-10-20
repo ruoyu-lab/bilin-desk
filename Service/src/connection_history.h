@@ -38,6 +38,8 @@ public:
     void updated(const QString &version);
     // 我的设备 peer 让本机 action（restart | shutDown | sleep | signOut），本机答应了
     void power(const rc::protocol::SharePeer &peer, const QString &action);
+    // 本机帮忙叫醒了我的设备 deviceId（名字 name）；by：要叫醒它的那台的名字，网页版是空的
+    void woke(const QString &deviceId, const QString &name, const QString &by);
     void clear();
 
 signals:

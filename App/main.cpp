@@ -168,8 +168,9 @@ int main(int argc, char *argv[])
     // 设备列表：我的设备（账号下的）、附近的（后台服务发现的）和本机记着的（添加的、收藏的、连过的）
     DeviceDirectory devices(service, account, rc::stateDirectory() + QStringLiteral("/devices.json"), &app);
     DeviceDirectory::setInstance(&devices);
-    // 网络唤醒：我的设备说过的网卡记在状态目录的 wake.json，它睡眠、关机以后从本机叫醒
-    DeviceWake wake(rc::stateDirectory() + QStringLiteral("/wake.json"), &app);
+    // 网络唤醒：我的设备说过的网卡记在状态目录的 wake.json，它睡眠、关机以后从本机叫醒；本机叫不醒时请账号下
+    // 开着的别的电脑帮忙（经后台服务、服务器）
+    DeviceWake wake(service, account, rc::stateDirectory() + QStringLiteral("/wake.json"), &app);
     DeviceWake::setInstance(&wake);
     // 和各台设备的对话：不管谁连谁，同一台设备是同一份，记录存在本机（状态目录的 chats）
     Conversations conversations(rc::stateDirectory() + QStringLiteral("/chats"), &app);

@@ -9,11 +9,13 @@ import { codeMail, type Mailer } from './mail.js';
 import {
     parseClientMessage, type AccountDevice, type AccountFailure, type AccountInfo, type ChangePassword,
     type DeclineRequest, type DeleteAccount, type Hello, type IceServers, type Login, type Register, type RejectReason,
-    type ResetPassword, type SendCode, type ServerMessage, type SignalRequest,
+    type ResetPassword, type SendCode, type ServerMessage, type SignalRequest, type WakeAnswerResult, type WakeInterface,
+    type WakeResult, type WakeState,
 } from './protocol.js';
-import { hashToken, type Registry } from './registry.js';
+import { hashToken, type DeviceRecord, type Registry } from './registry.js';
 import type { Stats } from './stats.js';
-import type { Tickets } from './tickets.js';
+import { newTicket, type Tickets } from './tickets.js';
+import type { Wakes } from './wakes.js';
 
 // 一条 WebSocket 连接，Hub 只用到这些
 export interface Peer {
@@ -62,6 +64,9 @@ export interface Limits {
     codesPerEmail: number;
     codesPerAddress: number;
     mailsPerDay: number;
+    // 远程唤醒：同一个账号一分钟最多叫几次，同一台隔多少秒才能再叫
+    wakesPerAccount: number;
+    wakeIntervalS: number;
 }
 
 // Hub 用到的数据和服务
@@ -77,6 +82,8 @@ export interface HubSources {
     stats: Stats;
     // 网页版的一次性通行证：电脑对它的回答记在这里（tickets.ts）；没有时网页版连不了
     tickets?: Tickets;
+    // 远程唤醒时帮忙的电脑的回答（wakes.ts）
+    wakes: Wakes;
 }
 
 export interface HubOptions {
@@ -88,6 +95,9 @@ export interface HubOptions {
     limits: Limits;
     // P2P 和中继用的服务器（ice.ts）；null：没配，不发
     ice: IceSettings | null;
+    // 远程唤醒：等帮忙的电脑回答多久、隔多久看一次
+    wakeWaitMs: number;
+    wakePollMs: number;
 }
 
 export const defaultHubOptions: HubOptions = {
@@ -107,14 +117,35 @@ export const defaultHubOptions: HubOptions = {
         codesPerEmail: 5,
         codesPerAddress: 10,
         mailsPerDay: 90,
+        wakesPerAccount: 6,
+        wakeIntervalS: 10,
     },
     ice: null,
+    wakeWaitMs: 4000,
+    wakePollMs: 200,
 };
 
 const HOUR_S = 60 * 60;
 const DAY_S = 24 * HOUR_S;
 // 一条连接记着最近几次发起的连接
 const MAX_ATTEMPTS = 32;
+
+// 手机、平板不能被连，也不帮忙叫醒别的设备（同客户端的 rc::server::acceptsConnections）
+function isComputer(platform: string): boolean {
+    return platform !== 'Android' && platform !== 'iOS';
+}
+
+function wakeState(device: DeviceRecord): WakeState {
+    if (device.wake.length === 0)
+        return 'none';
+    return device.wake.every((i) => i.wake === 'disabled') ? 'disabled' : 'ready';
+}
+
+// 要叫醒它的是谁：账号下的一台设备，或者网页版（null）
+export interface WakeRequester {
+    deviceId: string;
+    name: string;
+}
 
 // 一台设备现在登录的账号，和账号下的设备
 interface AccountView {
@@ -133,6 +164,7 @@ export class Hub {
     readonly #mailer: Mailer | null;
     readonly #stats: Stats;
     readonly #tickets: Tickets | undefined;
+    readonly #wakes: Wakes;
     readonly #log: Log;
     readonly #options: HubOptions;
     readonly #devices = new Map<string, Connection>();
@@ -149,6 +181,7 @@ export class Hub {
         this.#mailer = sources.mailer;
         this.#stats = sources.stats;
         this.#tickets = sources.tickets;
+        this.#wakes = sources.wakes;
         this.#log = log;
         this.#options = options;
         bus.onMessage((deviceId, message) => this.#deliver(deviceId, message));
@@ -372,6 +405,7 @@ export class Hub {
             account: { email: account.email, nickname: account.nickname },
             devices: devices.map((d) => ({
                 deviceId: d.id, name: d.name, platform: d.platform, publicKey: d.publicKey, online: online.has(d.id),
+                wake: wakeState(d),
             })),
         };
     }
@@ -385,6 +419,79 @@ export class Hub {
     // 别人的浏览器没有。不在线时 false
     async webViewer(to: string, ticket: string, key?: string): Promise<boolean> {
         return await this.#bus.publish(to, { type: 'webViewer', ticket, ...(key ? { key } : {}) }) > 0;
+    }
+
+    // ---- 远程唤醒（protocol.ts 的 wakeInfo、wake）----
+
+    // 设备说了它能唤醒自己的网卡：登录着账号才记（只给同一个账号下的设备用）；叫不叫得醒变了，账号下的设备都重新看
+    async setWake(deviceId: string, interfaces: WakeInterface[]): Promise<void> {
+        const device = await this.#registry.device(deviceId);
+        const accountId = await this.#registry.accountOf(deviceId);
+        if (!device || !accountId)
+            return;
+        await this.#registry.setWake(deviceId, interfaces);
+        if (wakeState(device) !== wakeState({ ...device, wake: interfaces }))
+            await this.#notifyAccount(accountId);
+    }
+
+    // 叫醒账号 accountId 下的设备 target：把它的网卡转给账号下开着的别的电脑（不算要叫醒它的那台），
+    // 和它在同一个网段的那台发唤醒包。等到有一台发了、都回答了、或者等够了 wakeWaitMs
+    async wake(accountId: string, target: string, by: WakeRequester | null): Promise<{ result: WakeResult; helper: string }> {
+        const fail = (result: WakeResult) => ({ result, helper: '' });
+        const device = await this.#registry.device(target);
+        if (!device || await this.#registry.accountOf(target) !== accountId)
+            return fail('notMine');
+        const limits = this.#options.limits;
+        const [recent, perAccount] = await Promise.all([
+            this.#limiter.hit(`wake:device:${target}`, limits.wakeIntervalS),
+            this.#limiter.hit(`wake:account:${accountId}`, 60),
+        ]);
+        if (recent > 1 || perAccount > limits.wakesPerAccount)
+            return fail('tooMany');
+        if ((await this.#bus.online([target])).has(target))
+            return fail('online');
+        const state = wakeState(device);
+        if (state !== 'ready')
+            return fail(state === 'none' ? 'noInfo' : 'disabled');
+
+        const candidates = (await this.#registry.devicesOf(accountId))
+            .filter((d) => d.id !== target && d.id !== by?.deviceId && isComputer(d.platform));
+        const online = await this.#bus.online(candidates.map((d) => d.id));
+        const request = newTicket();
+        const message = {
+            type: 'wakeRequest', request, deviceId: target, name: device.name, by: by?.name ?? '',
+            interfaces: device.wake.filter((i) => i.wake !== 'disabled'),
+        } as const;
+        const helpers: DeviceRecord[] = [];
+        for (const helper of candidates.filter((d) => online.has(d.id))) {
+            if (await this.#bus.publish(helper.id, message) > 0)
+                helpers.push(helper);
+        }
+        if (helpers.length === 0)
+            return fail('noHelper');
+
+        let answers = new Map<string, WakeAnswerResult>();
+        const asked = (id: string) => helpers.some((h) => h.id === id);
+        for (let waited = 0; waited < this.#options.wakeWaitMs; waited += this.#options.wakePollMs) {
+            await new Promise((resolve) => setTimeout(resolve, this.#options.wakePollMs));
+            answers = new Map([...await this.#wakes.answers(request)].filter(([id]) => asked(id)));
+            if ([...answers.values()].includes('sent') || answers.size === helpers.length)
+                break;
+        }
+        const sent = helpers.find((h) => answers.get(h.id) === 'sent');
+        const results = [...answers.values()];
+        const result: WakeResult = sent ? 'sent'
+            : results.includes('failed') ? 'failed'
+            : results.includes('elsewhere') ? 'elsewhere'
+            // 一台都没回答：开着的都是旧版本
+            : 'noHelper';
+        this.#log.info({ accountId, target, by: by?.deviceId ?? 'web', helpers: helpers.length, result }, '远程唤醒');
+        return { result, helper: sent?.name ?? '' };
+    }
+
+    // 帮忙的电脑 helper 的回答
+    async wakeAnswered(request: string, helper: string, result: WakeAnswerResult): Promise<void> {
+        await this.#wakes.answer(request, helper, result);
     }
 
     // 登录。这台电脑重装过、账号下还有它原来的 ID 时（同一个硬件编号、同一个系统、现在不在线），原来的 ID
@@ -552,6 +659,12 @@ export class Hub {
             break;
         case 'webViewer':
             connection.send({ type: 'webViewer', ticket: message.ticket, ...(message.key ? { key: message.key } : {}) });
+            break;
+        case 'wakeRequest':
+            connection.send({
+                type: 'wakeRequest', request: message.request, deviceId: message.deviceId, name: message.name,
+                by: message.by, interfaces: message.interfaces,
+            });
             break;
         case 'accountChanged':
             connection.refreshAccount();
@@ -725,7 +838,27 @@ export class Connection {
         case 'webReady':
             await this.#hub.webReady(message.ticket, message.reason);
             return;
+        case 'wakeInfo':
+            await this.#hub.setWake(deviceId, message.interfaces);
+            return;
+        case 'wake':
+            // 要等帮忙的电脑回答好几秒：不挡着这条连接上后面的消息（信令）
+            void this.#wake(deviceId, message.deviceId).catch((error: unknown) => {
+                this.#log.error({ err: error, deviceId }, '远程唤醒时出错');
+            });
+            return;
+        case 'wakeAnswer':
+            await this.#hub.wakeAnswered(message.request, deviceId, message.result);
+            return;
         }
+    }
+
+    async #wake(deviceId: string, target: string): Promise<void> {
+        const accountId = await this.#hub.accountOf(deviceId);
+        const { result, helper } = accountId
+            ? await this.#hub.wake(accountId, target, { deviceId, name: this.#name })
+            : { result: 'notMine' as const, helper: '' };
+        this.send({ type: 'wakeResult', deviceId: target, result, helper });
     }
 
     // 设备 from 在连接 session 里发来了信令

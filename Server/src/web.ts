@@ -4,7 +4,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import type { Account } from './accounts.js';
 import type { Hub, HubSources } from './hub.js';
-import { DEVICE_ID, parseClientMessage, type AccountFailure } from './protocol.js';
+import { DEVICE_ID, parseClientMessage, type AccountFailure, type WakeResult } from './protocol.js';
 import type { RelayStatus } from './relay-load.js';
 import type { Tickets } from './tickets.js';
 import { WEB_SESSION_TTL_S, type WebSessions } from './web-sessions.js';
@@ -15,6 +15,7 @@ import { WEB_SESSION_TTL_S, type WebSessions } from './web-sessions.js';
 // - POST connect：要连一台电脑。服务端给那台电脑、这个浏览器各发一张进它房间的一次性通行证（tickets.ts），经长连接告诉电脑，
 //   等电脑回答准备好了（进了转发进程里的房间）才把浏览器的那张交出去。浏览器登录了那台电脑的账号时（我的设备）还给一把
 //   这次连接用的一次性钥匙，不用临时密码、不用点允许；别人的电脑要输临时密码、对方点允许
+// - POST wake：叫醒我的设备（protocol.ts 的 wake）：账号下开着的别的电脑帮忙发唤醒包，回答是哪一台帮忙发了
 export interface WebOptions {
     tickets: Tickets;
     sessions: WebSessions;
@@ -32,6 +33,10 @@ const HOUR_S = 3600;
 const failureStatus: Record<AccountFailure, number> = {
     emailTaken: 409, noAccount: 404, wrongPassword: 401, wrongCode: 401, tooMany: 429, mailLimit: 503,
     mailFailed: 502,
+};
+
+const wakeStatus: Record<Exclude<WakeResult, 'sent'>, number> = {
+    online: 409, noInfo: 409, disabled: 409, noHelper: 409, elsewhere: 409, failed: 502, tooMany: 429, notMine: 404,
 };
 
 function cookieValue(request: FastifyRequest): string | null {
@@ -73,7 +78,8 @@ export function registerWeb(app: FastifyInstance, hub: Hub, sources: HubSources,
             const current = accountId ? await hub.webView(accountId) : null;
             return {
                 account: current?.account ?? null,
-                devices: (current?.devices ?? []).map(({ deviceId, name, platform, online }) => ({ deviceId, name, platform, online })),
+                devices: (current?.devices ?? [])
+                    .map(({ deviceId, name, platform, online, wake }) => ({ deviceId, name, platform, online, wake })),
             };
         };
 
@@ -160,6 +166,17 @@ export function registerWeb(app: FastifyInstance, hub: Hub, sources: HubSources,
             if (answer !== '')
                 return reply.code(409).send({ error: 'declined', reason: answer });
             return { ticket: await tickets.issue({ room, role: 'view' }), ...(key ? { key } : {}) };
+        });
+
+        web.post<{ Body: { deviceId?: unknown } }>('/wake', async (request, reply) => {
+            const deviceId = request.body?.deviceId;
+            if (typeof deviceId !== 'string' || !DEVICE_ID.test(deviceId))
+                return reply.code(400).send({ error: 'invalid' });
+            const accountId = await accountOf(request);
+            if (!accountId)
+                return reply.code(401).send({ error: 'signedOut' });
+            const { result, helper } = await hub.wake(accountId, deviceId, null);
+            return result === 'sent' ? { helper } : reply.code(wakeStatus[result]).send({ error: result });
         });
     }, { prefix: '/web' });
 }

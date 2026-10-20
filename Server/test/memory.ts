@@ -8,17 +8,22 @@ import {
 import { CODE_TTL_S, codeHash, MAX_TRIES, newCode, type Codes } from '../src/codes.js';
 import type { Limiter } from '../src/limiter.js';
 import type { Mail, Mailer } from '../src/mail.js';
-import type { CodePurpose } from '../src/protocol.js';
+import type { CodePurpose, WakeAnswerResult, WakeInterface } from '../src/protocol.js';
 import type { DailyCounter, Stats } from '../src/stats.js';
 import { TICKET } from '../src/protocol.js';
 import type { RelayLoad, RelayStatus } from '../src/relay-load.js';
 import { newTicket, type Ticket, type Tickets } from '../src/tickets.js';
+import type { Wakes } from '../src/wakes.js';
 import { newWebSession, WEB_SESSION, type WebSessions } from '../src/web-sessions.js';
 import type { ClaimResult, DeviceClaim, DeviceRecord, Registry } from '../src/registry.js';
 
+function record(d: DeviceClaim & { wake?: WakeInterface[] }): DeviceRecord {
+    return { id: d.id, name: d.name, platform: d.platform, publicKey: d.publicKey, machine: d.machine, wake: d.wake ?? [] };
+}
+
 // 测试用：内存里的设备登记表，规则和 MongoRegistry 一样（太久没上线的删掉由 MongoDB 做，这里只记时间）
 export class MemoryRegistry implements Registry {
-    readonly devices = new Map<string, DeviceClaim & { accountId: string | null; lastSeenAt: number }>();
+    readonly devices = new Map<string, DeviceClaim & { accountId: string | null; lastSeenAt: number; wake?: WakeInterface[] }>();
 
     async exists(id: string): Promise<boolean> {
         return this.devices.has(id);
@@ -53,7 +58,13 @@ export class MemoryRegistry implements Registry {
     async bind(id: string, accountId: string | null): Promise<void> {
         const existing = this.devices.get(id);
         if (existing)
-            this.devices.set(id, { ...existing, accountId });
+            this.devices.set(id, { ...existing, accountId, wake: [] });
+    }
+
+    async setWake(id: string, interfaces: WakeInterface[]): Promise<void> {
+        const existing = this.devices.get(id);
+        if (existing)
+            this.devices.set(id, { ...existing, wake: interfaces });
     }
 
     async accountOf(id: string): Promise<string | null> {
@@ -62,13 +73,13 @@ export class MemoryRegistry implements Registry {
 
     async device(id: string): Promise<DeviceRecord | null> {
         const d = this.devices.get(id);
-        return d ? { id: d.id, name: d.name, platform: d.platform, publicKey: d.publicKey, machine: d.machine } : null;
+        return d ? record(d) : null;
     }
 
     async devicesOf(accountId: string): Promise<DeviceRecord[]> {
         return [...this.devices.values()]
             .filter((d) => d.accountId === accountId)
-            .map((d) => ({ id: d.id, name: d.name, platform: d.platform, publicKey: d.publicKey, machine: d.machine }));
+            .map(record);
     }
 
     async adopt(to: string, from: string): Promise<void> {
@@ -82,8 +93,10 @@ export class MemoryRegistry implements Registry {
 
     async unbindAll(accountId: string): Promise<void> {
         for (const device of this.devices.values()) {
-            if (device.accountId === accountId)
+            if (device.accountId === accountId) {
                 device.accountId = null;
+                device.wake = [];
+            }
         }
     }
 }
@@ -379,6 +392,23 @@ export class MemoryTickets implements Tickets {
 
     async answered(ticket: string): Promise<string | null> {
         return this.#answers.get(ticket) ?? null;
+    }
+
+    async close(): Promise<void> {}
+}
+
+// 测试用：帮忙叫醒的电脑的回答
+export class MemoryWakes implements Wakes {
+    readonly #answers = new Map<string, Map<string, WakeAnswerResult>>();
+
+    async answer(request: string, helper: string, result: WakeAnswerResult): Promise<void> {
+        const answers = this.#answers.get(request) ?? new Map<string, WakeAnswerResult>();
+        answers.set(helper, result);
+        this.#answers.set(request, answers);
+    }
+
+    async answers(request: string): Promise<Map<string, WakeAnswerResult>> {
+        return new Map(this.#answers.get(request));
     }
 
     async close(): Promise<void> {}

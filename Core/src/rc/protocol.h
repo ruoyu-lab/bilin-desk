@@ -80,6 +80,8 @@ inline constexpr QLatin1StringView ResetPassword{"resetPassword"};
 inline constexpr QLatin1StringView SignOut{"signOut"};
 // deviceId：把账号下的另一台设备移出账号
 inline constexpr QLatin1StringView RemoveDevice{"removeDevice"};
+// deviceId：请服务器叫醒账号下睡着的这台（账号下开着的别的电脑帮忙发唤醒包），结果是 wakeResult 事件
+inline constexpr QLatin1StringView Wake{"wake"};
 // 清空本机的连接记录
 inline constexpr QLatin1StringView ClearHistory{"clearHistory"};
 // 下载、安装新版本（update 主题里的 available）。装的时候后台服务、界面程序都会被关掉，装完再打开
@@ -152,6 +154,9 @@ inline constexpr QLatin1StringView NotConnected{"notConnected"};
 // feedbackLogs（事件名和命令一样）：logs（packLogs）是后台服务的日志
 // 反馈交给服务器了
 inline constexpr QLatin1StringView FeedbackSent{"feedbackSent"};
+// deviceId、result、helper：叫醒我的设备 deviceId（Wake）的结果。result 见 Server/src/protocol.ts 的 WakeResult，
+// 另有 noServer（本机没连上服务器）；helper：发了唤醒包的那台的名字
+inline constexpr QLatin1StringView WakeResult{"wakeResult"};
 // reason：反馈没交上。tooMany（今天提交得太多了）| noServer（连不上服务器）| failed（服务器不收，别的错）
 inline constexpr QLatin1StringView FeedbackFailed{"feedbackFailed"};
 inline constexpr QLatin1StringView Failed{"failed"};
@@ -239,7 +244,8 @@ struct NearbyState
     friend bool operator==(const NearbyState &, const NearbyState &) = default;
 };
 
-// 账号下的一台设备。publicKey：设备密钥的公钥（base64），用来认出它
+// 账号下的一台设备。publicKey：设备密钥的公钥（base64），用来认出它；wake：能不能请别的电脑叫醒它
+// （none：它没告诉过服务器网卡 | disabled：网卡都没开网络唤醒 | ready）
 struct AccountDevice
 {
     QString deviceId;
@@ -247,6 +253,7 @@ struct AccountDevice
     QString platform;
     QString publicKey;
     bool online = false;
+    QString wake;
 
     QJsonObject toJson() const;
     static AccountDevice fromJson(const QJsonObject &json);
@@ -277,6 +284,7 @@ struct AccountState
 //   file        和它互传的文件：file 是第一项的名字（count 项），bytes 是大小，sent：本机发出去的
 //   updated     程序自己更新到了 version（docs/admin.md）
 //   power       我的设备 deviceId 让本机 action（restart | shutDown | sleep | signOut）
+//   wake        本机帮忙叫醒了我的设备 deviceId（远程唤醒）：by 是要叫醒它的那台设备的名字，网页版是空的
 struct HistoryEntry
 {
     int id = 0;
@@ -293,6 +301,7 @@ struct HistoryEntry
     bool sent = false;
     QString version;
     QString action;
+    QString by;
 
     QJsonObject toJson() const;
     static HistoryEntry fromJson(const QJsonObject &json);

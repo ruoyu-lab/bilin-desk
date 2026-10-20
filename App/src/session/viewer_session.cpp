@@ -152,7 +152,20 @@ ViewerSession::ViewerSession(const QString &target, ServiceClient &service, void
         if (!deviceId_.isEmpty())
             DeviceWake::instance()->remember(deviceId_, interfaces);
     });
-    connect(DeviceWake::instance(), &DeviceWake::changed, this, &ViewerSession::wakeChanged);
+    connect(DeviceWake::instance(), &DeviceWake::changed, this, [this] {
+        emit wakeChanged();
+        // 在等它醒：叫得怎么样了跟着换（请别的电脑帮忙的回答稍后才来）
+        if (powerWait_.action == Waking)
+            setStatus(connectingStatus(), wakeNote());
+    });
+    // 请别的电脑帮忙没成：不用等了，说为什么
+    connect(DeviceWake::instance(), &DeviceWake::failed, this, [this](const QString &deviceId) {
+        if (deviceId != deviceId_ || powerWait_.action != Waking)
+            return;
+        powerWait_ = {};
+        stop();
+        setStatus(QStringLiteral("failed"), DeviceWake::instance()->status(deviceId_));
+    });
     // 本机的解码器列好了，等着的连接接着连
     connect(&codecs_, &LocalCodecs::readyChanged, this, [this] {
         if (waitingForCodecs_)
@@ -885,7 +898,7 @@ void ViewerSession::waitForPeer()
                                                : tr("对方注销以后一直没连上"));
         return;
     }
-    setStatus(connectingStatus());
+    setStatus(connectingStatus(), powerWait_.action == Waking ? wakeNote() : QString());
     // 不在线时到点再试最后一次（连不上就说没回来）
     retryTimer_.start(peerOnline() ? PowerRetryMs : int(powerWait_.until.remainingTime()));
 }
@@ -895,10 +908,19 @@ QString ViewerSession::wakeProblem() const
     return DeviceWake::instance()->problem(deviceId_);
 }
 
+// 叫它叫得怎么样了（从本机发的，还是哪台帮忙发的）；它上线了、没叫过时是空的
+QString ViewerSession::wakeNote() const
+{
+    const DeviceWake *wake = DeviceWake::instance();
+    return wake->state(deviceId_).isEmpty() ? QString() : wake->status(deviceId_);
+}
+
 void ViewerSession::wake()
 {
-    if (!DeviceWake::instance()->wake(deviceId_))
+    if (!DeviceWake::instance()->wake(deviceId_)) {
+        setStatus(QStringLiteral("failed"), DeviceWake::instance()->status(deviceId_));
         return;
+    }
     powerWait_ = {Waking, QDeadlineTimer(WakeWaitMs)};
     peerWasOnline_ = peerOnline();
     waitForPeer();
