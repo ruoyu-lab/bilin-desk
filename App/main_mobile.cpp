@@ -85,7 +85,8 @@ int main(int argc, char *argv[])
     Feedback::setInstance(&feedback);
     DeviceDirectory devices(service, account, directory + QStringLiteral("/devices.json"), &app);
     DeviceDirectory::setInstance(&devices);
-    DeviceWake wake(directory + QStringLiteral("/wake.json"), &app);
+    // 网络唤醒：同一个网络里从本机发（iPhone、iPad 发不了），不然请账号下开着的电脑帮忙
+    DeviceWake wake(service, account, directory + QStringLiteral("/wake.json"), &app);
     DeviceWake::setInstance(&wake);
     Conversations conversations(directory + QStringLiteral("/chats"), &app);
     ViewGraphics viewGraphics(&app);
