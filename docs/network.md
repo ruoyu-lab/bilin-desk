@@ -69,8 +69,11 @@
 
 bilindesk.com（Rocky Linux 9，不到 1 GB 内存，在首尔）：
 
-- 程序连 `wss://www.bilindesk.com/ws`（Nginx，443 端口）。证书是 Let's Encrypt 的，程序按系统信任的证书机构校验；
+- 程序连 `wss://www.bilindesk.com/ws`（443 端口）。证书是 Let's Encrypt 的，程序按系统信任的证书机构校验；
   换服务器时把域名指过去就行，不用发新版程序
+- 443 端口上是 Xray（服务器主人自己用的 VPN，Reality）：不是 VPN 的连接它原样转给本机的 Nginx（127.0.0.1:4443），
+  前面带着 PROXY 协议说真实的地址（`Server/deploy/nginx/01-realip.conf`），所以网站、程序的长连接、网页版的转发照常，
+  服务端看到的还是设备的真实地址（限速按它）。网站的配置只听 127.0.0.1:4443，别听 443（会和 Xray 抢端口）
 - 域名的解析不能经 CDN 代理（Cloudflare 的"仅 DNS"）：中继跟着设备连服务器用的主机名，要直接连到这台服务器
 - coturn：3478（UDP、TCP），中继端口 49152–49407（UDP）。服务器在 NAT 后面：中继地址用内网地址，
   告诉设备公网地址（external-ip）；两个中继分配之间经公网地址转发是通的

@@ -111,6 +111,8 @@ Redis 里的（谁在线、限速的计数、登录的会话）不用备份：�
   云服务商控制台里的防火墙（安全组）也只放行这些
 - 系统的安全更新每天自动装（dnf-automatic），不自动重启：内核的更新等下次重启
 - MongoDB、Redis、服务端、管理后台都只听本机；服务端、后台以 bilin 用户运行，不用 root
+- 443 上是服务器主人的 VPN（Xray，Reality），网站的 https 由它转给 Nginx 的 127.0.0.1:4443（docs/network.md）；
+  部署时别动它的配置（`/usr/local/etc/xray/`）
 - Nginx 不说版本号；管理后台的网页不能被别的网站嵌进去，只用自己的脚本和样式（Content-Security-Policy）
 
 还可以做的（没做）：SELinux 现在是关着的，打开要重新标记整个文件系统、重启；MongoDB、Redis 没有密码（只听本机）。

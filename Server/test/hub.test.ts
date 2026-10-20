@@ -649,6 +649,18 @@ describe('Hub', () => {
         expect(await accounts.verify('li@example.com', 'password9')).not.toBeNull();
     });
 
+    // 停止（PM2 平滑重启）：连着的设备都断了、下线做完了（Redis 里不在线了）才算关好，之后才能断开 Redis
+    it('closes only after the devices connected to it have gone offline', async () => {
+        const device = await login(first, '111111111', 1);
+        let closed = false;
+        const closing = first.close().then(() => (closed = true));
+        await settle();
+        expect(closed).toBe(false);
+        device.connection.closed();
+        await closing;
+        expect(await broker.bus().online(['111111111'])).toEqual(new Set());
+    });
+
     // ---- 远程唤醒 ----
 
     const nic = (mac: string, wake: WakeInterface['wake'] = 'enabled'): WakeInterface =>

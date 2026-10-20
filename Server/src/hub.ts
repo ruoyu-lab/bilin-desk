@@ -168,6 +168,9 @@ export class Hub {
     readonly #log: Log;
     readonly #options: HubOptions;
     readonly #devices = new Map<string, Connection>();
+    // 所有的连接（还没登录的也算），断了、下线做完了才拿掉：停止时等它们（close）
+    readonly #connections = new Set<Connection>();
+    #drained: (() => void) | null = null;
     readonly #presence: NodeJS.Timeout;
     readonly #seen: NodeJS.Timeout;
 
@@ -190,16 +193,32 @@ export class Hub {
     }
 
     connect(peer: Peer): Connection {
-        return new Connection(this, peer, this.#log, this.#options);
+        const connection = new Connection(this, peer, this.#log, this.#options);
+        this.#connections.add(connection);
+        return connection;
     }
 
     get onlineCount(): number {
         return this.#devices.size;
     }
 
-    close(): void {
+    // 停止：连接都断了、登录过的都下线了（Redis、数据库里）才算完，之后才能断开 Redis、数据库
+    async close(): Promise<void> {
         clearInterval(this.#presence);
         clearInterval(this.#seen);
+        if (this.#connections.size > 0)
+            await new Promise<void>((resolve) => (this.#drained = resolve));
+    }
+
+    // 一条连接断了：登录过的下线；下线出错（Redis、数据库连不上）记下来
+    disconnected(connection: Connection, deviceId: string | null): void {
+        void (deviceId ? this.logout(connection, deviceId) : Promise.resolve())
+            .catch((error: unknown) => this.#log.error({ err: error, deviceId }, '设备下线时出错'))
+            .finally(() => {
+                this.#connections.delete(connection);
+                if (this.#connections.size === 0)
+                    this.#drained?.();
+            });
     }
 
     // ---- Connection 用的 ----
@@ -731,8 +750,7 @@ export class Connection {
         this.#closed = true;
         clearTimeout(this.#helloTimer);
         clearTimeout(this.#iceTimer);
-        if (this.#deviceId)
-            void this.#hub.logout(this, this.#deviceId);
+        this.#hub.disconnected(this, this.#deviceId);
     }
 
     send(message: ServerMessage): void {

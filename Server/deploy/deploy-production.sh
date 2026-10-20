@@ -2,7 +2,8 @@
 # 把服务端、管理后台、官网、网页版部署到正式的服务器（setup-production.sh 装好的）。在这台电脑上编译，只把运行要的文件
 # 传上去：服务端编出来的 dist、package*.json、PM2 的配置、发布公钥；官网、管理后台、网页版编出来的网页（网页版带
 # SDK 的浏览器包，scripts/build-web-sdk.sh 编，要 Emscripten）。
-# 服务器上证书补上缺的名字、装依赖、PM2 平滑重启两个实例和管理后台、装 Nginx 的配置（每个域名一份）
+# 服务器上证书补上缺的名字、装依赖、PM2 平滑重启两个实例和管理后台、装 Nginx 的配置（每个域名一份）。
+# 服务器上 443 是 Xray（VPN，Reality），网站的 https 由它转给 Nginx 的 127.0.0.1:4443（nginx/01-realip.conf）
 #
 #   Server/deploy/deploy-production.sh
 #   RC_HOST=root@另一台 Server/deploy/deploy-production.sh
@@ -43,6 +44,7 @@ rsync -a --delete "$stage/web/" "$host:/var/www/web.$domain/"
 for site in "$domain" "admin.$domain" "web.$domain"; do
     scp -q "$server/deploy/nginx/$site.conf" "$host:/etc/nginx/conf.d/$site.conf"
 done
+scp -q "$server/deploy/nginx/01-realip.conf" "$host:/etc/nginx/conf.d/01-realip.conf"
 
 ssh "$host" bash -s -- "$domain" <<'EOF'
 set -eu

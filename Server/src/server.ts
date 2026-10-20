@@ -45,7 +45,15 @@ export async function buildServer(options: ServerOptions): Promise<{ app: Fastif
     app.addHook('onClose', async () => hub.close());
     const heartbeatMs = options.heartbeatMs ?? 30_000;
 
-    await app.register(websocket, { options: { maxPayload: 64 * 1024 } });
+    // 停止时直接断开连着的设备，不等关闭握手（它们马上重连到另一个实例）：Hub 等它们都下线了才算关好
+    await app.register(websocket, {
+        options: { maxPayload: 64 * 1024 },
+        preClose(done) {
+            for (const client of this.websocketServer.clients)
+                client.terminate();
+            this.websocketServer.close(() => done());
+        },
+    });
 
     app.get('/health', async () => ({ ok: true, online: hub.onlineCount }));
 
