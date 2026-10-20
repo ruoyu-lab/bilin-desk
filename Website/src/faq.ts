@@ -7,7 +7,7 @@ export const faq: { question: string; answer: string }[] = [
   {
     question: '比邻支持哪些系统？',
     answer:
-      '电脑上支持 macOS 14 及以上（Apple 芯片）和 Windows 10 及以上（64 位）；手机上可以用 Android 版（Android 10 及以上）连接并控制电脑，手机本身不会被远程控制。',
+      '电脑上支持 macOS 14 及以上（Apple 芯片）和 Windows 10 及以上（64 位）；手机上可以用 Android 版（Android 10 及以上）连接并控制电脑，手机本身不会被远程控制。不想安装时，也可以在 Chrome、Edge 里用网页版连接电脑。',
   },
   {
     question: '怎么远程控制别人的电脑？',
@@ -23,6 +23,11 @@ export const faq: { question: string; answer: string }[] = [
     question: '能用手机控制电脑吗？',
     answer:
       '可以。手机上安装 Android 版比邻，输入电脑的设备 ID 就能连接。手指可以当触摸板用，也可以直接点；接上键盘、鼠标后按键会直接发给电脑。',
+  },
+  {
+    question: '能在浏览器里用吗？',
+    answer:
+      '能。用 Chrome 或 Edge 打开网页版（web.bilindesk.com），不用安装就能控制装了比邻的电脑：登录账号后自己的电脑直接连，别人的电脑输入设备 ID 和临时密码、对方点允许。网页版画面最高 1080p、每秒 30 帧，更清晰流畅的画面请用客户端。',
   },
   {
     question: '不在同一个网络也能连吗？',

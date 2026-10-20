@@ -17,7 +17,7 @@ const structured = [
     alternateName: 'Bilin',
     url: site,
     image: `${site}og.png`,
-    description: '免费、开源的远程桌面软件，支持 Windows 和 macOS，也能用 Android 手机连接、控制电脑，全程端到端加密。',
+    description: '免费、开源的远程桌面软件，支持 Windows 和 macOS，也能用 Android 手机或浏览器（网页版）连接、控制电脑，全程端到端加密。',
     applicationCategory: 'UtilitiesApplication',
     operatingSystem: 'Windows 10, Windows 11, macOS 14, Android 10',
     downloadUrl: `${site}#download`,

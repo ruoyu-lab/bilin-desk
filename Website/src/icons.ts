@@ -1,5 +1,5 @@
 import {
-  apple, bell, bolt, clock, copy, displays, download, file, heart, home, monitor, people, plus, power, radar,
+  apple, bell, bolt, clock, copy, displays, download, file, globe, heart, home, monitor, people, plus, power, radar,
   refresh, search, server, settings, shield, star, wifi, windows, x
 } from '@shared/icons'
 
@@ -13,6 +13,7 @@ export const icons = {
   displays,
   download,
   file,
+  globe,
   heart,
   home,
   monitor,

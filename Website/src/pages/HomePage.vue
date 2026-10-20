@@ -6,6 +6,7 @@ import type { IconName } from '../icons'
 import SiteFooter from '../components/SiteFooter.vue'
 import SiteHeader from '../components/SiteHeader.vue'
 import { faq } from '../faq'
+import { WEB_URL } from '../links'
 import { loadReleases, megabytes, releases, type Platform } from '../releases'
 
 onMounted(loadReleases)
@@ -63,7 +64,7 @@ const features: { icon: IconName; title: string; text: string; tags: string[] }[
   {
     icon: 'power',
     title: '无人值守访问',
-    text: '本人设备开机即可连接，可在锁屏界面解锁，Windows 上支持发送 Ctrl+Alt+Del；设备重启后自动恢复在线，也可由同一网络内的其他设备远程唤醒。',
+    text: '本人设备开机即可连接，可在锁屏界面解锁，Windows 上支持发送 Ctrl+Alt+Del；设备重启后自动恢复在线。睡眠或关机后，可由同一网络内开着的另一台设备代为远程唤醒，人在外面也能叫醒。',
     tags: ['锁屏解锁', '远程唤醒'],
   },
 ]
@@ -123,10 +124,14 @@ const cards = computed(() =>
           <LineIcon name="download" :size="18" :stroke="2" />
           下载 Windows 版
         </a>
+        <a :href="WEB_URL" class="button">
+          <LineIcon name="globe" :size="18" :stroke="2" />
+          打开网页版
+        </a>
       </div>
       <div class="requirements">
         支持 macOS 14 及以上（Apple 芯片）与 Windows 10 及以上（64 位）；手机上可用
-        <a href="#download">Android 版</a>连接电脑
+        <a href="#download">Android 版</a>，浏览器里可用<a :href="WEB_URL">网页版</a>连接电脑
       </div>
       <AppWindowMock class="mock" />
     </section>
@@ -194,6 +199,16 @@ const cards = computed(() =>
           <span v-else-if="card.state === 'unpublished'" class="version">即将发布，敬请期待</span>
           <span v-else class="version">暂时无法获取安装包，请稍后重试</span>
         </div>
+      </div>
+      <div class="web-card">
+        <div class="web-text">
+          <h3>网页版</h3>
+          <p>不想安装？用 Chrome 或 Edge 打开网页版就能连接、控制装了比邻的电脑：登录账号后自己的电脑直接连，别人的电脑输入设备 ID 和临时密码。画面最高 1080p、每秒 30 帧，更清晰流畅的画面请用客户端。</p>
+        </div>
+        <a :href="WEB_URL" class="button primary">
+          <LineIcon name="globe" :size="18" :stroke="2" />
+          打开网页版
+        </a>
       </div>
       <p class="update-note">安装后可在应用内检查并获取更新。</p>
     </section>
@@ -444,6 +459,39 @@ h1 {
 .version {
   font-size: 13px;
   color: var(--text-muted);
+}
+
+.web-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 32px;
+  padding: 28px;
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.web-text {
+  flex: 1 1 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.web-text h3 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.web-text p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.web-card .button {
+  font-size: 14px;
+  padding: 11px 20px;
 }
 
 .update-note {

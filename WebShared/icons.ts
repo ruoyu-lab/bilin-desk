@@ -17,6 +17,7 @@ export const database: Icon = { paths: ['M20 5c0 1.7-3.6 3-8 3S4 6.7 4 5s3.6-3 8
 export const displays: Icon = { paths: ['M3.5 4h10a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 2 11.5v-6A1.5 1.5 0 0 1 3.5 4z', 'M10.5 11h10a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 9 18.5v-6a1.5 1.5 0 0 1 1.5-1.5z'] }
 export const download: Icon = { paths: ['M12 3v12', 'm7 10 5 5 5-5', 'M5 21h14'] }
 export const file: Icon = { paths: ['M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z', 'M14 3v6h6', 'M12 12v6', 'm9 15 3 3 3-3'] }
+export const globe: Icon = { paths: ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0z', 'M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20', 'M2 12h20'] }
 export const heart: Icon = { paths: ['M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z'] }
 export const home: Icon = { paths: ['M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8', 'M3 10a2 2 0 0 1 .7-1.5l7-6a2 2 0 0 1 2.6 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'] }
 export const info: Icon = { paths: ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0z', 'M12 16v-4', 'M12 8h.01'] }
