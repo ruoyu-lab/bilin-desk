@@ -143,12 +143,13 @@ Redis 里的（谁在线、限速的计数、登录的会话）不用备份：�
 | 服务端、管理后台的接口 | `/opt/bilin/server`（bilin 用户，PM2 的 `bilin-server` ×2 在 3000 端口、`bilin-admin` 在 3100 端口） |
 | 官网的网页 | `/var/www/bilindesk.com` |
 | 管理后台的网页 | `/var/www/admin.bilindesk.com` |
+| 网页版 | `/var/www/web.bilindesk.com`（转发进程是 PM2 的 `bilin-relay`，3200 端口） |
 | 发布的新版本、备份 | `/var/lib/bilin/updates`、`/var/lib/bilin/backups` |
 | 中继的共享密钥、后台密码的哈希、发邮件的密钥 | `/etc/bilin` |
 | 日志 | `/var/log/bilin`（Nginx 的出错日志、coturn），`/opt/bilin/.pm2/logs`；都只留 14 天 |
-| Nginx | `/etc/nginx/conf.d/bilindesk.com.conf`、`admin.bilindesk.com.conf`；不认识的域名、直接用 IP 来的由 `00-default.conf` 回答 |
+| Nginx | `/etc/nginx/conf.d/bilindesk.com.conf`、`admin.bilindesk.com.conf`、`web.bilindesk.com.conf`、`01-realip.conf`；不认识的域名、直接用 IP 来的由 `00-default.conf` 回答。443 是 Xray 的，网站都听 127.0.0.1:4443（docs/network.md） |
 | 证书 | Let's Encrypt（`/etc/letsencrypt/live/bilindesk.com`），一张带着 bilindesk.com、www、admin、web，部署时缺了名字就补上；certbot 的定时任务自己续期，续好了重新加载 Nginx |
 
 同一台服务器以后再放别的网站：程序放在它自己的目录、用它自己的用户和端口（不要用 3000、3100），
-Nginx 在 `conf.d` 里加一份按它的域名起名的配置；新域名先 `certbot certonly --webroot -w /var/www/letsencrypt -d 域名`
+Nginx 在 `conf.d` 里加一份按它的域名起名的配置（https 听 127.0.0.1:4443、带 `proxy_protocol`）；新域名先 `certbot certonly --webroot -w /var/www/letsencrypt -d 域名`
 申请证书（验证请求由 `00-default.conf` 回答），再装它的配置。
