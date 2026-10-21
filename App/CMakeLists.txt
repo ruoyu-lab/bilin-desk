@@ -373,8 +373,15 @@ if(BILIN_MOBILE)
     target_compile_definitions(Bilin PRIVATE RC_SERVER_URL="${RC_SERVER_URL}")
     # 苹果系统上是 .app 包（iOS 必须是；Mac 上预览时也是，不然程序和 QML 模块的目录 Bilin/ 同名）
     set_target_properties(Bilin PROPERTIES MACOSX_BUNDLE TRUE)
-    # 商店里比新旧的那个数（Android 的 versionCode、iOS 的 CFBundleVersion）：0.1.0 记成 100，每次发布数字变大
-    math(EXPR mobile_version_code "${PROJECT_VERSION_MAJOR} * 10000 + ${PROJECT_VERSION_MINOR} * 100 + ${PROJECT_VERSION_PATCH}")
+    # 商店里比新旧的那个数（Android 的 versionCode、iOS 的 CFBundleVersion）：每段两位，0.1.5 记成 10500、0.1.5.1 记成
+    # 10501，每次发布数字变大（0.1.5 以前的记法是 105，新的都比它大）
+    if(PROJECT_VERSION_TWEAK)
+        set(version_tweak ${PROJECT_VERSION_TWEAK})
+    else()
+        set(version_tweak 0)
+    endif()
+    math(EXPR mobile_version_code
+         "${PROJECT_VERSION_MAJOR} * 1000000 + ${PROJECT_VERSION_MINOR} * 10000 + ${PROJECT_VERSION_PATCH} * 100 + ${version_tweak}")
     if(ANDROID)
         # 画面做成外部纹理（frame_textures_android.cpp：EGLImage）；系统的文件选择器要 Qt 的私有接口
         #（android_file_picker.cpp，QtAndroidPrivate::startActivity）
