@@ -120,7 +120,7 @@ Redis 里的（谁在线、限速的计数、登录的会话）不用备份：�
 
 ## 邮件
 
-注册、找回密码的验证码经 [Resend](https://resend.com) 发（`Server/src/mail.ts`，免费额度每月 3000 封、每天 100 封；服务端自己一天最多发 90 封）。
+注册、找回密码的验证码经 [Resend](https://resend.com) 发（`Server/src/mail.ts`，免费额度每月 3000 封、每天 100 封，同一个团队里 KumoChart、另一个项目也在用；服务端自己一天最多发 10 封）。
 第一次配：
 
 1. Resend 里 Domains › Add Domain：`bilindesk.com`，把它给的几条 DNS 记录（DKIM 的 TXT、`send` 子域名的 MX 和 SPF 的 TXT）

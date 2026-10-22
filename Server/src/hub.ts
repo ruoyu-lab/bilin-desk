@@ -116,7 +116,8 @@ export const defaultHubOptions: HubOptions = {
         codeIntervalS: 60,
         codesPerEmail: 5,
         codesPerAddress: 10,
-        mailsPerDay: 90,
+        // Resend 同一个团队每天一共 100 封：比邻 10、KumoChart 40、另一个项目 50
+        mailsPerDay: 10,
         wakesPerAccount: 6,
         wakeIntervalS: 10,
     },
