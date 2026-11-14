@@ -3,13 +3,13 @@
 # 传上去：服务端编出来的 dist、package*.json、PM2 的配置、发布公钥；官网、管理后台、网页版编出来的网页（网页版带
 # SDK 的浏览器包，scripts/build-web-sdk.sh 编，要 Emscripten）。
 # 服务器上证书补上缺的名字、装依赖、PM2 平滑重启两个实例和管理后台、装 Nginx 的配置（每个域名一份）。
-# 服务器上 443 是 Xray（VPN，Reality），网站的 https 由它转给 Nginx 的 127.0.0.1:4443（nginx/01-realip.conf）
+# 登录服务器的用户有免密 sudo，要 root 的都经 sudo
 #
 #   Server/deploy/deploy-production.sh
-#   RC_HOST=root@另一台 Server/deploy/deploy-production.sh
+#   RC_HOST=ubuntu@另一台 Server/deploy/deploy-production.sh
 set -eu
 
-host="${RC_HOST:-root@bilindesk.com}"
+host="${RC_HOST:-ubuntu@bilindesk.com}"
 domain=bilindesk.com
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 server="$root/Server"
@@ -37,25 +37,28 @@ cp -R "$server/admin/dist/." "$stage/admin/"
 cp -R "$root/Web/dist/." "$stage/web/"
 
 # node_modules 在服务器上装（--delete 不删它）。文件的所有者、权限传完以后在服务器上设（macOS 的 rsync 设不了）
-rsync -a --delete --exclude node_modules "$stage/server/" "$host:/opt/bilin/server/"
-rsync -a --delete "$stage/www/" "$host:/var/www/$domain/"
-rsync -a --delete "$stage/admin/" "$host:/var/www/admin.$domain/"
-rsync -a --delete "$stage/web/" "$host:/var/www/web.$domain/"
+as_root() {
+    rsync --rsync-path="sudo rsync" "$@"
+}
+as_root -a --delete --exclude node_modules "$stage/server/" "$host:/opt/bilin/server/"
+as_root -a --delete "$stage/www/" "$host:/var/www/$domain/"
+as_root -a --delete "$stage/admin/" "$host:/var/www/admin.$domain/"
+as_root -a --delete "$stage/web/" "$host:/var/www/web.$domain/"
 for site in "$domain" "admin.$domain" "web.$domain"; do
-    scp -q "$server/deploy/nginx/$site.conf" "$host:/etc/nginx/conf.d/$site.conf"
+    as_root "$server/deploy/nginx/$site.conf" "$host:/etc/nginx/conf.d/$site.conf"
 done
-scp -q "$server/deploy/nginx/01-realip.conf" "$host:/etc/nginx/conf.d/01-realip.conf"
 
-ssh "$host" bash -s -- "$domain" <<'EOF'
+ssh "$host" sudo bash -s -- "$domain" <<'EOF'
 set -eu
 domain="$1"
 chown -R bilin:bilin /opt/bilin/server
 chown -R root:root "/var/www/$domain" "/var/www/admin.$domain" "/var/www/web.$domain"
+chown root:root /etc/nginx/conf.d/$domain.conf "/etc/nginx/conf.d/admin.$domain.conf" "/etc/nginx/conf.d/web.$domain.conf"
 chmod -R u=rwX,go=rX "/var/www/$domain" "/var/www/admin.$domain" "/var/www/web.$domain"
-# 证书：一张带上所有的名字，缺了就补上（新名字由 00-default.conf 回答验证）；都有、还没到期时什么也不做
+# 证书：一张带上所有的名字，缺了就补上（新名字由它那份配置的 http 回答验证）；都有、还没到期时什么也不做
 certbot certonly --webroot -w /var/www/letsencrypt --cert-name "$domain" \
     -d "$domain" -d "www.$domain" -d "admin.$domain" -d "web.$domain" \
-    --expand --non-interactive --agree-tos --register-unsafely-without-email --keep-until-expiring --quiet
+    --deploy-hook "systemctl reload nginx" --expand --non-interactive --agree-tos --register-unsafely-without-email --keep-until-expiring --quiet
 as_bilin() {
     runuser -u bilin -- env HOME=/opt/bilin PATH="$PATH" "$@"
 }

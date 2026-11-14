@@ -67,19 +67,17 @@
 
 ## 正式的服务器
 
-bilindesk.com（Rocky Linux 9，不到 1 GB 内存，在首尔）：
+bilindesk.com（甲骨文 ARM，Ubuntu 24.04，2 核 12 GB，在大阪；2026-11 从首尔的阿里云搬来，和别的网站同住）：
 
 - 程序连 `wss://www.bilindesk.com/ws`（443 端口）。证书是 Let's Encrypt 的，程序按系统信任的证书机构校验；
   换服务器时把域名指过去就行，不用发新版程序
-- 443 端口上是 Xray（服务器主人自己用的 VPN，Reality）：不是 VPN 的连接它原样转给本机的 Nginx（127.0.0.1:4443），
-  前面带着 PROXY 协议说真实的地址（`Server/deploy/nginx/01-realip.conf`），所以网站、程序的长连接、网页版的转发照常，
-  服务端看到的还是设备的真实地址（限速按它）。网站的配置只听 127.0.0.1:4443，别听 443（会和 Xray 抢端口）
+- Nginx 直接听 443，每个域名一份配置；服务端看到的是设备的真实地址（限速按它）
 - 域名的解析不能经 CDN 代理（Cloudflare 的"仅 DNS"）：中继跟着设备连服务器用的主机名，要直接连到这台服务器
 - coturn：3478（UDP、TCP），中继端口 49152–49407（UDP）。服务器在 NAT 后面：中继地址用内网地址，
   告诉设备公网地址（external-ip）；两个中继分配之间经公网地址转发是通的
 - 装：`Server/deploy/setup-production.sh`；部署：`Server/deploy/deploy-production.sh`（服务器上放了什么见 [admin.md](admin.md)）。
-  防火墙只加这几个端口，服务器上原有的东西不动
-- 云服务商控制台里的防火墙也要放行：TCP 80、443，TCP 和 UDP 3478，UDP 49152–49407
+  防火墙（iptables）只加这几个端口，插在最后那条 REJECT 前面，服务器上原有的东西不动
+- 甲骨文控制台里的安全列表也要放行：TCP 80、443，TCP 和 UDP 3478，UDP 49152–49407
 - 安装包连正式的服务器（`-DRC_SERVER_URL=wss://www.bilindesk.com/ws`），开发版（build 目录里直接运行的）连 Mac 上的虚拟机
 
 ## 开发环境的 coturn

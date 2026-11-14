@@ -29,6 +29,6 @@ if [ "${1:-}" = dev ]; then
     printf '%s' "$password" | orb -m "${RC_MACHINE:-bilin-dev}" bash -c \
         "sudo node $script $file && sudo chown \"\$(id -u):\$(id -g)\" $file"
 else
-    printf '%s' "$password" | ssh "${RC_HOST:-root@bilindesk.com}" \
-        "node $script $file && chown bilin:bilin $file"
+    printf '%s' "$password" | ssh "${RC_HOST:-ubuntu@bilindesk.com}" \
+        "sudo node $script $file && sudo chown bilin:bilin $file"
 fi

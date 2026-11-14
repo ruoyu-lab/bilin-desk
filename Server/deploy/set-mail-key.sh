@@ -18,13 +18,9 @@ case "$key" in
 esac
 
 # 密钥经标准输入给，不出现在命令行里（别的用户看得到命令行）
-printf '%s' "$key" | ssh "${RC_HOST:-root@bilindesk.com}" '
+printf '%s' "$key" | ssh "${RC_HOST:-ubuntu@bilindesk.com}" '
 set -eu
-umask 077
-cat > /etc/bilin/mail-key
-chown bilin:bilin /etc/bilin/mail-key
-chmod 600 /etc/bilin/mail-key
-
-runuser -u bilin -- env HOME=/opt/bilin PATH="$PATH" pm2 reload bilin-server >/dev/null
+sudo install -m 600 -o bilin -g bilin /dev/stdin /etc/bilin/mail-key
+sudo runuser -u bilin -- env HOME=/opt/bilin PATH="$PATH" pm2 reload bilin-server >/dev/null
 echo "存好了，服务端已经重新读了配置"
 '

@@ -5,11 +5,11 @@
 #   node scripts/sign-release.mjs <安装包>      先签名，旁边写出 <安装包>.release.json
 #   scripts/publish-release.sh <安装包>
 #
-# RC_HOST：服务器（默认 root@bilindesk.com），要能用 SSH 密钥登录
+# RC_HOST：服务器（默认 ubuntu@bilindesk.com），要能用 SSH 密钥登录、有免密 sudo
 set -eu
 
 file="$1"
-host="${RC_HOST:-root@bilindesk.com}"
+host="${RC_HOST:-ubuntu@bilindesk.com}"
 field() {
     node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))[process.argv[2]])' \
         "$file.release.json" "$1"
@@ -20,7 +20,7 @@ signature=$(field signature)
 
 stage=$(ssh -o BatchMode=yes "$host" 'mktemp -d /tmp/bilin-publish-XXXXXX')
 scp -q -o BatchMode=yes "$file" "$host:$stage/package"
-ssh -o BatchMode=yes "$host" sh -s -- "$stage" "$platform" "$version" "$signature" <<'REMOTE'
+ssh -o BatchMode=yes "$host" sudo sh -s -- "$stage" "$platform" "$version" "$signature" <<'REMOTE'
 set -u
 stage="$1"
 chmod 755 "$stage"

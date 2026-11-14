@@ -64,10 +64,9 @@ Server/deploy/deploy-dev.sh            # 部署到它（Nginx 在 8800 端口，
 正式的服务器（bilindesk.com）：
 
 ```sh
-Server/deploy/setup-production.sh      # 第一次：装 Node、MongoDB、Redis、coturn、Nginx，申请证书；不动服务器上原来的东西
+Server/deploy/setup-production.sh      # 第一次：装 MongoDB、比邻的 Redis、coturn，申请证书；不动服务器上原来的东西
 Server/deploy/deploy-production.sh     # 部署服务端、官网、管理后台
 Server/deploy/set-admin-password.sh    # 设管理后台的密码
-Server/deploy/harden-server.sh         # 安全加固（SSH、fail2ban、自动装安全更新）
 ```
 
 管理后台见 [admin.md](admin.md)，官网见 [website.md](website.md)。

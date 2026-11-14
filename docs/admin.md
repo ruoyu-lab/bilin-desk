@@ -93,8 +93,8 @@ Android 版的见[手机版](mobile.md)的"更新"。
 恢复（会先删掉现在库里的，换成备份里的）：
 
 ```sh
-scp bilin-20261011-040000.archive.gz root@bilindesk.com:/tmp/
-ssh root@bilindesk.com 'mongorestore --uri=mongodb://127.0.0.1:27017/bilin --gzip \
+scp bilin-20261011-040000.archive.gz ubuntu@bilindesk.com:/tmp/
+ssh ubuntu@bilindesk.com 'sudo mongorestore --uri=mongodb://127.0.0.1:27017/bilin --gzip \
     --archive=/tmp/bilin-20261011-040000.archive.gz --drop && rm /tmp/bilin-20261011-040000.archive.gz'
 ```
 
@@ -102,20 +102,15 @@ Redis 里的（谁在线、限速的计数、登录的会话）不用备份：�
 
 ## 服务器的安全
 
-`Server/deploy/harden-server.sh`（可以重复跑；服务器上原有的东西不动，防火墙只删、加规则，不重新加载）：
+服务器和别的网站同住，系统这一层是整台机器一起管的：
 
-- SSH 只认密钥（`RC_SSH_PASSWORD=no`；不带时允许密码）：root 不能用密码登录，一次连接最多试 3 次，30 秒内不登录就断开，
-  不转发 X11。云服务商控制台里的远程连接用的是 root 密码，不受影响。2026-10 时 7 天里有 10 万多次猜 root 密码
-- fail2ban：10 分钟里 SSH 输错 5 次的地址封 1 小时，再犯封得更久（最多一周）
-- 防火墙只开 SSH、80、443、中继（3478、49152-49407/udp），和服务器上原有的东西要用的端口；去掉了没在用的 cockpit、dhcpv6-client。
-  云服务商控制台里的防火墙（安全组）也只放行这些
-- 系统的安全更新每天自动装（dnf-automatic），不自动重启：内核的更新等下次重启
-- MongoDB、Redis、服务端、管理后台都只听本机；服务端、后台以 bilin 用户运行，不用 root
-- 443 上是服务器主人的 VPN（Xray，Reality），网站的 https 由它转给 Nginx 的 127.0.0.1:4443（docs/network.md）；
-  部署时别动它的配置（`/usr/local/etc/xray/`）
-- Nginx 不说版本号；管理后台的网页不能被别的网站嵌进去，只用自己的脚本和样式（Content-Security-Policy）
+- SSH 只认密钥，用 ubuntu 用户登录（有免密 sudo），root 不能用密码登录
+- 防火墙（iptables）只开 SSH、80、443、中继（3478、49152-49407/udp），和同住的网站要用的端口；甲骨文控制台里的安全列表也只放行这些
+- 系统的安全更新每天自动装（unattended-upgrades）
+- MongoDB、比邻的 Redis（6379）、服务端、管理后台都只听本机；服务端、后台以 bilin 用户运行，不用 root，PM2 也是自己的（`pm2-bilin.service`）
+- 管理后台的网页不能被别的网站嵌进去，只用自己的脚本和样式（Content-Security-Policy）
 
-还可以做的（没做）：SELinux 现在是关着的，打开要重新标记整个文件系统、重启；MongoDB、Redis 没有密码（只听本机）。
+还可以做的（没做）：MongoDB、Redis 没有密码（只听本机）。
 
 
 ## 邮件
@@ -135,7 +130,7 @@ Redis 里的（谁在线、限速的计数、登录的会话）不用备份：�
 
 ## 服务器上放了什么
 
-装：`Server/deploy/setup-production.sh`（先要把域名指到服务器、云服务商的安全组放行端口，见脚本开头）；
+装：`Server/deploy/setup-production.sh`（先要把域名指到服务器、甲骨文的安全列表放行端口，见脚本开头）；
 部署：`Server/deploy/deploy-production.sh`（在这台电脑上编译，只传运行要的文件）。
 
 | | 位置 |
@@ -147,9 +142,10 @@ Redis 里的（谁在线、限速的计数、登录的会话）不用备份：�
 | 发布的新版本、备份 | `/var/lib/bilin/updates`、`/var/lib/bilin/backups` |
 | 中继的共享密钥、后台密码的哈希、发邮件的密钥 | `/etc/bilin` |
 | 日志 | `/var/log/bilin`（Nginx 的出错日志、coturn），`/opt/bilin/.pm2/logs`；都只留 14 天 |
-| Nginx | `/etc/nginx/conf.d/bilindesk.com.conf`、`admin.bilindesk.com.conf`、`web.bilindesk.com.conf`、`01-realip.conf`；不认识的域名、直接用 IP 来的由 `00-default.conf` 回答。443 是 Xray 的，网站都听 127.0.0.1:4443（docs/network.md） |
+| Nginx | `/etc/nginx/conf.d/bilindesk.com.conf`、`admin.bilindesk.com.conf`、`web.bilindesk.com.conf`；`nginx.conf` 和同住网站的配置不归比邻管 |
+| MongoDB、Redis | MongoDB 8（`/etc/mongod.conf`）；比邻自己的 Redis 在 6379（`/etc/bilin/redis.conf`、`bilin-redis.service`） |
+| 中继 | coturn（`/etc/turnserver.conf`，日志在 `/var/log/bilin/coturn`） |
 | 证书 | Let's Encrypt（`/etc/letsencrypt/live/bilindesk.com`），一张带着 bilindesk.com、www、admin、web，部署时缺了名字就补上；certbot 的定时任务自己续期，续好了重新加载 Nginx |
 
-同一台服务器以后再放别的网站：程序放在它自己的目录、用它自己的用户和端口（不要用 3000、3100），
-Nginx 在 `conf.d` 里加一份按它的域名起名的配置（https 听 127.0.0.1:4443、带 `proxy_protocol`）；新域名先 `certbot certonly --webroot -w /var/www/letsencrypt -d 域名`
-申请证书（验证请求由 `00-default.conf` 回答），再装它的配置。
+同一台服务器上的别的网站：程序在它自己的目录、用它自己的用户和端口（不要用 3000、3100、3200、6379、27017），
+Nginx 在 `conf.d` 里有它自己按域名起名的配置，证书用它自己的名字。
