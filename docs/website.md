@@ -1,7 +1,7 @@
 # 官网
 
 `Website/`：Vue 3 + TypeScript，Vite 构建成静态网页（首页、服务协议、隐私政策三页），放在 https://www.bilindesk.com/
-（`Server/deploy/deploy-production.sh` 一起部署，服务器上的 `/var/www/bilindesk.com`）。
+（`Server/deploy/deploy-production.sh` 一起部署，服务器上的 `/srv/bilin/www/site`）。
 
 ```sh
 cd Website

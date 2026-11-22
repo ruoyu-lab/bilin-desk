@@ -12,7 +12,7 @@
 
 ## 怎么连
 
-浏览器不能直连，也不能用 coturn：经服务器上的 Node 转发进程（`Server/src/relay/`，PM2 的 `bilin-relay`），
+浏览器不能直连，也不能用 coturn：经服务器上的 Node 转发进程（`Server/src/relay/`，正式服务器上是容器 `relay`），
 走 SDK 的宿主通道（`RCS_TRANSPORT_HOST`，数据报）。加密、重传、码率、重连都是两端的 SDK 端到端做的，转发进程只按房间
 把二进制消息原样转过去，看不懂内容。
 
@@ -78,9 +78,9 @@ SDK 的浏览器包：`scripts/build-web-sdk.sh` 用 Emscripten（`~/emsdk`）�
 
 ## 部署
 
-`Server/deploy/deploy-production.sh` 一起部署：编 SDK 的浏览器包和网页，放进 `/var/www/web.bilindesk.com`，
-Nginx 的配置 `Server/deploy/nginx/web.bilindesk.com.conf`（跨源隔离、严格的内容安全策略；`/sdk/` 补上 `.mjs` 的类型，
-系统的 MIME 表里没有；`/web/` 给服务端，`/relay` 给转发进程），转发进程是 PM2 的 `bilin-relay`（127.0.0.1:3200）。
+`Server/deploy/deploy-production.sh` 一起部署：编 SDK 的浏览器包和网页，放进 `/srv/bilin/www/web`，
+Nginx 的配置在 `Server/deploy/production/nginx/bilin.conf` 的 web.bilindesk.com 那一段（跨源隔离、严格的内容安全策略；`/sdk/` 补上 `.mjs` 的类型，
+系统的 MIME 表里没有；`/web/` 给服务端，`/relay` 给转发进程），转发进程是容器 `relay`（127.0.0.1:3200）。
 
 ## 开发
 

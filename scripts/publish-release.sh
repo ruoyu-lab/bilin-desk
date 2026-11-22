@@ -18,23 +18,14 @@ platform=$(field platform)
 version=$(field version)
 signature=$(field signature)
 
-stage=$(ssh -o BatchMode=yes "$host" 'mktemp -d /tmp/bilin-publish-XXXXXX')
-scp -q -o BatchMode=yes "$file" "$host:$stage/package"
-ssh -o BatchMode=yes "$host" sudo sh -s -- "$stage" "$platform" "$version" "$signature" <<'REMOTE'
-set -u
-stage="$1"
-chmod 755 "$stage"
-chmod 644 "$stage/package"
-cd /opt/bilin/server
-runuser -u bilin -- node --input-type=module - "$@" <<'JS'
-import { createReadStream, readFileSync } from 'node:fs';
-import { Releases, releaseKey } from '/opt/bilin/server/dist/releases.js';
-const [stage, platform, version, signature] = process.argv.slice(2);
-const releases = new Releases('/var/lib/bilin/updates', releaseKey(readFileSync('release-key.pub', 'utf8')));
-const release = await releases.publish(platform, version, signature, createReadStream(`${stage}/package`));
-console.log('发布了', release.platform, release.version, release.sha256);
-JS
-status=$?
-rm -rf "$stage"
-exit $status
-REMOTE
+# 安装包经标准输入交给管理后台的容器（它能写 data/files/updates），在那里核对签名、放好（脚本里只用双引号）
+script='
+import { readFileSync } from "node:fs";
+import { Releases, releaseKey } from "/app/dist/releases.js";
+const [platform, version, signature] = process.argv.slice(1);
+const releases = new Releases("/var/lib/bilin/updates", releaseKey(readFileSync("/app/release-key.pub", "utf8")));
+const release = await releases.publish(platform, version, signature, process.stdin);
+console.log("发布了", release.platform, release.version, release.sha256);
+'
+ssh -o BatchMode=yes "$host" "cd /srv/bilin && sudo docker compose exec -T admin \
+    node --input-type=module -e '$script' '$platform' '$version' '$signature'" < "$file"

@@ -31,7 +31,7 @@
 - 后台服务收下（`ServerLink`）：分享会话用它，凭据换了从下一个连接起用；经 `ice` 主题交给界面里去连别人的会话。和服务器断着、凭据到了期，中继就不能用了，直到连上服务器拿到新的
 - 中继的地址：没设 `TURN_HOST` 时跟着设备连服务器用的主机名（Nginx 转来的 Host 头）。开发时 coturn 和服务器在同一台虚拟机上，Mac 连的是 `localhost`、局域网里的 Windows 连的是 Mac 的地址 `192.168.55.173`，中继也就分别是 `localhost:3478`、`192.168.55.173:3478`，不用按设备另配。正式部署时中继和服务器是同一个域名也不用设，不是时设 `TURN_HOST`
 
-服务端的环境变量（`Server/ecosystem.config.cjs`）：
+服务端的环境变量（正式服务器 `Server/deploy/production/compose.yml`，开发用的虚拟机 `Server/ecosystem.config.cjs`）：
 
 | 变量 | 意思 | 默认 |
 | --- | --- | --- |
@@ -76,7 +76,7 @@ bilindesk.com（甲骨文 ARM，Ubuntu 24.04，2 核 12 GB，在大阪；2026-11
 - coturn：3478（UDP、TCP），中继端口 49152–49407（UDP）。服务器在 NAT 后面：中继地址用内网地址，
   告诉设备公网地址（external-ip）；两个中继分配之间经公网地址转发是通的
 - 装：`Server/deploy/setup-production.sh`；部署：`Server/deploy/deploy-production.sh`（服务器上放了什么见 [admin.md](admin.md)）。
-  防火墙（iptables）只加这几个端口，插在最后那条 REJECT 前面，服务器上原有的东西不动
+  比邻在 `/srv/bilin` 的容器里，coturn 用宿主机的网络；防火墙（iptables）只加这几个端口，插在最后那条 REJECT 前面
 - 甲骨文控制台里的安全列表也要放行：TCP 80、443，TCP 和 UDP 3478，UDP 49152–49407
 - 安装包连正式的服务器（`-DRC_SERVER_URL=wss://www.bilindesk.com/ws`），开发版（build 目录里直接运行的）连 Mac 上的虚拟机
 

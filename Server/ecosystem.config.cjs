@@ -1,5 +1,6 @@
-// PM2：服务端两个实例（cluster 模式，共用 127.0.0.1:3000），Nginx 在前面，实例之间经 Redis 转发消息；
-// 管理后台一个（127.0.0.1:3100，docs/admin.md）；网页版的转发进程一个（127.0.0.1:3200，docs/web.md）。开发用的虚拟机用 env_development（deploy-dev.sh）
+// 开发用的虚拟机（deploy-dev.sh，env 加上 env_development）的 PM2：服务端两个实例（cluster 模式，共用 127.0.0.1:3000），
+// Nginx 在前面，实例之间经 Redis 转发消息；管理后台一个（127.0.0.1:3100，docs/admin.md）；网页版的转发进程一个
+// （127.0.0.1:3200，docs/web.md）。正式服务器不用它：在容器里，环境变量在 deploy/production/compose.yml，两边要一起改
 module.exports = {
     apps: [
         {

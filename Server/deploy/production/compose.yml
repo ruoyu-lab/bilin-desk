@@ -1,0 +1,167 @@
+# 比邻（bilindesk.com）：服务端两个实例、管理后台、网页版转发、TURN 中继，各自的 MongoDB 和 Redis。
+#
+# 比邻的程序只信任 127.0.0.1 来的代理（按它给的 X-Forwarded-For 认客户端的 IP，限流靠它），所以每个程序配一个
+# edge：edge 拿着网络（端口、项目网络），程序用 network_mode: service:edge 进同一个网络空间、只听 127.0.0.1，
+# edge 把 8080 原样转给它——程序看到的对端还是 127.0.0.1，和以前在宿主机上一样。程序重启不影响 edge 的网络。
+#
+# TURN 要一段 UDP 端口（49152-49407），用宿主机的网络。数据都在 data/ 下，静态文件在 www/，密钥在 secrets/。
+name: bilin
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.3.0/24
+          gateway: 172.30.3.1
+
+x-edge: &edge
+  image: alpine/socat:1.8.0.3
+  restart: unless-stopped
+  mem_limit: 64m
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  command: ["TCP-LISTEN:8080,fork,reuseaddr", "TCP:127.0.0.1:8000"]
+
+x-node: &node
+  image: node:24-slim
+  user: "2003:2003"
+  working_dir: /app
+  init: true
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  stop_grace_period: 8s
+
+x-env: &env
+  NODE_ENV: production
+  HOST: 127.0.0.1
+  PORT: "8000"
+  MONGO_URL: mongodb://mongo:27017/bilin
+  REDIS_URL: redis://redis:6379
+
+x-server: &server
+  <<: *node
+  command: [node, --enable-source-maps, dist/main.js]
+  environment:
+    <<: *env
+    TURN_SECRET_FILE: /etc/bilin/turn-secret
+    UPDATES_DIR: /var/lib/bilin/updates
+    MAIL_KEY_FILE: /etc/bilin/mail-key
+    MAIL_FROM: 比邻 <noreply@bilindesk.com>
+    ADMIN_URL: https://admin.bilindesk.com/
+  volumes:
+    - ./app:/app:ro
+    - ./secrets/turn-secret:/etc/bilin/turn-secret:ro
+    - ./secrets/mail-key:/etc/bilin/mail-key:ro
+    - ./data/files/updates:/var/lib/bilin/updates:ro
+  mem_limit: 768m
+  healthcheck:
+    test: [CMD, node, -e, "fetch('http://127.0.0.1:8000/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+    interval: 15s
+    timeout: 5s
+    retries: 3
+
+services:
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    mem_limit: 1536m
+    command: [--wiredTigerCacheSizeGB, "1", --quiet]
+    volumes:
+      - ./data/mongo:/data/db
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    mem_limit: 320m
+    command: [redis-server, --save, 3600 1 300 100 60 10000, --appendonly, "no", --maxmemory, 256mb]
+    volumes:
+      - ./data/redis:/data
+
+  server-1-edge:
+    <<: *edge
+    ports:
+      - 127.0.0.1:3000:8080
+  server-1:
+    <<: *server
+    network_mode: service:server-1-edge
+    depends_on: [server-1-edge, mongo, redis]
+
+  server-2-edge:
+    <<: *edge
+    ports:
+      - 127.0.0.1:3001:8080
+  server-2:
+    <<: *server
+    network_mode: service:server-2-edge
+    depends_on: [server-2-edge, mongo, redis]
+
+  admin-edge:
+    <<: *edge
+    ports:
+      - 127.0.0.1:3100:8080
+  admin:
+    <<: *node
+    # 要 mongodump 做备份：MongoDB 的镜像加上 Node（admin-image/Dockerfile）
+    image: bilin-admin:local
+    build: ./admin-image
+    entrypoint: []
+    command: [node, --enable-source-maps, dist/admin/main.js]
+    network_mode: service:admin-edge
+    depends_on: [admin-edge, mongo, redis]
+    environment:
+      <<: *env
+      BASE_PATH: ""
+      HEALTH_URL: http://server-1-edge:8080/health
+      DATA_DIR: /var/lib/bilin
+      ADMIN_PASSWORD_FILE: /etc/bilin/admin-password
+      BACKUP_HOUR: "4"
+      BACKUP_KEEP: "14"
+      CERT_HOST: www.bilindesk.com
+      MAIL_KEY_FILE: /etc/bilin/mail-key
+      MAIL_FROM: 比邻 <noreply@bilindesk.com>
+    volumes:
+      - ./app:/app:ro
+      - ./secrets/admin-password:/etc/bilin/admin-password:ro
+      - ./secrets/mail-key:/etc/bilin/mail-key:ro
+      - ./data/files:/var/lib/bilin
+    mem_limit: 512m
+
+  relay-edge:
+    <<: *edge
+    ports:
+      - 127.0.0.1:3200:8080
+  relay:
+    <<: *node
+    command: [node, --enable-source-maps, dist/relay/main.js]
+    network_mode: service:relay-edge
+    depends_on: [relay-edge, redis]
+    environment:
+      NODE_ENV: production
+      HOST: 127.0.0.1
+      PORT: "8000"
+      REDIS_URL: redis://redis:6379
+      WEB_MAX_SESSIONS: "20"
+      WEB_MAX_VIEWER_BPS: "8000000"
+    volumes:
+      - ./app:/app:ro
+    mem_limit: 512m
+
+  turn:
+    image: coturn/coturn:4.7
+    restart: unless-stopped
+    cap_drop: [ALL]
+    # 镜像里的 turnserver 带着这个文件权限，少了它连启动都不行
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+    network_mode: host
+    mem_limit: 256m
+    command: [-c, /etc/coturn/turnserver.conf]
+    volumes:
+      - ./secrets/turnserver.conf:/etc/coturn/turnserver.conf:ro

@@ -12,7 +12,7 @@
 
 ## 密码
 
-只有一个密码，服务器上只存它的哈希（`/etc/bilin/admin-password`，只有服务端的用户能读）。部署过一次以后设：
+只有一个密码，服务器上只存它的哈希（`/srv/bilin/secrets/admin-password`，只有比邻的容器能读）。部署过一次以后设：
 
 ```sh
 Server/deploy/set-admin-password.sh        # 正式的服务器
@@ -72,7 +72,7 @@ Server/deploy/set-admin-password.sh dev    # 开发用的虚拟机
 - 签的是"哪个平台、哪个版本、多大、sha256"这几行（Server/src/releases.ts、Core/src/rc/release.cpp）。后台上传时核对一遍，
   签名不对、不比现在发布的新的不收；程序下载以前、下载以后各核对一遍：服务器被人控制了也推不了假的安装包
 - 现在发布的那个不能删（程序可能正在下载它）。要退回旧的，就用旧的代码改一个更大的版本号重新打包发布
-- 安装包放在服务器的 `/var/lib/bilin/updates/<平台>/<版本>/`，程序和官网的下载按钮从 `https://www.bilindesk.com/updates/` 下载
+- 安装包放在服务器的 `/srv/bilin/data/files/updates/<平台>/<版本>/`，程序和官网的下载按钮从 `https://www.bilindesk.com/updates/` 下载
 
 程序怎么更新（Service/src/updater.h）：只有装好的（后台服务是系统服务）有新版本，开发时编出来的没有。
 Android 版的见[手机版](mobile.md)的"更新"。
@@ -86,28 +86,27 @@ Android 版的见[手机版](mobile.md)的"更新"。
 
 ## 备份
 
-- mongodump 导出整个库（账号、设备登记），gzip 压缩成一个文件，放在服务器的 `/var/lib/bilin/backups`
+- mongodump 导出整个库（账号、设备登记），gzip 压缩成一个文件，放在服务器的 `/srv/bilin/data/files/backups`
 - 每天凌晨 4 点（服务器的本地时间）自动一次，也可以点"立即备份"；只留最新的 14 份
 - 想另外留一份时在后台里下载到自己的电脑上：服务器的盘坏了，留在服务器上的也一起没了
 
 恢复（会先删掉现在库里的，换成备份里的）：
 
 ```sh
-scp bilin-20261011-040000.archive.gz ubuntu@bilindesk.com:/tmp/
-ssh ubuntu@bilindesk.com 'sudo mongorestore --uri=mongodb://127.0.0.1:27017/bilin --gzip \
-    --archive=/tmp/bilin-20261011-040000.archive.gz --drop && rm /tmp/bilin-20261011-040000.archive.gz'
+ssh ubuntu@bilindesk.com 'cd /srv/bilin && sudo docker compose exec -T mongo mongorestore --gzip --archive --drop' \
+    < bilin-20261011-040000.archive.gz
 ```
 
 Redis 里的（谁在线、限速的计数、登录的会话）不用备份：都是一会儿就过期的。
 
 ## 服务器的安全
 
-服务器和别的网站同住，系统这一层是整台机器一起管的：
+服务器和别的项目同住，每个项目在自己的容器里（服务器上的 `/srv/README.md`），系统这一层是整台机器一起管的：
 
-- SSH 只认密钥，用 ubuntu 用户登录（有免密 sudo），root 不能用密码登录
-- 防火墙（iptables）只开 SSH、80、443、中继（3478、49152-49407/udp），和同住的网站要用的端口；甲骨文控制台里的安全列表也只放行这些
-- 系统的安全更新每天自动装（unattended-upgrades）
-- MongoDB、比邻的 Redis（6379）、服务端、管理后台都只听本机；服务端、后台以 bilin 用户运行，不用 root，PM2 也是自己的（`pm2-bilin.service`）
+- SSH 只认密钥，用 ubuntu 用户登录（有免密 sudo），root 不能登录；fail2ban 封试密码的
+- 防火墙（iptables）只开 SSH、80、443、中继（3478、49152-49407/udp）；甲骨文控制台里的安全列表也只放行这些
+- 程序在容器里用自己的用户（2003）跑，文件系统只读、没有特权；MongoDB、Redis 只在比邻自己的容器网络里，别的项目碰不到；
+  服务端、管理后台、转发进程只在本机的 127.0.0.1 上开口，从外面只能经 Nginx 进来
 - 管理后台的网页不能被别的网站嵌进去，只用自己的脚本和样式（Content-Security-Policy）
 
 还可以做的（没做）：MongoDB、Redis 没有密码（只听本机）。
@@ -121,31 +120,36 @@ Redis 里的（谁在线、限速的计数、登录的会话）不用备份：�
 1. Resend 里 Domains › Add Domain：`bilindesk.com`，把它给的几条 DNS 记录（DKIM 的 TXT、`send` 子域名的 MX 和 SPF 的 TXT）
    加到 Cloudflare（Resend 可以授权 Cloudflare 自动加），等它显示 Verified
 2. Resend 里 API Keys › Create：权限选 Sending access，域名选 bilindesk.com
-3. 在这台电脑上运行 `Server/deploy/set-mail-key.sh`，输入上一步的密钥：存在服务器的 `/etc/bilin/mail-key`（只有服务端的用户能读），
+3. 在这台电脑上运行 `Server/deploy/set-mail-key.sh`，输入上一步的密钥：存在服务器的 `/srv/bilin/secrets/mail-key`（只有比邻的容器能读），
    服务端随即重新读配置。密钥不进仓库；要换密钥再跑一遍
 
 配好以后在后台概览的"验证码邮件"卡片里发一封测试邮件，看能不能收到（一小时最多 10 封，也算在每天的数目里）；
 没发出去时那里直接显示 Resend 回的原因。发件人是 `比邻 <noreply@bilindesk.com>`（`Server/ecosystem.config.cjs` 的 `MAIL_FROM`）。没配密钥时服务端启动时警告，
-要验证码的人看到"验证码邮件没发出去"；发不出去的原因在 `pm2 logs bilin-server` 里。
+要验证码的人看到"验证码邮件没发出去"；发不出去的原因在服务端的日志里（`cd /srv/bilin && sudo docker compose logs server-1 server-2`）。
 
 ## 服务器上放了什么
 
-装：`Server/deploy/setup-production.sh`（先要把域名指到服务器、甲骨文的安全列表放行端口，见脚本开头）；
+比邻整个在 `/srv/bilin` 里，一套容器（`Server/deploy/production/compose.yml`，部署时照仓库里的放上去）。
+建目录、密钥：`Server/deploy/setup-production.sh`（先要把域名指到服务器、甲骨文的安全列表放行端口，见脚本开头）；
 部署：`Server/deploy/deploy-production.sh`（在这台电脑上编译，只传运行要的文件）。
 
 | | 位置 |
 | --- | --- |
-| 服务端、管理后台的接口 | `/opt/bilin/server`（bilin 用户，PM2 的 `bilin-server` ×2 在 3000 端口、`bilin-admin` 在 3100 端口） |
-| 官网的网页 | `/var/www/bilindesk.com` |
-| 管理后台的网页 | `/var/www/admin.bilindesk.com` |
-| 网页版 | `/var/www/web.bilindesk.com`（转发进程是 PM2 的 `bilin-relay`，3200 端口） |
-| 发布的新版本、备份 | `/var/lib/bilin/updates`、`/var/lib/bilin/backups` |
-| 中继的共享密钥、后台密码的哈希、发邮件的密钥 | `/etc/bilin` |
-| 日志 | `/var/log/bilin`（Nginx 的出错日志、coturn），`/opt/bilin/.pm2/logs`；都只留 14 天 |
-| Nginx | `/etc/nginx/conf.d/bilindesk.com.conf`、`admin.bilindesk.com.conf`、`web.bilindesk.com.conf`；`nginx.conf` 和同住网站的配置不归比邻管 |
-| MongoDB、Redis | MongoDB 8（`/etc/mongod.conf`）；比邻自己的 Redis 在 6379（`/etc/bilin/redis.conf`、`bilin-redis.service`） |
-| 中继 | coturn（`/etc/turnserver.conf`，日志在 `/var/log/bilin/coturn`） |
-| 证书 | Let's Encrypt（`/etc/letsencrypt/live/bilindesk.com`），一张带着 bilindesk.com、www、admin、web，部署时缺了名字就补上；certbot 的定时任务自己续期，续好了重新加载 Nginx |
+| 程序（只读挂进容器） | `/srv/bilin/app`：服务端 `server-1`、`server-2`（127.0.0.1:3000、3001），管理后台 `admin`（3100），网页版的转发 `relay`（3200） |
+| 官网、管理后台、网页版的网页 | `/srv/bilin/www/site`、`www/admin`、`www/web` |
+| 发布的新版本、备份 | `/srv/bilin/data/files/updates`、`data/files/backups` |
+| MongoDB、Redis 的数据 | `/srv/bilin/data/mongo`、`data/redis`（容器 `mongo`、`redis`，只在比邻的容器网络里） |
+| 中继的共享密钥、后台密码的哈希、发邮件的密钥、coturn 的配置 | `/srv/bilin/secrets` |
+| 中继 | 容器 `turn`（coturn，用宿主机的网络） |
+| 日志 | 各个容器的标准输出：`cd /srv/bilin && sudo docker compose logs server-1` |
+| Nginx | `/srv/bilin/nginx/bilin.conf`（仓库里 `Server/deploy/production/nginx/bilin.conf`），由整台机器共用的 `/srv/gateway` 的 Nginx 读 |
+| 证书 | Let's Encrypt，一张带着 bilindesk.com、www、admin、web，在 `/srv/gateway/letsencrypt`；gateway 的 certbot 自己续期 |
 
-同一台服务器上的别的网站：程序在它自己的目录、用它自己的用户和端口（不要用 3000、3100、3200、6379、27017），
-Nginx 在 `conf.d` 里有它自己按域名起名的配置，证书用它自己的名字。
+常用：
+
+```sh
+cd /srv/bilin
+sudo docker compose ps                      # 状态
+sudo docker compose logs -f --tail 100 server-1
+sudo docker compose exec mongo mongosh bilin
+```

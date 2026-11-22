@@ -29,6 +29,9 @@ if [ "${1:-}" = dev ]; then
     printf '%s' "$password" | orb -m "${RC_MACHINE:-bilin-dev}" bash -c \
         "sudo node $script $file && sudo chown \"\$(id -u):\$(id -g)\" $file"
 else
+    # 用一个临时的 Node 容器跑（后台的容器里密钥是只读挂进去的）；登录时才读，不用重启
     printf '%s' "$password" | ssh "${RC_HOST:-ubuntu@bilindesk.com}" \
-        "sudo node $script $file && sudo chown bilin:bilin $file"
+        "cd /srv/bilin && sudo docker run --rm -i -v /srv/bilin/app:/app:ro -v /srv/bilin/secrets:/secrets node:24-slim \
+            node /app/dist/admin/set-password.js /secrets/admin-password \
+        && sudo chown 2003:2003 secrets/admin-password && sudo chmod 400 secrets/admin-password"
 fi

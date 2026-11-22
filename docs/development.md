@@ -52,7 +52,7 @@ scripts\build-windows-installer.cmd C:\Qt\6.11.2\msvc2022_64 build\installer out
 
 ## 服务端
 
-Fastify + WebSocket，设备登记和账号存在 MongoDB，PM2 跑两个实例、经 Redis 互相转发，Nginx 在前面。
+Fastify + WebSocket，设备登记和账号存在 MongoDB，跑两个实例、经 Redis 互相转发，Nginx 在前面（开发虚拟机上用 PM2，正式服务器上是容器）。
 coturn 是直连用的 STUN 和直连打不通时的中继（端口 3478），服务器给设备发有时效的中继凭据（[network.md](network.md)）。
 
 ```sh
@@ -64,8 +64,8 @@ Server/deploy/deploy-dev.sh            # 部署到它（Nginx 在 8800 端口，
 正式的服务器（bilindesk.com）：
 
 ```sh
-Server/deploy/setup-production.sh      # 第一次：装 MongoDB、比邻的 Redis、coturn，申请证书；不动服务器上原来的东西
-Server/deploy/deploy-production.sh     # 部署服务端、官网、管理后台
+Server/deploy/setup-production.sh      # 第一次：建 /srv/bilin 的目录、中继的密钥；不动服务器上别的项目
+Server/deploy/deploy-production.sh     # 部署服务端、官网、管理后台、网页版（容器的配置在 Server/deploy/production/）
 Server/deploy/set-admin-password.sh    # 设管理后台的密码
 ```
 
