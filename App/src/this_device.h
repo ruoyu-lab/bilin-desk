@@ -4,6 +4,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
 class QJSEngine;
@@ -42,6 +43,9 @@ class ThisDevice : public QObject
     Q_PROPERTY(QString updateFailed READ updateFailed NOTIFY updateChanged)
     // 点了检查更新的结果：upToDate | failed；没点过、有新版本时为空（检查的时候 updatePhase 是 checking）
     Q_PROPERTY(QString updateChecked READ updateChecked NOTIFY updateChanged)
+    // 本机信任的别人的设备（trust 主题，docs/devices-and-accounts.md），新的在前：
+    // {deviceId（三位一组）, rawId, name, platform, ask（来连时还要点允许）, since（信任的日期）}
+    Q_PROPERTY(QVariantList trustedDevices READ trustedDevices NOTIFY trustChanged)
     // 后台服务是装好的系统服务：才有新版本、能检查更新
     Q_PROPERTY(bool systemService READ systemService CONSTANT)
 
@@ -76,6 +80,11 @@ public:
     QString updateFailed() const { return update_.failed; }
     QString updateChecked() const { return update_.checked; }
 
+    QVariantList trustedDevices() const;
+    // rawId：9 位数字
+    Q_INVOKABLE void setTrustAsk(const QString &rawId, bool ask);
+    Q_INVOKABLE void untrust(const QString &rawId);
+
     Q_INVOKABLE void regeneratePassword();
     // 下载、安装新版本：装的时候本程序会被关掉，装完再打开
     Q_INVOKABLE void installUpdate();
@@ -89,10 +98,12 @@ signals:
     void serviceStateChanged();
     void changed();
     void updateChanged();
+    void trustChanged();
 
 private:
     ServiceClient &service_;
     rc::protocol::DeviceState state_;
     rc::protocol::UpdateState update_;
+    rc::protocol::TrustState trust_;
     bool updatable_ = false;
 };

@@ -17,11 +17,13 @@ Item {
     property Component extraSections
     // 关于比邻里有没有"卸载比邻"（macOS 上装好的那一份）
     property bool uninstallable: false
+    // "本机"里有没有"信任的设备"（电脑版：手机不被别人连）
+    property bool trustedDevices: false
 
     // 点了"卸载比邻"（macOS：没有系统的卸载入口，程序自己给）
     signal uninstallRequested()
 
-    // 点进去的下一页：account（账号）| feedback（反馈问题）、feedbackLogs（它的日志）、feedbackLog（其中一份，
+    // 点进去的下一页：account（账号）| trusted（信任的设备）| feedback（反馈问题）、feedbackLogs（它的日志）、feedbackLog（其中一份，
     // feedbackLog 是第几份）| about（关于比邻）| terms、privacy（服务协议、隐私政策）| licenses（开源声明）；
     // 空是设置本身。离开设置时回到设置本身
     property string subpage
@@ -154,6 +156,15 @@ Item {
                 sourceComponent: root.machineRows
             }
             SettingsRow {
+                visible: root.trustedDevices
+                iconName: "key"
+                label: qsTr("信任的设备")
+                detail: qsTr("这些设备连本机不要密码")
+                value: ThisDevice.trustedDevices.length > 0 ? qsTr("%1 台").arg(ThisDevice.trustedDevices.length) : ""
+                navigates: true
+                onClicked: root.subpage = "trusted"
+            }
+            SettingsRow {
                 iconName: "radar"
                 label: qsTr("发现附近的设备")
                 detail: ThisDevice.lanDiscovery ? "" : qsTr("附近的设备也看不到本机")
@@ -222,6 +233,14 @@ Item {
     AccountSettings {
         anchors.fill: parent
         visible: root.subpage === "account"
+        overTitleBar: root.overTitleBar
+        leftInset: root.leftInset
+        onBackRequested: root.subpage = ""
+    }
+
+    TrustedSettings {
+        anchors.fill: parent
+        visible: root.subpage === "trusted"
         overTitleBar: root.overTitleBar
         leftInset: root.leftInset
         onBackRequested: root.subpage = ""

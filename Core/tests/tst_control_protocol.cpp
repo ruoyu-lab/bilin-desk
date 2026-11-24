@@ -67,6 +67,13 @@ private slots:
         QVERIFY(!rc::control::parseThumbnail(rc::control::wallpaper(jpeg)));
     }
 
+    void trustedIsItsOwnKind()
+    {
+        QVERIFY(rc::control::isTrusted(rc::control::trusted()));
+        QVERIFY(!rc::control::isTrusted(rc::control::thumbnails()));
+        QVERIFY(!rc::control::isThumbnails(rc::control::trusted()));
+    }
+
     // 同一个通道上别的消息不是它们
     void tellsTheKindsApart()
     {

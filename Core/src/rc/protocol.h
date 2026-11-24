@@ -32,6 +32,8 @@ inline constexpr QLatin1StringView FilesTopic{"files"};
 inline constexpr QLatin1StringView HistoryTopic{"history"};
 // 程序的新版本（UpdateState）：只有装好的程序（后台服务是系统服务）有，开发时编出来的不发
 inline constexpr QLatin1StringView UpdateTopic{"update"};
+// 信任的设备（TrustState）：本机信任的别人的设备，和信任本机的设备
+inline constexpr QLatin1StringView TrustTopic{"trust"};
 
 // ---- 命令 ----
 
@@ -50,8 +52,20 @@ inline constexpr QLatin1StringView RegeneratePassword{"regeneratePassword"};
 inline constexpr QLatin1StringView Quit{"quit"};
 // 界面程序要退出了（本机的人确认过）：断开连着本机的人；之后界面没了不用把它拉起来
 inline constexpr QLatin1StringView AppQuitting{"appQuitting"};
-// id、control：让请求连接本机的人连进来，control 是能不能控制本机
+// id、control、trust：让请求连接本机的人连进来，control 是能不能控制本机。trust：以后信不信任它的设备
+// （空的：不信任 | ask：不要密码，还要点允许 | direct：不要密码，也不用点允许）
 inline constexpr QLatin1StringView Admit{"admit"};
+inline constexpr QLatin1StringView TrustAsk{"ask"};
+inline constexpr QLatin1StringView TrustDirect{"direct"};
+// deviceId、value：本机信任的这台设备来连时还要不要点允许
+inline constexpr QLatin1StringView SetTrustAsk{"setTrustAsk"};
+// deviceId：不再信任这台设备（从下一次连接起要临时密码）
+inline constexpr QLatin1StringView Untrust{"untrust"};
+// deviceId、publicKey（base64）：去连的那台设备 deviceId 信任了本机（连着时它经控制通道说的，rc/control_protocol.h），
+// 以后去连它不要密码；publicKey 是握手时它证明的设备公钥，以后只认它
+inline constexpr QLatin1StringView RememberTrust{"rememberTrust"};
+// deviceId：去连它时它说不信任本机了（rc/peer_protocol.h 的 NotTrusted），忘掉
+inline constexpr QLatin1StringView ForgetTrust{"forgetTrust"};
 // id：不让请求连接本机的人连进来
 inline constexpr QLatin1StringView Refuse{"refuse"};
 // id：断开连着本机的人
@@ -188,7 +202,8 @@ struct DeviceState
 };
 
 // 连本机的一个人：id 是这次分享里的编号，platform 是对方的系统（macOS、Windows……），
-// control 是能不能控制本机（请求连接时没有意义）
+// control 是能不能控制本机（请求连接时没有意义）；access：它怎么证明自己的（rc/transport.h）；
+// canTrust：请求连接时能信任它（用临时密码来的、有设备 ID、握手里证明了设备公钥）
 struct SharePeer
 {
     int id = 0;
@@ -196,6 +211,8 @@ struct SharePeer
     QString name;
     QString platform;
     bool control = false;
+    QString access;
+    bool canTrust = false;
 
     QJsonObject toJson() const;
     static SharePeer fromJson(const QJsonObject &json);
@@ -266,6 +283,47 @@ struct AccountDevice
     static AccountDevice fromJson(const QJsonObject &json);
 
     friend bool operator==(const AccountDevice &, const AccountDevice &) = default;
+};
+
+// 本机信任的一台别人的设备：publicKey 是它的设备公钥（base64），用临时密码连进来时握手里证明的；
+// ask：它来连时还要本机的人点允许；since：什么时候信任的（UTC 毫秒）
+struct TrustedDevice
+{
+    QString deviceId;
+    QString name;
+    QString platform;
+    QString publicKey;
+    bool ask = true;
+    qint64 since = 0;
+
+    QJsonObject toJson() const;
+    static TrustedDevice fromJson(const QJsonObject &json);
+
+    friend bool operator==(const TrustedDevice &, const TrustedDevice &) = default;
+};
+
+// 信任本机的一台设备：去连它时不要密码，只认它的设备公钥（base64）
+struct TrustingDevice
+{
+    QString deviceId;
+    QString publicKey;
+
+    QJsonObject toJson() const;
+    static TrustingDevice fromJson(const QJsonObject &json);
+
+    friend bool operator==(const TrustingDevice &, const TrustingDevice &) = default;
+};
+
+// 信任的设备（docs/devices-and-accounts.md）：trusted 是本机信任的（新的在前），trustedBy 是信任本机的
+struct TrustState
+{
+    QList<TrustedDevice> trusted;
+    QList<TrustingDevice> trustedBy;
+
+    QJsonObject toJson() const;
+    static TrustState fromJson(const QJsonObject &json);
+
+    friend bool operator==(const TrustState &, const TrustState &) = default;
 };
 
 // 本机登录的账号；没登录时 signedIn 为 false，其余都是空的

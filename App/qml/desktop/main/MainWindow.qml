@@ -110,6 +110,7 @@ ApplicationWindow {
             visible: browse.view === "settings"
             overTitleBar: Theme.unifiedTitleBar
             machineRows: Component { MachineSettingsRows {} }
+            trustedDevices: true
             generalRows: Component { DownloadFolderRow {} }
             // 只有 macOS 上装好的那一份有（开发版本没有）
             uninstallable: Qt.platform.os === "osx" && Setup.installed

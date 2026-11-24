@@ -14,7 +14,7 @@
 | 字段 | 说明 |
 | --- | --- |
 | `target` | 对方的设备 ID；按局域网地址连的是空的 |
-| `access` | `device`（我的设备）、`password`（临时密码） |
+| `access` | `device`（我的设备）、`trusted`（信任的设备）、`password`（临时密码） |
 | `result` | `connected`（连上过）、`failed`（没连上，有原因）、`cancelled`（还没连上用户就关了） |
 | `reason` | 告诉用户的原因（≤ 200 字）：没连上的、连上以后断开的（"对方关机了"之类）；用户自己断开的是空的 |
 | `routes` | 依次试过的路：`direct`、`relay`、`relayTls`（≤ 8 个，连着重复的只记一次） |

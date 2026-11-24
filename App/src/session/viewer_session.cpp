@@ -146,6 +146,8 @@ ViewerSession::ViewerSession(const QString &target, ServiceClient &service, void
                 emit optionsChanged();
         } else if (const std::optional<QByteArray> wallpaper = rc::control::parseWallpaper(data)) {
             emit wallpaperReceived(*wallpaper);
+        } else if (rc::control::isTrusted(data)) {
+            rememberTrust();
         } else {
             displays_->received(data);
         }
@@ -203,8 +205,8 @@ ViewerSession::ViewerSession(const QString &target, ServiceClient &service, void
             peerWasOnline_ = online;
         }
     });
-    // 我的设备不要密码，一打开就连：等打开它的界面先设好画质、声音这些（同一轮事件里）
-    if (byDevice()) {
+    // 我的设备、信任本机的设备不要密码，一打开就连：等打开它的界面先设好画质、声音这些（同一轮事件里）
+    if (byDevice() || byTrust()) {
         status_ = QStringLiteral("connecting");
         QMetaObject::invokeMethod(this, [this] { open(false); }, Qt::QueuedConnection);
     }
@@ -388,8 +390,47 @@ void ViewerSession::connectWithPin(const QString &pin)
 
 bool ViewerSession::byDevice() const
 {
-    return !byPassword_ && !mineKey_(deviceId_).isEmpty()
-           && !protocol::DeviceState::fromJson(service_.topic(protocol::DeviceTopic)).deviceKey.isEmpty();
+    return !byPassword_ && !mineKey_(deviceId_).isEmpty() && !ownKey().isEmpty();
+}
+
+bool ViewerSession::byTrust() const
+{
+    return !byPassword_ && !byDevice() && !trustingKey().isEmpty() && !ownKey().isEmpty();
+}
+
+QByteArray ViewerSession::trustingKey() const
+{
+    if (deviceId_.isEmpty())
+        return {};
+    for (const protocol::TrustingDevice &device :
+         protocol::TrustState::fromJson(service_.topic(protocol::TrustTopic)).trustedBy) {
+        if (device.deviceId == deviceId_)
+            return QByteArray::fromBase64(device.publicKey.toLatin1());
+    }
+    return {};
+}
+
+QByteArray ViewerSession::ownKey() const
+{
+    return protocol::DeviceState::fromJson(service_.topic(protocol::DeviceTopic)).deviceKey;
+}
+
+void ViewerSession::trustLost(const QString &reason)
+{
+    qInfo("连接 %s：对方不再信任本机", qUtf8Printable(target_));
+    service_.send(protocol::ForgetTrust, {{QStringLiteral("deviceId"), deviceId_}});
+    usePassword(reason);
+}
+
+void ViewerSession::rememberTrust()
+{
+    const rcs_peer_info peer = session_->peerInfo();
+    if (deviceId_.isEmpty() || !peer.has_public_key)
+        return;
+    qInfo("连接 %s：对方信任了本机，以后不要密码", qUtf8Printable(target_));
+    const QByteArray key(reinterpret_cast<const char *>(peer.public_key), RCS_PUBLIC_KEY_SIZE);
+    service_.send(protocol::RememberTrust,
+                  {{QStringLiteral("deviceId"), deviceId_}, {QStringLiteral("publicKey"), QString::fromLatin1(key.toBase64())}});
 }
 
 void ViewerSession::usePassword(const QString &reason)
@@ -448,13 +489,13 @@ void ViewerSession::open(bool relay)
 #else
     const bool gpuFrames = true;
 #endif
-    // 我的设备：只认它的公钥，它也只认本机的；别人：临时密码
-    if (byDevice()) {
-        access_ = rc::DeviceAccess;
-        const QByteArray ownKey = protocol::DeviceState::fromJson(service_.topic(protocol::DeviceTopic)).deviceKey;
+    // 我的设备、信任本机的设备：只认它的公钥，它也只认本机的；别人：临时密码，也带上本机的设备密钥
+    // （对方在握手里知道本机的设备公钥，信任本机时记下；本机也知道它的，它说信任本机时记下）
+    if (byDevice() || byTrust()) {
+        access_ = byDevice() ? rc::DeviceAccess : rc::TrustedAccess;
         config.setSecret(RCS_SECRET_NONE)
-            .setDeviceKey(keyFrom<rcsdk::DeviceKey>(ownKey))
-            .setTrustedKeys({keyFrom<rcsdk::PublicKey>(mineKey_(deviceId_))});
+            .setDeviceKey(keyFrom<rcsdk::DeviceKey>(ownKey()))
+            .setTrustedKeys({keyFrom<rcsdk::PublicKey>(byDevice() ? mineKey_(deviceId_) : trustingKey())});
     } else {
         access_ = rc::PasswordAccess;
         try {
@@ -463,6 +504,8 @@ void ViewerSession::open(bool relay)
             setStatus(QStringLiteral("needPin"), tr("临时密码不对"));
             return;
         }
+        if (const QByteArray own = ownKey(); !own.isEmpty())
+            config.setDeviceKey(keyFrom<rcsdk::DeviceKey>(own));
     }
     if (!report_.active())
         report_.begin(deviceId_, clock_.elapsed());
@@ -663,7 +706,7 @@ void ViewerSession::retry()
 {
     if (target_.isEmpty())
         return;
-    if (byDevice() || !pin_.isEmpty())
+    if (byDevice() || byTrust() || !pin_.isEmpty())
         open(false);
     else
         setStatus(QStringLiteral("needPin"));
@@ -760,6 +803,8 @@ void ViewerSession::declined(const QString &reason)
         usePassword(tr("对方电脑没登录同一个账号，输入临时密码连接"));
     else if (reason == QLatin1StringView(rc::peer::NotReady))
         usePassword(tr("对方电脑还没连上服务器，认不出本机，输入临时密码连接"));
+    else if (reason == QLatin1StringView(rc::peer::NotTrusted))
+        trustLost(tr("对方不再信任这台设备，输入临时密码连接"));
     else if (reason == QLatin1StringView(rc::peer::VersionMismatch))
         versionMismatch();
     else
@@ -823,6 +868,9 @@ void ViewerSession::stateEvent(rcs_state state)
         // 按我的设备连，对方不认本机的设备密钥（它还没从服务器知道本机），或者本机不认它的（它换了设备密钥）
         else if (failure.result == RCS_ERROR_AUTHENTICATION && access_ == rc::DeviceAccess)
             usePassword(tr("对方不认这台设备，输入临时密码连接"));
+        // 按信任的设备连，对方不认本机的设备密钥了（取消了信任），或者它换了设备密钥（重装过）
+        else if (failure.result == RCS_ERROR_AUTHENTICATION && access_ == rc::TrustedAccess)
+            trustLost(tr("对方不再信任这台设备，输入临时密码连接"));
         else if (failure.result == RCS_ERROR_AUTHENTICATION && message.contains(u"no more PIN attempts"))
             setStatus(QStringLiteral("needPin"), tr("试错太多次，对方的临时密码已经换了，请问对方要新的"));
         else if (failure.result == RCS_ERROR_AUTHENTICATION && message.contains(u"PIN"))
@@ -862,6 +910,8 @@ void ViewerSession::admissionEvent(rcs_admission_state state, rcs_result result,
         setStatus(QStringLiteral("failed"), tr("对方一直没有允许，连接取消了"));
     else if (message == QLatin1StringView(rc::peer::Unattended))
         setStatus(QStringLiteral("failed"), tr("对方电脑前没有人能允许连接"));
+    else if (message == QLatin1StringView(rc::peer::NotTrusted))
+        trustLost(tr("对方不再信任这台设备，输入临时密码连接"));
     else
         setStatus(QStringLiteral("failed"), tr("对方拒绝了连接"));
 }

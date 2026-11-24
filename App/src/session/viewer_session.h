@@ -246,6 +246,15 @@ private:
     void endSignal();
     // 按我的设备连：对方是我的设备，本机的设备密钥也有，对方还没说过不认
     bool byDevice() const;
+    // 按信任的设备连：不是我的设备，对方信任了本机（trust 主题的 trustedBy），对方还没说过不认
+    bool byTrust() const;
+    // 对方信任本机时记下的它的设备公钥；没信任过是空的
+    QByteArray trustingKey() const;
+    QByteArray ownKey() const;
+    // 对方说不再信任本机了：忘掉，改问临时密码
+    void trustLost(const QString &reason);
+    // 连着时对方说信任本机了：记下它在握手里证明的设备公钥（按 IP 连的不知道是哪台，不记）
+    void rememberTrust();
     // 对方不认这台设备：改用临时密码，reason 告诉用户为什么
     void usePassword(const QString &reason);
     // 两边的比邻（SDK）版本不一样：对方回绝的（旧版本），或者 SDK 握手时发现的

@@ -32,6 +32,9 @@
 // 桌面的背景（设备详情顶上显示，不带窗口、图标，看不到对方在做什么）：
 // - 分享端 → 观看端 {"type": "wallpaper", "jpeg"}：主显示器的背景图，JPEG 再 base64。连进来时发（界面程序读的，
 //   没开着时没有），换了背景以后下一个连进来的人来时再发给连着的每一个人
+// 信任（docs/devices-and-accounts.md）：
+// - 分享端 → 观看端 {"type": "trusted"}：本机的人点允许时勾了"以后不要密码"。观看端记下分享端在握手里证明的
+//   设备公钥，以后按信任的设备连它（rc/transport.h 的 TrustedAccess）
 // 两边是同一个版本的程序（SDK 本来就要求两端同一个版本）
 namespace rc::control {
 
@@ -44,6 +47,7 @@ inline constexpr QLatin1StringView LowLatency{"lowLatency"};
 inline constexpr QLatin1StringView Thumbnails{"thumbnails"};
 inline constexpr QLatin1StringView Thumbnail{"thumbnail"};
 inline constexpr QLatin1StringView Wallpaper{"wallpaper"};
+inline constexpr QLatin1StringView Trusted{"trusted"};
 
 // 分享端录不了声音的原因：没有能用的声音设备、没有录声音的授权、别的错
 inline constexpr QLatin1StringView SoundNoDevice{"device"};
@@ -92,6 +96,7 @@ struct DisplayPicture
 };
 QByteArray thumbnail(const DisplayPicture &picture);
 QByteArray wallpaper(const QByteArray &jpeg);
+QByteArray trusted();
 
 // 不是这种消息时 nullopt
 std::optional<DisplayList> parseDisplays(const QByteArray &message);
@@ -105,5 +110,6 @@ bool isThumbnails(const QByteArray &message);
 std::optional<DisplayPicture> parseThumbnail(const QByteArray &message);
 // 空的也是 nullopt
 std::optional<QByteArray> parseWallpaper(const QByteArray &message);
+bool isTrusted(const QByteArray &message);
 
 } // namespace rc::control

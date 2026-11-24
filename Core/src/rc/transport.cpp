@@ -11,7 +11,7 @@ bool isTransport(QStringView name)
 
 bool isAccess(QStringView name)
 {
-    return name == PasswordAccess || name == DeviceAccess;
+    return name == PasswordAccess || name == DeviceAccess || name == TrustedAccess;
 }
 
 QString sdkVersion()

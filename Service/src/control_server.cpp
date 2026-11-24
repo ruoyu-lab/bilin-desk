@@ -19,6 +19,7 @@ ControlServer::ControlServer(DeviceStore &store, protocol::ServiceInfo info, Cli
                                                               : QLocalServer::WorldAccessOption);
     connect(&server_, &QLocalServer::newConnection, this, &ControlServer::accept);
     connect(&store_, &DeviceStore::changed, this, [this] { broadcast(deviceMessage()); });
+    connect(&store_, &DeviceStore::trustChanged, this, [this] { broadcast(trustMessage()); });
 }
 
 bool ControlServer::listen(const QString &endpoint)
@@ -53,6 +54,7 @@ void ControlServer::accept()
         });
         channel->send(protocol::topicMessage(protocol::ServiceTopic, info_.toJson()));
         channel->send(deviceMessage());
+        channel->send(trustMessage());
         for (auto topic = topics_.cbegin(); topic != topics_.cend(); ++topic)
             channel->send(protocol::topicMessage(topic.key(), topic.value()));
         emit clientsChanged();
@@ -92,7 +94,18 @@ void ControlServer::handle(qintptr socket, const QJsonObject &message)
         endSignal(socket, message.value(QLatin1StringView("session")).toString());
     else if (command == protocol::Admit)
         emit admitRequested(message.value(QLatin1StringView("id")).toInt(),
-                            message.value(QLatin1StringView("control")).toBool());
+                            message.value(QLatin1StringView("control")).toBool(),
+                            message.value(QLatin1StringView("trust")).toString());
+    else if (command == protocol::SetTrustAsk)
+        store_.setTrustAsk(message.value(QLatin1StringView("deviceId")).toString(),
+                           message.value(QLatin1StringView("value")).toBool());
+    else if (command == protocol::Untrust)
+        store_.untrust(message.value(QLatin1StringView("deviceId")).toString());
+    else if (command == protocol::RememberTrust)
+        store_.rememberTrust(message.value(QLatin1StringView("deviceId")).toString(),
+                             QByteArray::fromBase64(message.value(QLatin1StringView("publicKey")).toString().toLatin1()));
+    else if (command == protocol::ForgetTrust)
+        store_.forgetTrust(message.value(QLatin1StringView("deviceId")).toString());
     else if (command == protocol::Refuse)
         emit refuseRequested(message.value(QLatin1StringView("id")).toInt());
     else if (command == protocol::Disconnect)
@@ -228,4 +241,9 @@ void ControlServer::sendEventTo(qintptr socket, QLatin1StringView event, const Q
 QJsonObject ControlServer::deviceMessage() const
 {
     return protocol::topicMessage(protocol::DeviceTopic, store_.state().toJson());
+}
+
+QJsonObject ControlServer::trustMessage() const
+{
+    return protocol::topicMessage(protocol::TrustTopic, store_.trust().toJson());
 }

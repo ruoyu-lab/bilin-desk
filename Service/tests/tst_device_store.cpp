@@ -160,6 +160,62 @@ private slots:
         DeviceStore store(directory.path(), testDeviceKey);
         QCOMPARE(store.state().deviceId.size(), 9);
     }
+
+    // 信任的设备：存下来、重启后还在；同一台再信任一次换掉旧的、排到最前；能改要不要点允许、能取消
+    void keepsTrustedDevices()
+    {
+        QTemporaryDir directory;
+        const QByteArray key = QByteArray(1, '\x04') + QByteArray(64, '\x11');
+        const QString base64 = QString::fromLatin1(key.toBase64());
+        {
+            DeviceStore store(directory.path(), testDeviceKey);
+            QSignalSpy changed(&store, &DeviceStore::trustChanged);
+            store.addTrusted({QStringLiteral("482915307"), QStringLiteral("小明的电脑"), QStringLiteral("Windows"), base64, true, 1});
+            store.addTrusted({QStringLiteral("731204586"), QStringLiteral("办公室"), QStringLiteral("macOS"), base64, false, 2});
+            store.addTrusted({QStringLiteral("482915307"), QStringLiteral("小明的新名字"), QStringLiteral("Windows"), base64, true, 3});
+            QCOMPARE(changed.count(), 3);
+            store.setTrustAsk(QStringLiteral("482915307"), false);
+            store.setTrustAsk(QStringLiteral("482915307"), false); // 没变
+            QCOMPARE(changed.count(), 4);
+            store.rememberTrust(QStringLiteral("100049306"), key);
+            store.rememberTrust(QStringLiteral("100049306"), key); // 没变
+            QCOMPARE(changed.count(), 5);
+        }
+        DeviceStore store(directory.path(), testDeviceKey);
+        const rc::protocol::TrustState trust = store.trust();
+        QCOMPARE(trust.trusted.size(), 2);
+        QCOMPARE(trust.trusted.first().name, QStringLiteral("小明的新名字"));
+        QVERIFY(!trust.trusted.first().ask);
+        QCOMPARE(trust.trusted.last().deviceId, QStringLiteral("731204586"));
+        QCOMPARE(store.trusted(QStringLiteral("731204586"))->publicKey, base64);
+        QCOMPARE(trust.trustedBy.size(), 1);
+        store.untrust(QStringLiteral("731204586"));
+        store.forgetTrust(QStringLiteral("100049306"));
+        QVERIFY(!store.trusted(QStringLiteral("731204586")));
+        QVERIFY(store.trust().trustedBy.isEmpty());
+    }
+
+    // 公钥、设备 ID 不对的不收：不管是界面发来的，还是文件里的
+    void refusesBadTrust()
+    {
+        QTemporaryDir directory;
+        const QString good = QString::fromLatin1((QByteArray(1, '\x04') + QByteArray(64, '\x22')).toBase64());
+        const QString shortKey = QString::fromLatin1(QByteArray(10, '\x04').toBase64());
+        QVERIFY(rc::writeJsonFile(
+            directory.filePath(QStringLiteral("trust.json")),
+            rc::protocol::TrustState{{{QStringLiteral("482915307"), {}, {}, good, true, 0},
+                                      {QStringLiteral("731204586"), {}, {}, shortKey, true, 0},
+                                      {QStringLiteral("12"), {}, {}, good, true, 0}},
+                                     {{QStringLiteral("100049306"), shortKey}}}
+                .toJson()));
+        DeviceStore store(directory.path(), testDeviceKey);
+        QCOMPARE(store.trust().trusted.size(), 1);
+        QVERIFY(store.trust().trustedBy.isEmpty());
+        store.addTrusted({QStringLiteral("731204586"), {}, {}, shortKey, true, 0});
+        store.rememberTrust(QStringLiteral("731204586"), QByteArray(65, '\x01'));
+        QCOMPARE(store.trust().trusted.size(), 1);
+        QVERIFY(store.trust().trustedBy.isEmpty());
+    }
 };
 
 QTEST_GUILESS_MAIN(TestDeviceStore)

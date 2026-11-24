@@ -20,7 +20,7 @@ class LineChannel;
 
 // 本机连接的服务端：界面程序连上来看本机的状态、改设置、决定别人能不能连本机（消息见 rc/protocol.h）。
 // 连上时把每个主题发一遍，之后有变化发给所有连着的界面。
-// device、service 主题由它自己发，其他主题由别处经 publish 交给它
+// device、service、trust 主题由它自己发，其他主题由别处经 publish 交给它
 class ControlServer : public QObject
 {
     Q_OBJECT
@@ -57,7 +57,8 @@ signals:
     // 界面里的这次连接结束了：界面说的（EndSignal），或者发它的界面程序断开了
     void signalEnded(const QString &session);
     // 界面上的人对别人连本机的决定（id 见 share 主题）
-    void admitRequested(int id, bool control);
+    // trust：rc/protocol.h 的 Admit（空的、TrustAsk、TrustDirect）
+    void admitRequested(int id, bool control, const QString &trust);
     void refuseRequested(int id);
     void disconnectRequested(int id);
     void controlRequested(int id, bool control);
@@ -109,6 +110,7 @@ private:
     void acceptTransfer(qintptr socket, const QJsonObject &message);
     void broadcast(const QJsonObject &message);
     QJsonObject deviceMessage() const;
+    QJsonObject trustMessage() const;
 
     DeviceStore &store_;
     rc::protocol::ServiceInfo info_;

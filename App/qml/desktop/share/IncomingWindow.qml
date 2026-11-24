@@ -321,6 +321,27 @@ QtObject {
         }
     }
 
+    // 连接请求里的一个选项：说明在左，开关在右
+    component TrustOption: RowLayout {
+        id: option
+        property alias text: label.text
+        property alias checked: toggle.checked
+        signal toggled()
+        Layout.fillWidth: true
+        spacing: 8
+        Text {
+            id: label
+            Layout.fillWidth: true
+            elide: Text.ElideRight
+            font.pixelSize: 12
+            color: Theme.text
+        }
+        AppSwitch {
+            id: toggle
+            onToggled: option.toggled()
+        }
+    }
+
     component Person: RowLayout {
         id: person
         required property var info
@@ -603,6 +624,10 @@ QtObject {
                     delegate: ColumnLayout {
                         id: request
                         required property var modelData
+                        // 以后信任这台设备（不要密码）；也不用点允许
+                        property bool trust: false
+                        property bool direct: false
+                        readonly property string trustChoice: !trust ? "" : direct ? "direct" : "ask"
                         Layout.fillWidth: true
                         spacing: 12
 
@@ -610,8 +635,26 @@ QtObject {
                             Layout.fillWidth: true
                             info: request.modelData
                             // 网页版来的没有设备 ID
-                            subtitle: request.modelData.deviceId.length > 0 ? qsTr("请求连接本机 · %1").arg(request.modelData.deviceId)
-                                                                           : qsTr("请求连接本机")
+                            subtitle: request.modelData.trusted ? qsTr("信任的设备 · %1").arg(request.modelData.deviceId)
+                                      : request.modelData.deviceId.length > 0 ? qsTr("请求连接本机 · %1").arg(request.modelData.deviceId)
+                                      : qsTr("请求连接本机")
+                        }
+                        // 用临时密码来的：能信任它，以后它连本机不要密码
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            visible: request.modelData.canTrust
+                            spacing: 8
+                            TrustOption {
+                                text: qsTr("以后这台设备连本机不要密码")
+                                checked: request.trust
+                                onToggled: request.trust = checked
+                            }
+                            TrustOption {
+                                visible: request.trust
+                                text: qsTr("也不用我点允许")
+                                checked: request.direct
+                                onToggled: request.direct = checked
+                            }
                         }
                         Text {
                             Layout.fillWidth: true
@@ -631,13 +674,13 @@ QtObject {
                             Item { Layout.fillWidth: true }
                             AppButton {
                                 text: qsTr("仅查看")
-                                onClicked: IncomingConnections.admit(request.modelData.id, false)
+                                onClicked: IncomingConnections.admit(request.modelData.id, false, request.trustChoice)
                             }
                             AppButton {
                                 primary: true
                                 enabled: IncomingConnections.canControl
                                 text: qsTr("允许控制")
-                                onClicked: IncomingConnections.admit(request.modelData.id, true)
+                                onClicked: IncomingConnections.admit(request.modelData.id, true, request.trustChoice)
                             }
                         }
                     }

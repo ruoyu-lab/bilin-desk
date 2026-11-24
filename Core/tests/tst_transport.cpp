@@ -16,6 +16,15 @@ private slots:
         QVERIFY(!rc::isTransport(u"udp"));
     }
 
+    // 设备之间的信令里只有这三种；网页版的钥匙只在分享端用
+    void namesTheAccesses()
+    {
+        QVERIFY(rc::isAccess(u"password"));
+        QVERIFY(rc::isAccess(u"device"));
+        QVERIFY(rc::isAccess(u"trusted"));
+        QVERIFY(!rc::isAccess(u"webKey"));
+    }
+
     // 信令写着本机的 SDK 版本（给 0.1.1-beta 和以前的看）；读的时候不要它，transport、access 不认得的不是信令
     void modeRoundTrip()
     {

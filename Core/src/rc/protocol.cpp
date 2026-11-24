@@ -60,6 +60,8 @@ QJsonObject SharePeer::toJson() const
         {QStringLiteral("name"), name},
         {QStringLiteral("platform"), platform},
         {QStringLiteral("control"), control},
+        {QStringLiteral("access"), access},
+        {QStringLiteral("canTrust"), canTrust},
     };
 }
 
@@ -71,6 +73,8 @@ SharePeer SharePeer::fromJson(const QJsonObject &json)
     peer.name = json.value(QLatin1StringView("name")).toString();
     peer.platform = json.value(QLatin1StringView("platform")).toString();
     peer.control = json.value(QLatin1StringView("control")).toBool();
+    peer.access = json.value(QLatin1StringView("access")).toString();
+    peer.canTrust = json.value(QLatin1StringView("canTrust")).toBool();
     return peer;
 }
 
@@ -151,6 +155,56 @@ AccountDevice AccountDevice::fromJson(const QJsonObject &json)
     return {json.value(QLatin1StringView("deviceId")).toString(), json.value(QLatin1StringView("name")).toString(),
             json.value(QLatin1StringView("platform")).toString(), json.value(QLatin1StringView("publicKey")).toString(),
             json.value(QLatin1StringView("online")).toBool(), json.value(QLatin1StringView("wake")).toString()};
+}
+
+QJsonObject TrustedDevice::toJson() const
+{
+    return {
+        {QStringLiteral("deviceId"), deviceId},
+        {QStringLiteral("name"), name},
+        {QStringLiteral("platform"), platform},
+        {QStringLiteral("publicKey"), publicKey},
+        {QStringLiteral("ask"), ask},
+        {QStringLiteral("since"), since},
+    };
+}
+
+TrustedDevice TrustedDevice::fromJson(const QJsonObject &json)
+{
+    return {json.value(QLatin1StringView("deviceId")).toString(), json.value(QLatin1StringView("name")).toString(),
+            json.value(QLatin1StringView("platform")).toString(), json.value(QLatin1StringView("publicKey")).toString(),
+            json.value(QLatin1StringView("ask")).toBool(true), json.value(QLatin1StringView("since")).toInteger()};
+}
+
+QJsonObject TrustingDevice::toJson() const
+{
+    return {{QStringLiteral("deviceId"), deviceId}, {QStringLiteral("publicKey"), publicKey}};
+}
+
+TrustingDevice TrustingDevice::fromJson(const QJsonObject &json)
+{
+    return {json.value(QLatin1StringView("deviceId")).toString(), json.value(QLatin1StringView("publicKey")).toString()};
+}
+
+QJsonObject TrustState::toJson() const
+{
+    QJsonArray trustedArray;
+    for (const TrustedDevice &device : trusted)
+        trustedArray.append(device.toJson());
+    QJsonArray byArray;
+    for (const TrustingDevice &device : trustedBy)
+        byArray.append(device.toJson());
+    return {{QStringLiteral("trusted"), trustedArray}, {QStringLiteral("trustedBy"), byArray}};
+}
+
+TrustState TrustState::fromJson(const QJsonObject &json)
+{
+    TrustState state;
+    for (const QJsonValue &device : json.value(QLatin1StringView("trusted")).toArray())
+        state.trusted.append(TrustedDevice::fromJson(device.toObject()));
+    for (const QJsonValue &device : json.value(QLatin1StringView("trustedBy")).toArray())
+        state.trustedBy.append(TrustingDevice::fromJson(device.toObject()));
+    return state;
 }
 
 QJsonObject AccountState::toJson() const

@@ -28,6 +28,9 @@ inline constexpr QLatin1StringView WebTransport{"web"};
 inline constexpr QLatin1StringView PasswordAccess{"password"};
 // 我的设备：只靠设备密钥（SDK 的 RCS_SECRET_NONE 加信任列表），不要密码、不用点允许
 inline constexpr QLatin1StringView DeviceAccess{"device"};
+// 信任的设备（别人的设备，对方点允许时勾了"以后不要密码"，docs/devices-and-accounts.md）：只靠设备密钥，
+// 不要密码；要不要点允许由信任它的人定
+inline constexpr QLatin1StringView TrustedAccess{"trusted"};
 // 网页版里登录了本机账号的浏览器（docs/web.md）：服务器给这次连接发的一次性钥匙（SDK 的 KEY），不要密码、不用点允许。
 // 只有分享端用，不在设备之间的信令里出现
 inline constexpr QLatin1StringView WebKeyAccess{"webKey"};

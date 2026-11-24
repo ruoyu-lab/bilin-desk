@@ -3,6 +3,7 @@
 #include "service_client.h"
 
 #include <rc/device_id.h>
+#include <rc/transport.h>
 
 #include <QDesktopServices>
 #include <QJSEngine>
@@ -24,6 +25,8 @@ QVariantList toVariant(const QList<protocol::SharePeer> &peers)
             {QStringLiteral("name"), peer.name},
             {QStringLiteral("platform"), peer.platform},
             {QStringLiteral("control"), peer.control},
+            {QStringLiteral("trusted"), peer.access == rc::TrustedAccess},
+            {QStringLiteral("canTrust"), peer.canTrust},
         });
     }
     return list;
@@ -72,9 +75,10 @@ QVariantList IncomingConnections::viewers() const
     return toVariant(state_.viewers);
 }
 
-void IncomingConnections::admit(int id, bool control)
+void IncomingConnections::admit(int id, bool control, const QString &trust)
 {
-    service_.send(protocol::Admit, {{QStringLiteral("id"), id}, {QStringLiteral("control"), control}});
+    service_.send(protocol::Admit,
+                  {{QStringLiteral("id"), id}, {QStringLiteral("control"), control}, {QStringLiteral("trust"), trust}});
 }
 
 void IncomingConnections::refuse(int id)

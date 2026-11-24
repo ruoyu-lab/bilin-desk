@@ -36,6 +36,7 @@ DeviceStore::DeviceStore(QString directory, std::function<QByteArray()> generate
 {
     loadIdentity();
     loadSettings();
+    loadTrust();
 }
 
 void DeviceStore::loadIdentity()
@@ -117,6 +118,93 @@ void DeviceStore::saveSettings()
     if (!customName_.isEmpty())
         settings.insert(DeviceNameKey, customName_);
     rc::writeJsonFile(directory_ + QStringLiteral("/settings.json"), settings);
+}
+
+bool DeviceStore::isPublicKey(const QByteArray &key)
+{
+    return key.size() == PublicKeySize && key.at(0) == 0x04;
+}
+
+void DeviceStore::loadTrust()
+{
+    const auto loaded = rc::protocol::TrustState::fromJson(rc::readJsonFile(directory_ + QStringLiteral("/trust.json")));
+    const auto valid = [](const QString &id, const QString &key) {
+        return rc::DeviceId::parse(id).isValid() && isPublicKey(QByteArray::fromBase64(key.toLatin1()));
+    };
+    for (const auto &device : loaded.trusted) {
+        if (valid(device.deviceId, device.publicKey))
+            trust_.trusted.append(device);
+    }
+    for (const auto &device : loaded.trustedBy) {
+        if (valid(device.deviceId, device.publicKey))
+            trust_.trustedBy.append(device);
+    }
+}
+
+void DeviceStore::saveTrust()
+{
+    rc::writeJsonFile(directory_ + QStringLiteral("/trust.json"), trust_.toJson());
+    emit trustChanged();
+}
+
+std::optional<rc::protocol::TrustedDevice> DeviceStore::trusted(const QString &deviceId) const
+{
+    for (const auto &device : trust_.trusted) {
+        if (device.deviceId == deviceId)
+            return device;
+    }
+    return std::nullopt;
+}
+
+void DeviceStore::addTrusted(const rc::protocol::TrustedDevice &device)
+{
+    if (!rc::DeviceId::parse(device.deviceId).isValid() || !isPublicKey(QByteArray::fromBase64(device.publicKey.toLatin1())))
+        return;
+    trust_.trusted.removeIf([&](const auto &d) { return d.deviceId == device.deviceId; });
+    trust_.trusted.prepend(device);
+    qInfo("信任了设备 %s（%s）%s", qUtf8Printable(device.deviceId), qUtf8Printable(device.name),
+          device.ask ? "，来连时还要点允许" : "，来连时不用点允许");
+    saveTrust();
+}
+
+void DeviceStore::setTrustAsk(const QString &deviceId, bool ask)
+{
+    for (auto &device : trust_.trusted) {
+        if (device.deviceId == deviceId && device.ask != ask) {
+            device.ask = ask;
+            saveTrust();
+            return;
+        }
+    }
+}
+
+void DeviceStore::untrust(const QString &deviceId)
+{
+    if (trust_.trusted.removeIf([&](const auto &d) { return d.deviceId == deviceId; }) == 0)
+        return;
+    qInfo("不再信任设备 %s", qUtf8Printable(deviceId));
+    saveTrust();
+}
+
+void DeviceStore::rememberTrust(const QString &deviceId, const QByteArray &publicKey)
+{
+    if (!rc::DeviceId::parse(deviceId).isValid() || !isPublicKey(publicKey))
+        return;
+    const rc::protocol::TrustingDevice device{deviceId, QString::fromLatin1(publicKey.toBase64())};
+    if (trust_.trustedBy.contains(device))
+        return;
+    trust_.trustedBy.removeIf([&](const auto &d) { return d.deviceId == deviceId; });
+    trust_.trustedBy.append(device);
+    qInfo("设备 %s 信任了本机：以后去连它不要密码", qUtf8Printable(deviceId));
+    saveTrust();
+}
+
+void DeviceStore::forgetTrust(const QString &deviceId)
+{
+    if (trust_.trustedBy.removeIf([&](const auto &d) { return d.deviceId == deviceId; }) == 0)
+        return;
+    qInfo("设备 %s 不再信任本机", qUtf8Printable(deviceId));
+    saveTrust();
 }
 
 rc::protocol::DeviceState DeviceStore::state() const

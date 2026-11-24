@@ -89,6 +89,11 @@ QByteArray thumbnails()
     return QJsonDocument(QJsonObject{{QStringLiteral("type"), QString(Thumbnails)}}).toJson(QJsonDocument::Compact);
 }
 
+QByteArray trusted()
+{
+    return QJsonDocument(QJsonObject{{QStringLiteral("type"), QString(Trusted)}}).toJson(QJsonDocument::Compact);
+}
+
 QByteArray thumbnail(const DisplayPicture &picture)
 {
     const QJsonObject message{
@@ -173,6 +178,11 @@ std::optional<bool> parseLowLatency(const QByteArray &message)
 bool isThumbnails(const QByteArray &message)
 {
     return parse(message, Thumbnails).has_value();
+}
+
+bool isTrusted(const QByteArray &message)
+{
+    return parse(message, Trusted).has_value();
 }
 
 std::optional<DisplayPicture> parseThumbnail(const QByteArray &message)

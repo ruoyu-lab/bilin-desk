@@ -19,6 +19,7 @@
 #include "agent_gate.h"
 #endif
 
+#include <QDateTime>
 #include <QTimer>
 
 #include <algorithm>
@@ -138,6 +139,8 @@ ShareHost::ShareHost(QLatin1StringView access, const ShareCapture &capture, Devi
             hardwareEncoders_ = capabilities.hardware_encoders;
     }
     connect(&store_, &DeviceStore::changed, this, &ShareHost::update);
+    if (trusted())
+        connect(&store_, &DeviceStore::trustChanged, this, &ShareHost::trustChanged);
     update();
 }
 
@@ -149,9 +152,24 @@ bool ShareHost::wanted() const
     // 网页版的我的设备：有浏览器来连时才开，和我的设备一样要界面程序开着、或者允许没人开界面时也连
     if (webMine())
         return webKey_.has_value() && (attended_ || store_.state().unattended);
+    if (trusted())
+        return store_.state().acceptIncoming && !store_.trust().trusted.isEmpty();
     if (!mine())
         return store_.state().acceptIncoming;
     return trustedKeys_ && !trustedKeys_->isEmpty() && (attended_ || store_.state().unattended);
+}
+
+void ShareHost::trustChanged()
+{
+    if (!session_ || !wanted()) {
+        update();
+        return;
+    }
+    // 从下一个握手起只认这些，已经连着的不受影响
+    rcsdk::SessionConfig config(RCS_ROLE_SHARE);
+    useIdentity(config);
+    if (session_->update(config) != RCS_OK)
+        qWarning("换信任的设备：%s", rcsdk::lastCallError().c_str());
 }
 
 void ShareHost::setTrustedKeys(const std::optional<QList<QByteArray>> &keys)
@@ -185,7 +203,7 @@ void ShareHost::update()
         return;
     }
     const auto device = store_.state();
-    if (mine() || webMine() || device.password == pin_)
+    if (mine() || webMine() || trusted() || device.password == pin_)
         return;
     // 换了临时密码：从下一个握手起用新的，已经连着的不受影响
     pin_ = device.password;
@@ -271,7 +289,8 @@ void ShareHost::start()
         later([this, id, channel, data = std::move(data)] { channels_.receive(channel, id, data); });
     };
     // 别人：密码对了先不让进，等本机的人决定（admit / refuse）。
-    // 我的设备：SDK 核对过它的设备密钥在信任列表里，直接让进、能控制（没有辅助功能授权时只能看）
+    // 我的设备：SDK 核对过它的设备密钥在信任列表里，直接让进、能控制（没有辅助功能授权时只能看）。
+    // 信任的设备：先不让进，核对过 ID 和公钥是同一台、看要不要点允许再定（viewerArrived）
     const bool admit = mine() || webMine();
     const bool control = canControl_;
     callbacks.onViewerJoin = [this, later, admit, control](const rcs_viewer_info &viewer, rcs_viewer_decision &decision) {
@@ -280,7 +299,10 @@ void ShareHost::start()
         const int id = int(viewer.viewer_id);
         const quint64 route = viewer.route;
         const rcs_platform platform = viewer.peer.platform;
-        later([this, id, route, platform, admit] { viewerArrived(id, route, platformName(platform), admit); });
+        const QByteArray key = viewer.peer.has_public_key
+                                   ? QByteArray(reinterpret_cast<const char *>(viewer.peer.public_key), RCS_PUBLIC_KEY_SIZE)
+                                   : QByteArray();
+        later([this, id, route, platform, admit, key] { viewerArrived(id, route, platformName(platform), admit, key); });
     };
     // 观看端要按 Ctrl+Alt+Del：记一笔（SDK 交给系统以后系统不说成没成，日志里至少看得出请求到了），照常执行
     callbacks.onInput = [](const rcs_input_event &event) {
@@ -397,7 +419,8 @@ void ShareHost::start()
         });
         relay_->open(relayTicket_);
     }
-    qInfo("开始接受%s连接本机（%s）%s", mine() ? "我的设备" : webMine() ? "网页版的我的设备" : "别人",
+    qInfo("开始接受%s连接本机（%s）%s",
+          mine() ? "我的设备" : webMine() ? "网页版的我的设备" : trusted() ? "信任的设备" : "别人",
           transport_.current() == rc::RelayTransport ? "经中继"
           : transport_.current() == rc::WebTransport ? "经网页版的转发" : "直连",
           canControl_ ? "" : "，还没授予辅助功能，只能让对方看");
@@ -428,7 +451,8 @@ void ShareHost::stop()
     problem_.clear();
     emit stateChanged();
     if (wasRunning)
-        qInfo("不再接受%s连接本机", mine() ? "我的设备" : webMine() ? "网页版的我的设备" : "别人");
+        qInfo("不再接受%s连接本机",
+              mine() ? "我的设备" : webMine() ? "网页版的我的设备" : trusted() ? "信任的设备" : "别人");
 }
 
 void ShareHost::end()
@@ -450,6 +474,7 @@ void ShareHost::end()
         emit viewerGone(returning.device, returning.session);
     returning_.clear();
     rejoined_.clear();
+    newlyTrusted_.clear();
     requests_.clear();
     viewers_.clear();
     displays_.reset();
@@ -476,16 +501,22 @@ void ShareHost::useIdentity(rcsdk::SessionConfig &config) const
         config.setKey(keyFrom<rcsdk::ConnectionKey>(*webKey_));
         return;
     }
-    if (!mine()) {
-        config.setPin(pin_.toStdString());
+    // 别人的：临时密码。也带上本机的设备密钥、不限对方的：两边在握手里互相知道对方的设备公钥，信任时记下
+    if (!mine() && !trusted()) {
+        config.setPin(pin_.toStdString()).setDeviceKey(keyFrom<rcsdk::DeviceKey>(store_.deviceKey()));
         return;
     }
-    std::vector<rcsdk::PublicKey> trusted;
-    for (const QByteArray &key : *trustedKeys_)
-        trusted.push_back(keyFrom<rcsdk::PublicKey>(key));
+    std::vector<rcsdk::PublicKey> keys;
+    if (trusted()) {
+        for (const protocol::TrustedDevice &device : store_.trust().trusted)
+            keys.push_back(keyFrom<rcsdk::PublicKey>(QByteArray::fromBase64(device.publicKey.toLatin1())));
+    } else {
+        for (const QByteArray &key : *trustedKeys_)
+            keys.push_back(keyFrom<rcsdk::PublicKey>(key));
+    }
     config.setSecret(RCS_SECRET_NONE)
         .setDeviceKey(keyFrom<rcsdk::DeviceKey>(store_.deviceKey()))
-        .setTrustedKeys(std::move(trusted));
+        .setTrustedKeys(std::move(keys));
 }
 
 void ShareHost::useCapture(rcsdk::SessionConfig &config)
@@ -707,8 +738,11 @@ protocol::ShareState ShareHost::state() const
     state.inputPermission = inputPermission_;
     state.canControl = canControl_;
     state.clipboard = clipboard_.enabled();
-    for (const Peer &request : requests_)
-        state.requests.append(request.info);
+    for (const Peer &request : requests_) {
+        protocol::SharePeer info = request.info;
+        info.canTrust = access_ == rc::PasswordAccess && !info.deviceId.isEmpty() && !request.publicKey.isEmpty();
+        state.requests.append(info);
+    }
     for (const Peer &viewer : viewers_)
         state.viewers.append(viewer.info);
     return state;
@@ -781,12 +815,20 @@ void ShareHost::receiveSignal(const QString &from, const QString &name, const QS
     // 现在不接受连接：经服务器告诉对方为什么，不让它干等
     if (!session_) {
         QString reason = problem_;
-        if (reason.isEmpty() && !mine())
+        if (reason.isEmpty() && trusted())
+            reason = QLatin1StringView(store_.state().acceptIncoming ? rc::peer::NotTrusted : rc::peer::NotAccepting);
+        else if (reason.isEmpty() && !mine())
             reason = QLatin1StringView(rc::peer::NotAccepting);
         else if (reason.isEmpty())
             reason = QLatin1StringView(trustedKeys_ ? rc::peer::NotMine : rc::peer::NotReady);
         qInfo("设备 %s 要连本机，本机现在不接受连接（%s），回绝", qUtf8Printable(from), qUtf8Printable(reason));
         emit declined(from, session, reason);
+        return;
+    }
+    // 没信任它（取消了）：不用握手，直接说
+    if (trusted() && !store_.trusted(from)) {
+        qInfo("设备 %s 按信任的设备来连，本机没信任它，回绝", qUtf8Printable(from));
+        emit declined(from, session, QLatin1StringView(rc::peer::NotTrusted));
         return;
     }
     switch (transport_.check(from, mode.transport, inUse(), ice_.turn.has_value())) {
@@ -816,13 +858,21 @@ void ShareHost::receiveSignal(const QString &from, const QString &name, const QS
         qWarning("设备 %s 的信令：%s", qUtf8Printable(from), rcs_result_message(result));
 }
 
-void ShareHost::admit(int id, bool control)
+void ShareHost::admit(int id, bool control, const QString &trust)
 {
     const auto request = findId(requests_, id);
     if (request == requests_.end())
         return;
     qInfo("允许 %s（%s）连接本机，%s", qUtf8Printable(request->info.name), qUtf8Printable(request->info.deviceId),
           control ? "可以控制" : "仅查看");
+    // 信任它：按 IP 连进来的也有设备 ID（局域网的信令带着）；网页版没有设备 ID、没有设备公钥，信任不了
+    if (!trust.isEmpty() && access_ == rc::PasswordAccess && !request->info.deviceId.isEmpty()
+        && !request->publicKey.isEmpty()) {
+        store_.addTrusted({request->info.deviceId, request->info.name, request->info.platform,
+                           QString::fromLatin1(request->publicKey.toBase64()), trust != protocol::TrustDirect,
+                           QDateTime::currentMSecsSinceEpoch()});
+        newlyTrusted_.insert(id);
+    }
     requests_.erase(request);
     emit stateChanged();
     decide(id, true, control);
@@ -946,12 +996,13 @@ void ShareHost::pinFailed(int attemptsLeft)
 ShareHost::Peer ShareHost::peerFor(int id, quint64 route, const QString &platform) const
 {
     const Route from = routes_.value(route);
-    return {{id, from.device, from.name, platform, false}, from.session};
+    return {{id, from.device, from.name, platform, false, access_}, from.session};
 }
 
-void ShareHost::viewerArrived(int id, quint64 route, const QString &platform, bool admitted)
+void ShareHost::viewerArrived(int id, quint64 route, const QString &platform, bool admitted, const QByteArray &publicKey)
 {
     Peer peer = peerFor(id, route, platform);
+    peer.publicKey = publicKey;
     transport_.arrived(peer.info.deviceId);
     // 路断了的人回来了：直接让它进，控制权照旧
     const auto returning = std::find_if(returning_.begin(), returning_.end(), [&peer](const Returning &r) {
@@ -969,6 +1020,20 @@ void ShareHost::viewerArrived(int id, quint64 route, const QString &platform, bo
     // 我的设备：已经让进了，连进来时（viewerJoined）记上
     if (admitted)
         return;
+    if (trusted()) {
+        // SDK 只核对了公钥是信任的那几把之一：还要是来连的这个 ID 的那一把（服务器、局域网的信令说是谁）
+        const auto device = store_.trusted(peer.info.deviceId);
+        if (!device || QByteArray::fromBase64(device->publicKey.toLatin1()) != publicKey) {
+            qWarning("设备 %s 按信任的设备来连，证明的不是记下的那把设备密钥，拒绝", qUtf8Printable(peer.info.deviceId));
+            decide(id, false, false, rc::peer::NotTrusted);
+            return;
+        }
+        if (!device->ask && (attended_ || store_.state().unattended)) {
+            qInfo("信任的设备 %s（%s）连进来，不用点允许", qUtf8Printable(peer.info.name), qUtf8Printable(peer.info.deviceId));
+            decide(id, true, canControl_);
+            return;
+        }
+    }
     if (!attended_) {
         qInfo("%s（%s）要连本机，界面程序没开着，没人能点允许，拒绝", qUtf8Printable(peer.info.name),
               qUtf8Printable(peer.info.deviceId));
@@ -1006,6 +1071,9 @@ void ShareHost::viewerJoined(int id, quint64 route, const QString &platform, boo
     // 路断了回来的还是原来那一次连接
     if (!rejoined_.remove(id))
         emit viewerConnected(viewer.info, viewer.session);
+    // 刚信任了它：告诉它，以后它按信任的设备来连
+    if (newlyTrusted_.remove(id))
+        sendControl(id, rc::control::trusted());
     // 和它上次没传完的文件：按设备认（按 IP 连进来的也有设备 ID）
     files_.setPeer(id, viewer.info.deviceId);
     viewers_.append(std::move(viewer));
@@ -1090,8 +1158,8 @@ void ShareHost::decide(int id, bool admit, bool control, const char *reason)
 
 void ShareHost::changePassword(const char *why)
 {
-    // 我的设备不用临时密码
-    if (mine())
+    // 我的设备、信任的设备不用临时密码
+    if (mine() || trusted())
         return;
     qInfo("临时密码用过了（%s），换一个新的", why);
     store_.regeneratePassword();

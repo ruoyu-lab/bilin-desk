@@ -4,7 +4,9 @@
 
 #include <rc/device_id.h>
 
+#include <QDateTime>
 #include <QJSEngine>
+#include <QVariantMap>
 
 namespace protocol = rc::protocol;
 
@@ -29,6 +31,14 @@ ThisDevice::ThisDevice(ServiceClient &service, QObject *parent)
             }
             return;
         }
+        if (topic == protocol::TrustTopic) {
+            const auto trust = protocol::TrustState::fromJson(service_.topic(protocol::TrustTopic));
+            if (trust != trust_) {
+                trust_ = trust;
+                emit trustChanged();
+            }
+            return;
+        }
         if (topic != protocol::DeviceTopic)
             return;
         const auto state = protocol::DeviceState::fromJson(service_.topic(protocol::DeviceTopic));
@@ -37,6 +47,32 @@ ThisDevice::ThisDevice(ServiceClient &service, QObject *parent)
         state_ = state;
         emit changed();
     });
+}
+
+QVariantList ThisDevice::trustedDevices() const
+{
+    QVariantList list;
+    for (const protocol::TrustedDevice &device : trust_.trusted) {
+        list.append(QVariantMap{
+            {QStringLiteral("deviceId"), rc::DeviceId::parse(device.deviceId).display()},
+            {QStringLiteral("rawId"), device.deviceId},
+            {QStringLiteral("name"), device.name},
+            {QStringLiteral("platform"), device.platform},
+            {QStringLiteral("ask"), device.ask},
+            {QStringLiteral("since"), QDateTime::fromMSecsSinceEpoch(device.since).date()},
+        });
+    }
+    return list;
+}
+
+void ThisDevice::setTrustAsk(const QString &rawId, bool ask)
+{
+    service_.send(protocol::SetTrustAsk, {{QStringLiteral("deviceId"), rawId}, {QStringLiteral("value"), ask}});
+}
+
+void ThisDevice::untrust(const QString &rawId)
+{
+    service_.send(protocol::Untrust, {{QStringLiteral("deviceId"), rawId}});
 }
 
 void ThisDevice::setInstance(ThisDevice *device)

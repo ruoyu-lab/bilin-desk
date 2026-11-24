@@ -8,6 +8,7 @@
 #include <QString>
 
 #include <functional>
+#include <optional>
 
 // 本机：设备 ID、名字、临时密码和被控那一面的设置。存在 directory 里：
 //   identity.json  {"deviceId": "482915307", "secrets": ...}
@@ -18,6 +19,7 @@
 //                  公钥交给服务器，同一账号的设备、信任本机的设备用它认出本机；私钥不给任何人
 //   settings.json  {"deviceName": ..., "acceptIncoming": ..., "lanDiscovery": ..., "unattended": ..., "connectionStats": ...}
 //                  deviceName 只在用户起过名字时有；没有时用本机默认的名字，跟着系统里的电脑名称变
+//   trust.json     rc::protocol::TrustState：本机信任的别人的设备、信任本机的设备（docs/devices-and-accounts.md）
 // 临时密码不存：每次启动换一个
 class DeviceStore : public QObject
 {
@@ -44,17 +46,31 @@ public:
     void regeneratePassword();
     // 服务器说这个 ID 已经属于别的设备：换一个新的
     void replaceDeviceId();
+    // 信任的设备（trustChanged）。本机信任 device（同一个 ID 的换掉，新的在前）；公钥不对的不要
+    rc::protocol::TrustState trust() const { return trust_; }
+    std::optional<rc::protocol::TrustedDevice> trusted(const QString &deviceId) const;
+    void addTrusted(const rc::protocol::TrustedDevice &device);
+    void setTrustAsk(const QString &deviceId, bool ask);
+    void untrust(const QString &deviceId);
+    // 设备 deviceId 信任了本机，以后去连它只认 publicKey（65 字节）；不再信任了就忘掉
+    void rememberTrust(const QString &deviceId, const QByteArray &publicKey);
+    void forgetTrust(const QString &deviceId);
+    static bool isPublicKey(const QByteArray &key);
+
     // 服务器认出本机是账号下原来的那一台（重装过，rc/machine.h）：换回原来的 ID，令牌、密钥不变。ID 不对时不换
     void takeDeviceId(const QString &digits);
 
 signals:
     void changed();
+    void trustChanged();
 
 private:
     void loadIdentity();
     void saveIdentity();
     void loadSettings();
     void saveSettings();
+    void loadTrust();
+    void saveTrust();
 
     QString directory_;
     rc::DeviceId deviceId_;
@@ -67,4 +83,5 @@ private:
     bool lanDiscovery_ = true;
     bool unattended_ = true;
     bool connectionStats_ = true;
+    rc::protocol::TrustState trust_;
 };

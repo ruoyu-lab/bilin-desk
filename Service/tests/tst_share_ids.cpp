@@ -12,7 +12,7 @@ private slots:
     // 几个会话的同一个编号合成不一样的，再拆回来还是原来的
     void roundTrip()
     {
-        for (const Session session : {Session::Others, Session::Mine, Session::WebMine}) {
+        for (const Session session : {Session::Others, Session::Mine, Session::WebMine, Session::Trusted}) {
             for (const int local : {1, 2, 7, 1000}) {
                 const int global = share_ids::global(session, local);
                 QCOMPARE(share_ids::session(global), session);
@@ -21,6 +21,7 @@ private slots:
         }
         QVERIFY(share_ids::global(Session::Others, 3) != share_ids::global(Session::Mine, 3));
         QVERIFY(share_ids::global(Session::Mine, 3) != share_ids::global(Session::WebMine, 3));
+        QVERIFY(share_ids::global(Session::WebMine, 3) != share_ids::global(Session::Trusted, 3));
     }
 };
 

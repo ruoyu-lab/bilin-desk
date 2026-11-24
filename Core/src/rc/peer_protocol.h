@@ -38,6 +38,8 @@ inline constexpr char RelayRetry[] = "relayRetry";
 inline constexpr char NotMine[] = "notMine";
 // 对方按我的设备来连，本机还不知道账号下有哪些设备：后台服务刚启动（开机、注销以后），服务器还没告诉它
 inline constexpr char NotReady[] = "notReady";
+// 对方按信任的设备来连（rc/transport.h 的 TrustedAccess），本机没信任它（取消了，或者从没信任过）
+inline constexpr char NotTrusted[] = "notTrusted";
 // 两边的 SDK 不是同一个版本，连不上：都更新到最新版本才行。程序 0.1.1-beta 和以前的按信令里的 sdk 回绝；之后的
 // 不回绝，SDK 握手时自己核对（rc/transport.h）
 inline constexpr char VersionMismatch[] = "version";

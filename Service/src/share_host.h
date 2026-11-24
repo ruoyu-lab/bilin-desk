@@ -73,6 +73,10 @@ struct ShareCapture
 // 对话在 ShareChat（经 addChannel 接上），多显示器（换着分享哪一块）在 ShareDisplays
 // - 和连着的人互传文件（files()）：对方发来的由界面上的人决定收不收，没有界面连着时直接拒绝
 // - 我的设备让本机重启、关机、睡眠、注销（SDK 的电源模块）：只给我的设备，别人的电脑一律不能
+// 信任的设备（TrustedAccess，docs/devices-and-accounts.md）：本机的人允许别人连接时勾了"以后不要密码"，记下它在
+// 临时密码的握手里证明的设备公钥（DeviceStore 的 trust）。之后它只靠设备密钥连（RCS_SECRET_NONE），只认记下的那几把，
+// 还核对来连的 ID 和公钥是同一台的；当时选了"也不用点允许"的直接让进，不然和别人一样要点允许。
+// 和别人的一样只在"允许别人连接本机"开着时运行，不能让本机重启、关机，也拿不到唤醒用的网卡
 class ShareHost : public QObject
 {
     Q_OBJECT
@@ -109,8 +113,9 @@ public:
     // 设备 from（名字 name）发来的信令：它要这样（mode）连本机，mode.access 和这一个的一样
     void receiveSignal(const QString &from, const QString &name, const QString &session, const QString &text,
                        const rc::ConnectionMode &mode);
-    // 界面上的人对连接请求、连着的人的决定（id 见 state()）
-    void admit(int id, bool control);
+    // 界面上的人对连接请求、连着的人的决定（id 见 state()）。trust：以后信不信任它（rc/protocol.h 的 Admit），
+    // 只有别人的（临时密码）能选，它在握手里证明了设备公钥才记得下
+    void admit(int id, bool control, const QString &trust);
     void refuse(int id);
     void disconnectViewer(int id);
     void setControl(int id, bool control);
@@ -164,6 +169,8 @@ private:
         QLatin1StringView sound;
         // 它要低延迟模式（rc/control_protocol.h 的 lowLatency）
         bool lowLatency = false;
+        // 它在握手里证明的设备公钥（65 字节）；网页版、老的观看端没有
+        QByteArray publicKey;
     };
     // 路断了的人：一分钟内同一次连接回来就直接让它进
     struct Returning
@@ -176,6 +183,9 @@ private:
 
     bool mine() const { return access_ == rc::DeviceAccess; }
     bool webMine() const { return access_ == rc::WebKeyAccess; }
+    bool trusted() const { return access_ == rc::TrustedAccess; }
+    // 信任的设备变了：从下一个握手起只认现在的
+    void trustChanged();
     // 进了转发进程的房间：等着的回答都说准备好了；没进成：都说不行
     void answerWeb(const QString &reason);
     // 路由的那次连接还连着、在等允许，或者路断了在等它回来
@@ -211,8 +221,8 @@ private:
     void pinFailed(int attemptsLeft);
     quint64 routeFor(const QString &from, const QString &name, const QString &session);
 
-    // SDK 的事件，搬到这个对象的线程以后。admitted：已经让它进了（我的设备）
-    void viewerArrived(int id, quint64 route, const QString &platform, bool admitted);
+    // SDK 的事件，搬到这个对象的线程以后。admitted：已经让它进了（我的设备）；publicKey：它证明的设备公钥
+    void viewerArrived(int id, quint64 route, const QString &platform, bool admitted, const QByteArray &publicKey);
     // timedOut：一直没人点（不是对方走了）
     void requestEnded(int id, bool timedOut);
     void viewerJoined(int id, quint64 route, const QString &platform, bool control);
@@ -277,6 +287,7 @@ private:
     QList<Peer> viewers_;
     QList<Returning> returning_;
     QSet<int> rejoined_; // 路断了又回来的（viewerArrived 让它进了，viewerJoined 时不算新的一次连接）
+    QSet<int> newlyTrusted_; // 允许时信任了的：连进来以后（viewerJoined）告诉它
     rc::peer::DataChannels channels_;
     ShareDisplays displays_;
     rc::FileTransfers files_;

@@ -9,6 +9,7 @@ Sharing::Sharing(DeviceStore &store, rc::InterruptedTransfers &transfers, const 
     , others_(rc::PasswordAccess, capture, store, transfers)
     , mine_(rc::DeviceAccess, capture, store, transfers)
     , webMine_(rc::WebKeyAccess, capture, store, transfers)
+    , trusted_(rc::TrustedAccess, capture, store, transfers)
 {
     for (ShareHost *host : hosts()) {
         connect(host, &ShareHost::answer, this, &Sharing::answer);
@@ -33,7 +34,7 @@ Sharing::Sharing(DeviceStore &store, rc::InterruptedTransfers &transfers, const 
     }
 }
 
-// 别人的那个说本机现在接不接受别人连接、为什么不接受；连着的人两个都算
+// 别人的那个说本机现在接不接受别人连接、为什么不接受；等允许的、连着的人都算
 protocol::ShareState Sharing::state() const
 {
     protocol::ShareState state = others_.state();
@@ -41,8 +42,11 @@ protocol::ShareState Sharing::state() const
         request = globalPeer(others_, request);
     for (protocol::SharePeer &viewer : state.viewers)
         viewer = globalPeer(others_, viewer);
-    for (const ShareHost *host : {&mine_, &webMine_}) {
-        for (const protocol::SharePeer &viewer : host->state().viewers)
+    for (const ShareHost *host : {&mine_, &webMine_, &trusted_}) {
+        const protocol::ShareState other = host->state();
+        for (const protocol::SharePeer &request : other.requests)
+            state.requests.append(globalPeer(*host, request));
+        for (const protocol::SharePeer &viewer : other.viewers)
             state.viewers.append(globalPeer(*host, viewer));
     }
     return state;
@@ -73,6 +77,7 @@ void Sharing::setIceServers(const rc::IceServers &ice)
 {
     others_.setIceServers(ice);
     mine_.setIceServers(ice);
+    trusted_.setIceServers(ice);
 }
 
 // 授权是这台电脑的：问一次就够
@@ -85,6 +90,7 @@ void Sharing::restart()
 {
     others_.restart();
     mine_.restart();
+    trusted_.restart();
 }
 
 void Sharing::webViewer(const QUrl &relay, const QString &ticket, const QByteArray &key)
@@ -95,13 +101,13 @@ void Sharing::webViewer(const QUrl &relay, const QString &ticket, const QByteArr
 void Sharing::receiveSignal(const QString &from, const QString &name, const QString &session, const QString &text,
                             const rc::ConnectionMode &mode)
 {
-    ShareHost &host = mode.access == rc::DeviceAccess ? mine_ : others_;
+    ShareHost &host = mode.access == rc::DeviceAccess ? mine_ : mode.access == rc::TrustedAccess ? trusted_ : others_;
     host.receiveSignal(from, name, session, text, mode);
 }
 
-void Sharing::admit(int id, bool control)
+void Sharing::admit(int id, bool control, const QString &trust)
 {
-    host(id).admit(share_ids::local(id), control);
+    host(id).admit(share_ids::local(id), control, trust);
 }
 
 void Sharing::refuse(int id)
@@ -193,6 +199,7 @@ ShareHost &Sharing::host(int id)
     switch (share_ids::session(id)) {
     case Session::Mine: return mine_;
     case Session::WebMine: return webMine_;
+    case Session::Trusted: return trusted_;
     case Session::Others: break;
     }
     return others_;
@@ -200,7 +207,10 @@ ShareHost &Sharing::host(int id)
 
 Session Sharing::sessionOf(const ShareHost &host) const
 {
-    return &host == &mine_ ? Session::Mine : &host == &webMine_ ? Session::WebMine : Session::Others;
+    return &host == &mine_      ? Session::Mine
+           : &host == &webMine_ ? Session::WebMine
+           : &host == &trusted_ ? Session::Trusted
+                                : Session::Others;
 }
 
 protocol::SharePeer Sharing::globalPeer(const ShareHost &host, protocol::SharePeer peer) const

@@ -64,8 +64,8 @@ public:
     IncomingFiles *files() const { return files_; }
     IncomingHistory *history() const { return history_; }
 
-    // control：能不能控制本机，否则只能看
-    Q_INVOKABLE void admit(int id, bool control);
+    // control：能不能控制本机，否则只能看；trust：以后信不信任它的设备（rc/protocol.h 的 Admit：空的、"ask"、"direct"）
+    Q_INVOKABLE void admit(int id, bool control, const QString &trust);
     Q_INVOKABLE void refuse(int id);
     Q_INVOKABLE void disconnectViewer(int id);
     Q_INVOKABLE void setControl(int id, bool control);

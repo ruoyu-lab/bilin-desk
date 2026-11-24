@@ -52,7 +52,7 @@ private slots:
         client_ = new rc::LineChannel(socket);
         connect(client_, &rc::LineChannel::received, this, [this](const QJsonObject &m) { received_.append(m); });
         socket->connectToServer(endpoint_);
-        QTRY_COMPARE(received_.size(), 2);
+        QTRY_COMPARE(received_.size(), 3);
     }
 
     void cleanup()
@@ -97,10 +97,10 @@ private slots:
         rc::LineChannel second(socket);
         connect(&second, &rc::LineChannel::received, this, [&other](const QJsonObject &m) { other.append(m); });
         socket->connectToServer(endpoint_);
-        QTRY_COMPARE(other.size(), 2);
+        QTRY_COMPARE(other.size(), 3);
 
         client_->send(protocol::commandMessage(protocol::SetLanDiscovery, {{QStringLiteral("value"), false}}));
-        QTRY_COMPARE(other.size(), 3);
+        QTRY_COMPARE(other.size(), 4);
         QVERIFY(!protocol::DeviceState::fromJson(other.last().value(QLatin1StringView("value")).toObject()).lanDiscovery);
     }
 
@@ -168,9 +168,28 @@ private slots:
         rc::LineChannel second(socket);
         connect(&second, &rc::LineChannel::received, this, [&other](const QJsonObject &m) { other.append(m); });
         socket->connectToServer(endpoint_);
-        QTRY_COMPARE(other.size(), 3);
+        QTRY_COMPARE(other.size(), 4);
         QCOMPARE(other.last().value(QLatin1StringView("topic")).toString(), QStringLiteral("share"));
         QCOMPARE(protocol::ShareState::fromJson(other.last().value(QLatin1StringView("value")).toObject()), share);
+    }
+
+    // 信任的设备：改了就把 trust 主题发给界面
+    void trustCommandsChangeTheStore()
+    {
+        const QByteArray key = QByteArray(1, '\x04') + QByteArray(64, '\x33');
+        store_->addTrusted({QStringLiteral("482915307"), QStringLiteral("小明的电脑"), QStringLiteral("Windows"),
+                            QString::fromLatin1(key.toBase64()), true, 1});
+        QTRY_COMPARE(protocol::TrustState::fromJson(latest(protocol::TrustTopic)).trusted.size(), 1);
+        client_->send(protocol::commandMessage(protocol::SetTrustAsk,
+                                               {{QStringLiteral("deviceId"), QStringLiteral("482915307")}, {QStringLiteral("value"), false}}));
+        QTRY_VERIFY(!protocol::TrustState::fromJson(latest(protocol::TrustTopic)).trusted.first().ask);
+        client_->send(protocol::commandMessage(protocol::RememberTrust,
+                                               {{QStringLiteral("deviceId"), QStringLiteral("731204586")},
+                                                {QStringLiteral("publicKey"), QString::fromLatin1(key.toBase64())}}));
+        QTRY_COMPARE(protocol::TrustState::fromJson(latest(protocol::TrustTopic)).trustedBy.size(), 1);
+        client_->send(protocol::commandMessage(protocol::Untrust, {{QStringLiteral("deviceId"), QStringLiteral("482915307")}}));
+        client_->send(protocol::commandMessage(protocol::ForgetTrust, {{QStringLiteral("deviceId"), QStringLiteral("731204586")}}));
+        QTRY_COMPARE(protocol::TrustState::fromJson(latest(protocol::TrustTopic)), protocol::TrustState{});
     }
 
     void shareCommandsAreAskedFor()
@@ -182,7 +201,9 @@ private slots:
         QSignalSpy clipboard(server_, &ControlServer::clipboardRequested);
         QSignalSpy permission(server_, &ControlServer::permissionRequested);
         QSignalSpy restart(server_, &ControlServer::restartShareRequested);
-        client_->send(protocol::commandMessage(protocol::Admit, {{QStringLiteral("id"), 3}, {QStringLiteral("control"), true}}));
+        client_->send(protocol::commandMessage(
+            protocol::Admit,
+            {{QStringLiteral("id"), 3}, {QStringLiteral("control"), true}, {QStringLiteral("trust"), protocol::TrustDirect}}));
         client_->send(protocol::commandMessage(protocol::Refuse, {{QStringLiteral("id"), 4}}));
         client_->send(protocol::commandMessage(protocol::Disconnect, {{QStringLiteral("id"), 1}}));
         client_->send(protocol::commandMessage(protocol::SetControl, {{QStringLiteral("id"), 1}, {QStringLiteral("value"), false}}));
@@ -191,7 +212,7 @@ private slots:
         client_->send(protocol::commandMessage(protocol::RestartShare));
         QTRY_COMPARE(restart.count(), 1);
         QCOMPARE(permission.at(0), (QVariantList{QString(protocol::InputPermission)}));
-        QCOMPARE(admit.at(0), (QVariantList{3, true}));
+        QCOMPARE(admit.at(0), (QVariantList{3, true, QString(protocol::TrustDirect)}));
         QCOMPARE(refuse.at(0), (QVariantList{4}));
         QCOMPARE(disconnect.at(0), (QVariantList{1}));
         QCOMPARE(control.at(0), (QVariantList{1, false}));
@@ -281,7 +302,7 @@ private slots:
         rc::LineChannel second(socket);
         connect(&second, &rc::LineChannel::received, this, [&other](const QJsonObject &m) { other.append(m); });
         socket->connectToServer(endpoint_);
-        QTRY_COMPARE(other.size(), 2);
+        QTRY_COMPARE(other.size(), 3);
 
         QSignalSpy logsRequested(server_, &ControlServer::feedbackLogsRequested);
         QSignalSpy feedback(server_, &ControlServer::feedbackRequested);
@@ -300,7 +321,7 @@ private slots:
         QTRY_COMPARE(received_.size(), before + 1);
         QCOMPARE(received_.last().value(QLatin1StringView("event")).toString(), QString(protocol::FeedbackSent));
         QTest::qWait(50);
-        QCOMPARE(other.size(), 2);
+        QCOMPARE(other.size(), 3);
     }
 
     void quitIsAskedFor()
