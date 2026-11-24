@@ -44,3 +44,12 @@ export function shortDay(day: string): string {
   const [, month, date] = day.split('-')
   return `${Number(month)}/${Number(date)}`
 }
+
+// 一段时间，按长短挑单位：850 毫秒、4.2 秒、3 分 20 秒、2 小时 5 分
+export function span(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)} 毫秒`
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)} 秒`
+  const minutes = Math.floor(ms / 60_000)
+  if (minutes < 60) return `${minutes} 分 ${Math.floor((ms % 60_000) / 1000)} 秒`
+  return `${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分`
+}

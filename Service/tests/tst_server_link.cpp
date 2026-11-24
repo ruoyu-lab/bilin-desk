@@ -312,6 +312,41 @@ private slots:
         QCOMPARE(fake.hellos.size(), 2);
     }
 
+    // 连接统计：连着时直接发；没连上服务器时留着（最多 PendingReports 条，丢最早的），登录上了再发
+    void sendsConnectionReportsWhenOnline()
+    {
+        QTemporaryDir directory;
+        DeviceStore store(directory.path(), testDeviceKey);
+        FakeServer fake;
+        fake.answer = [](QWebSocket *, const QJsonObject &) {};
+        ServerLink link(store, fake.url(), Fast);
+        link.start();
+        QTRY_COMPARE(fake.hellos.size(), 1);
+        for (int i = 0; i < ServerLink::PendingReports + 2; ++i)
+            link.reportConnection({{QStringLiteral("result"), QStringLiteral("failed")}, {QStringLiteral("n"), i}});
+
+        FakeServer::send(fake.current, {{QStringLiteral("type"), QStringLiteral("welcome")}});
+        QTRY_COMPARE(fake.hellos.size(), 1 + ServerLink::PendingReports);
+        QCOMPARE(fake.hellos.at(1).value(u"type").toString(), QStringLiteral("connectionReport"));
+        QCOMPARE(fake.hellos.at(1).value(u"n").toInt(), 2);
+        QCOMPARE(fake.hellos.constLast().value(u"n").toInt(), ServerLink::PendingReports + 1);
+
+        link.reportConnection({{QStringLiteral("result"), QStringLiteral("connected")}});
+        QTRY_COMPARE(fake.hellos.size(), 2 + ServerLink::PendingReports);
+        QCOMPARE(fake.hellos.constLast().value(u"result").toString(), QStringLiteral("connected"));
+
+        // 关了连接统计以后，留着没发的不再发
+        fake.current->close();
+        QTRY_COMPARE(link.state(), ServerLink::State::Offline);
+        link.reportConnection({{QStringLiteral("result"), QStringLiteral("failed")}});
+        link.dropPendingReports();
+        QTRY_COMPARE(fake.hellos.size(), 3 + ServerLink::PendingReports); // 重连的 hello
+        FakeServer::send(fake.current, {{QStringLiteral("type"), QStringLiteral("welcome")}});
+        QTRY_COMPARE(link.state(), ServerLink::State::Online);
+        QTest::qWait(100);
+        QCOMPARE(fake.hellos.size(), 3 + ServerLink::PendingReports);
+    }
+
     void followsTheAccount()
     {
         QTemporaryDir directory;

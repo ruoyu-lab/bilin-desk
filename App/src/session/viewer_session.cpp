@@ -175,6 +175,7 @@ ViewerSession::ViewerSession(const QString &target, ServiceClient &service, void
         if (waitingForCodecs_)
             open(relay_);
     });
+    clock_.start();
     retryTimer_.setSingleShot(true);
     connect(&retryTimer_, &QTimer::timeout, this, [this] { open(false); });
     statsTimer_.setInterval(1000);
@@ -211,6 +212,9 @@ ViewerSession::ViewerSession(const QString &target, ServiceClient &service, void
 
 ViewerSession::~ViewerSession()
 {
+    // 用户关掉了：连上过的是用完了，还没连上的是不连了
+    if (report_.active())
+        sendReport({});
     endSignal();
 }
 
@@ -460,6 +464,12 @@ void ViewerSession::open(bool relay)
             return;
         }
     }
+    if (!report_.active())
+        report_.begin(deviceId_, clock_.elapsed());
+    report_.attempt(relayTls_ ? rc::ConnectionReport::Route::RelayTls
+                    : relay_  ? rc::ConnectionReport::Route::Relay
+                              : rc::ConnectionReport::Route::Direct,
+                    access_);
 
     connection_ = QUuid::createUuid().toString(QUuid::Id128);
     rcsdk::Callbacks callbacks;
@@ -498,6 +508,8 @@ void ViewerSession::open(bool relay)
                 if (connection != connection_ || granted == controlGranted_)
                     return;
                 controlGranted_ = granted;
+                if (granted)
+                    report_.controlled();
                 emit controlChanged();
             }, Qt::QueuedConnection);
         } else if (event.type == RCS_EVENT_ADMISSION) {
@@ -952,9 +964,35 @@ void ViewerSession::setStatus(const QString &status, const QString &reason)
 {
     if (status == status_ && reason == reason_)
         return;
+    record(status, reason);
     status_ = status;
     reason_ = reason;
     emit stateChanged();
+}
+
+void ViewerSession::record(const QString &status, const QString &reason)
+{
+    if (!report_.active())
+        return;
+    if (status == u"waiting") {
+        report_.waiting();
+    } else if (status == u"connected") {
+        report_.connected(rc::networkPath(QString::fromUtf8(session_->stats<rcs_network_stats>().path)), clock_.elapsed());
+    } else if (status == u"reconnecting") {
+        report_.reconnecting();
+    } else if (status == u"failed" || (status == u"needPin" && !reason.isEmpty())) {
+        sendReport(reason);
+    } else if (report_.connected() && (status == u"restarting" || status == u"signingOut")) {
+        // 对方答应的电源操作：连上的这一次到此为止，等它回来再连是新的一次
+        sendReport(status == u"restarting" ? tr("对方重启了") : tr("对方注销了"));
+    } else if (status == u"shutDown" || status == u"asleep") {
+        sendReport(status == u"shutDown" ? tr("对方关机了") : tr("对方睡眠了"));
+    }
+}
+
+void ViewerSession::sendReport(const QString &reason)
+{
+    service_.send(protocol::ReportConnection, {{QStringLiteral("report"), report_.finish(reason, clock_.elapsed())}});
 }
 
 void ViewerSession::refreshStats()
@@ -971,6 +1009,7 @@ void ViewerSession::refreshStats()
     lastBytes_ = network.bytes;
     resolution_ = stream.width > 0 ? QStringLiteral("%1 × %2").arg(stream.width).arg(stream.height) : QString();
     codec_ = stream.format == RCS_PICTURE_444_8 ? tr("%1 4:4:4").arg(codecName(stream.codec)) : codecName(stream.codec);
+    report_.sample(framesPerSecond_, bitrateMbps_, latencyMs_, codec_, resolution_);
     emit statsChanged();
 }
 

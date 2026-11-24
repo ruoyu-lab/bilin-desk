@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { defaultHubOptions } from '../src/hub.js';
 import { compareVersions, releaseKey, releaseText, Releases, signatureValid, type Platform } from '../src/releases.js';
 import { buildServer, UPDATES_PATH } from '../src/server.js';
-import { MemoryAccounts, MemoryBroker, MemoryCodes, MemoryLimiter, MemoryRegistry, MemoryStats, MemoryWakes } from './memory.js';
+import { MemoryAccounts, MemoryBroker, MemoryCodes, MemoryLimiter, MemoryRegistry, MemoryStats, MemoryWakes, MemoryConnections } from './memory.js';
 
 // 和 scripts/sign-release.mjs 一样签
 export function signRelease(key: KeyObject, platform: Platform, version: string, bytes: Buffer): string {
@@ -34,7 +34,7 @@ describe('新版本', () => {
             bus: broker.bus(),
             limiter: new MemoryLimiter(),
             codes: new MemoryCodes(),
-            wakes: new MemoryWakes(),
+            wakes: new MemoryWakes(), connections: new MemoryConnections(),
             mailer: null,
             stats: new MemoryStats(),
             releases,

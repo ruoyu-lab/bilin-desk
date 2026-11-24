@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { checkPassword, hashPassword, type Account, type Accounts } from '../src/accounts.js';
 import type { Bus, BusMessage } from '../src/bus.js';
+import { newConnectionId, type ConnectionFilter, type ConnectionRecord, type ConnectionStore, type NewConnection } from '../src/connections.js';
 import {
     compressLogs, logsBytes, newFeedbackId, type FeedbackStore, type FeedbackSummary, type NewFeedback,
 } from '../src/feedback.js';
@@ -18,7 +19,7 @@ import { newWebSession, WEB_SESSION, type WebSessions } from '../src/web-session
 import type { ClaimResult, DeviceClaim, DeviceRecord, Registry } from '../src/registry.js';
 
 function record(d: DeviceClaim & { wake?: WakeInterface[] }): DeviceRecord {
-    return { id: d.id, name: d.name, platform: d.platform, publicKey: d.publicKey, machine: d.machine, wake: d.wake ?? [] };
+    return { id: d.id, name: d.name, platform: d.platform, version: d.version, publicKey: d.publicKey, machine: d.machine, wake: d.wake ?? [] };
 }
 
 // 测试用：内存里的设备登记表，规则和 MongoRegistry 一样（太久没上线的删掉由 MongoDB 做，这里只记时间）
@@ -448,4 +449,22 @@ export class MemoryWebSessions implements WebSessions {
     }
 
     async close(): Promise<void> {}
+}
+
+// 测试用：内存里的连接统计
+export class MemoryConnections implements ConnectionStore {
+    readonly records: ConnectionRecord[] = [];
+
+    async add(connection: NewConnection): Promise<void> {
+        this.records.unshift({ id: newConnectionId(), createdAt: new Date().toISOString(), ...connection });
+    }
+
+    async list(filter: ConnectionFilter, limit: number): Promise<ConnectionRecord[]> {
+        return this.records.filter((r) => (!filter.deviceId || r.viewer.deviceId === filter.deviceId
+            || r.peer.deviceId === filter.deviceId) && (!filter.result || r.result === filter.result)).slice(0, limit);
+    }
+
+    async since(date: Date): Promise<ConnectionRecord[]> {
+        return this.records.filter((r) => new Date(r.createdAt) >= date);
+    }
 }

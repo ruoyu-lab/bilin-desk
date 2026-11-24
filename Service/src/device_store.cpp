@@ -24,6 +24,7 @@ constexpr QLatin1StringView DeviceNameKey("deviceName");
 constexpr QLatin1StringView AcceptIncomingKey("acceptIncoming");
 constexpr QLatin1StringView LanDiscoveryKey("lanDiscovery");
 constexpr QLatin1StringView UnattendedKey("unattended");
+constexpr QLatin1StringView ConnectionStatsKey("connectionStats");
 
 } // namespace
 
@@ -102,6 +103,7 @@ void DeviceStore::loadSettings()
     acceptIncoming_ = settings.value(AcceptIncomingKey).toBool(true);
     lanDiscovery_ = settings.value(LanDiscoveryKey).toBool(true);
     unattended_ = settings.value(UnattendedKey).toBool(true);
+    connectionStats_ = settings.value(ConnectionStatsKey).toBool(true);
 }
 
 void DeviceStore::saveSettings()
@@ -110,6 +112,7 @@ void DeviceStore::saveSettings()
         {AcceptIncomingKey, acceptIncoming_},
         {LanDiscoveryKey, lanDiscovery_},
         {UnattendedKey, unattended_},
+        {ConnectionStatsKey, connectionStats_},
     };
     if (!customName_.isEmpty())
         settings.insert(DeviceNameKey, customName_);
@@ -125,6 +128,7 @@ rc::protocol::DeviceState DeviceStore::state() const
     state.acceptIncoming = acceptIncoming_;
     state.lanDiscovery = lanDiscovery_;
     state.unattended = unattended_;
+    state.connectionStats = connectionStats_;
     state.deviceKey = deviceKey_;
     return state;
 }
@@ -153,6 +157,15 @@ void DeviceStore::setLanDiscovery(bool enabled)
     if (enabled == lanDiscovery_)
         return;
     lanDiscovery_ = enabled;
+    saveSettings();
+    emit changed();
+}
+
+void DeviceStore::setConnectionStats(bool enabled)
+{
+    if (enabled == connectionStats_)
+        return;
+    connectionStats_ = enabled;
     saveSettings();
     emit changed();
 }

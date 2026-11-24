@@ -33,6 +33,7 @@ QJsonObject DeviceState::toJson() const
         {QStringLiteral("acceptIncoming"), acceptIncoming},
         {QStringLiteral("lanDiscovery"), lanDiscovery},
         {QStringLiteral("unattended"), unattended},
+        {QStringLiteral("connectionStats"), connectionStats},
         {QStringLiteral("deviceKey"), QString::fromLatin1(deviceKey.toBase64())},
     };
 }
@@ -46,6 +47,7 @@ DeviceState DeviceState::fromJson(const QJsonObject &json)
     state.acceptIncoming = json.value(QLatin1StringView("acceptIncoming")).toBool();
     state.lanDiscovery = json.value(QLatin1StringView("lanDiscovery")).toBool();
     state.unattended = json.value(QLatin1StringView("unattended")).toBool();
+    state.connectionStats = json.value(QLatin1StringView("connectionStats")).toBool();
     state.deviceKey = QByteArray::fromBase64(json.value(QLatin1StringView("deviceKey")).toString().toLatin1());
     return state;
 }

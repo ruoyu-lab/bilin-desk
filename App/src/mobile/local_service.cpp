@@ -46,6 +46,7 @@ LocalService::LocalService(const QString &directory, QObject *parent)
     service_wiring::publishNetwork(server_, link_, discovery_);
     service_wiring::connectViewerSignaling(server_, link_, lan_, signaling_);
     service_wiring::connectFeedback(server_, feedback_);
+    service_wiring::connectConnectionStats(server_, link_, store_);
     connect(&signaling_, &Signaling::toSharer, this,
             [this](const QString &from, const QString &, const QString &session) {
                 signaling_.declineFromSharer(from, session, QLatin1StringView(rc::peer::NotAccepting));

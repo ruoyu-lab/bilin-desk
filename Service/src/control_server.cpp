@@ -76,6 +76,10 @@ void ControlServer::handle(qintptr socket, const QJsonObject &message)
         store_.setLanDiscovery(message.value(QLatin1StringView("value")).toBool());
     else if (command == protocol::SetUnattended)
         store_.setUnattended(message.value(QLatin1StringView("value")).toBool());
+    else if (command == protocol::SetConnectionStats)
+        store_.setConnectionStats(message.value(QLatin1StringView("value")).toBool());
+    else if (command == protocol::ReportConnection)
+        emit connectionReported(message.value(QLatin1StringView("report")).toObject());
     else if (command == protocol::RegeneratePassword)
         store_.regeneratePassword();
     else if (command == protocol::Quit)

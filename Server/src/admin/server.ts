@@ -5,9 +5,10 @@ import type { Readable } from 'node:stream';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 
 import { checkPassword } from '../accounts.js';
+import { summarize, type ConnectionFilter, type ConnectionStore } from '../connections.js';
 import { isFeedbackId, type FeedbackStore } from '../feedback.js';
 import type { Limiter } from '../limiter.js';
-import { EMAIL, MAX_EMAIL } from '../protocol.js';
+import { DEVICE_ID, EMAIL, MAX_EMAIL, REPORT_RESULTS, type ReportResult } from '../protocol.js';
 import { PLATFORMS, ReleaseError, type Releases } from '../releases.js';
 import type { Backups } from './backups.js';
 import type { LogEntry } from './logs.js';
@@ -27,6 +28,8 @@ export interface AdminOptions {
     releases: Releases;
     // 用户提交的反馈（feedback.ts）
     feedback: FeedbackStore;
+    // 连接统计（connections.ts）
+    connections: ConnectionStore;
     status: () => Promise<Status>;
     // 最近的警告和出错、把日志清空（logs.ts）
     logs: () => Promise<LogEntry[]>;
@@ -44,6 +47,8 @@ const SESSION_TTL_S = 12 * 3600;
 const LOGIN_WINDOW_S = 15 * 60;
 const LOGIN_PER_ADDRESS = 10;
 const LOGIN_TOTAL = 30;
+// 连接记录一次最多给这么多条
+const CONNECTIONS_LIMIT = 300;
 // 测试邮件也占 Resend 的额度：一小时最多发 10 封
 const TEST_MAILS_PER_HOUR = 10;
 
@@ -178,6 +183,32 @@ export async function buildAdmin(options: AdminOptions): Promise<FastifyInstance
                 return reply.code(404).send({ error: 'notFound' });
             return reply.code(204).send();
         });
+
+        // 连接记录：新的在前，最多 CONNECTIONS_LIMIT 条；可以只看一台设备的（去连、被连都算）、某种结果的
+        admin.get<{ Querystring: { deviceId?: string; result?: string } }>('/api/connections', { onRequest: signedIn },
+            async (request, reply) => {
+                const { deviceId, result } = request.query;
+                if ((deviceId && !DEVICE_ID.test(deviceId)) || (result && !REPORT_RESULTS.includes(result as ReportResult)))
+                    return reply.code(400).send({ error: 'filter' });
+                const filter: ConnectionFilter = {};
+                if (deviceId)
+                    filter.deviceId = deviceId;
+                if (result)
+                    filter.result = result as ReportResult;
+                return { connections: await options.connections.list(filter, CONNECTIONS_LIMIT) };
+            });
+
+        // 最近 7 天、30 天的统计（按服务器的本地日期，今天在内）
+        admin.get<{ Querystring: { days?: string } }>('/api/connections/summary', { onRequest: signedIn },
+            async (request, reply) => {
+                const days = Number(request.query.days ?? 7);
+                if (days !== 7 && days !== 30)
+                    return reply.code(400).send({ error: 'days' });
+                const start = new Date();
+                start.setHours(0, 0, 0, 0);
+                start.setDate(start.getDate() - (days - 1));
+                return summarize(await options.connections.since(start), days);
+            });
 
         admin.get('/api/backups', { onRequest: signedIn }, async () => ({
             backups: await options.backups.list(),

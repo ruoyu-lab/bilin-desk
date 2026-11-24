@@ -89,6 +89,11 @@ void ThisDevice::setUnattended(bool unattended)
     service_.send(protocol::SetUnattended, {{QStringLiteral("value"), unattended}});
 }
 
+void ThisDevice::setConnectionStats(bool enabled)
+{
+    service_.send(protocol::SetConnectionStats, {{QStringLiteral("value"), enabled}});
+}
+
 void ThisDevice::checkUpdate()
 {
     service_.send(protocol::CheckUpdate);

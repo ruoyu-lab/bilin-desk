@@ -6,7 +6,7 @@ import type { ServerMessage } from '../src/protocol.js';
 import { buildServer } from '../src/server.js';
 import {
     MemoryAccounts, MemoryBroker, MemoryCodes, MemoryLimiter, MemoryMailer, MemoryRegistry, MemoryRelayStatus,
-    MemoryStats, MemoryTickets, MemoryWakes, MemoryWebSessions,
+    MemoryStats, MemoryTickets, MemoryWakes, MemoryWebSessions, MemoryConnections,
 } from './memory.js';
 
 const DEVICE = '222222222';
@@ -81,7 +81,7 @@ describe('网页版的接口', () => {
         mailer = new MemoryMailer();
         ({ app } = await buildServer({
             registry, accounts, bus: new MemoryBroker().bus(), limiter: new MemoryLimiter(), codes: new MemoryCodes(), mailer,
-            stats: new MemoryStats(), wakes: new MemoryWakes(), logger: false,
+            stats: new MemoryStats(), wakes: new MemoryWakes(), connections: new MemoryConnections(), logger: false,
             web: { tickets, sessions: new MemoryWebSessions(), relay, answerWaitMs: 400, answerPollMs: 20 },
         }));
         await app.listen({ host: '127.0.0.1', port: 0 });

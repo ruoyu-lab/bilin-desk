@@ -131,6 +131,15 @@ MobilePage {
             }
         }
         SettingsRow {
+            label: qsTr("发送连接统计")
+            detail: qsTr("不含画面、输入和传的内容")
+            AppSwitch {
+                enabled: ThisDevice.serviceState === "ready"
+                checked: ThisDevice.connectionStats
+                onToggled: ThisDevice.connectionStats = checked
+            }
+        }
+        SettingsRow {
             label: qsTr("反馈问题")
             navigates: true
             onClicked: root.feedbackRequested()

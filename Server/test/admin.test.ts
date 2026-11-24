@@ -18,7 +18,7 @@ import { Releases } from '../src/releases.js';
 import { signRelease } from './releases.test.js';
 import { gunzipSync } from 'node:zlib';
 
-import { MemoryFeedback, MemoryLimiter } from './memory.js';
+import { MemoryConnections, MemoryFeedback, MemoryLimiter } from './memory.js';
 
 const BASE = '/admin';
 const PASSWORD = 'correct horse battery';
@@ -75,6 +75,7 @@ describe('管理后台', () => {
     let logsCleared: number;
     let mailError: string | null;
     let feedback: MemoryFeedback;
+    let connections: MemoryConnections;
 
     beforeEach(async () => {
         directory = await mkdtemp(path.join(tmpdir(), 'bilin-admin-'));
@@ -85,6 +86,7 @@ describe('管理后台', () => {
         mailError = null;
         failDump = false;
         feedback = new MemoryFeedback();
+        connections = new MemoryConnections();
         // 假的 mongodump：写一个小文件；名字里的时间到秒，连着备份时等一秒
         const backups = new Backups(path.join(directory, 'backups'), 2, async (file) => {
             if (failDump)
@@ -101,6 +103,7 @@ describe('管理后台', () => {
             backups,
             releases: new Releases(path.join(directory, 'updates'), releaseKeys.publicKey),
             feedback,
+            connections,
             status: async () => status,
             logs: async () => problems,
             clearLogs: async () => {
@@ -136,7 +139,7 @@ describe('管理后台', () => {
         const root = await buildAdmin({
             base: '', passwordFile: path.join(directory, 'password'), sessions: new MemorySessions(),
             limiter: new MemoryLimiter(), backups: new Backups(path.join(directory, 'backups'), 2, async () => {}),
-            releases: new Releases(path.join(directory, 'updates'), releaseKeys.publicKey), feedback,
+            releases: new Releases(path.join(directory, 'updates'), releaseKeys.publicKey), feedback, connections,
             status: async () => status, logs: async () => problems, clearLogs: async () => 0, testMail: async () => {},
             secureCookie: true, logger: false,
         });
@@ -352,5 +355,32 @@ describe('管理后台', () => {
         expect(left).not.toContain('bilin-server-error-0.log.1');
         expect(left).toContain('other.txt');
         expect(await recentProblems(directory)).toEqual([]);
+    });
+
+    it('lists connections, filtered, and sums up the last days', async () => {
+        expect((await app.inject({ url: `${BASE}/api/connections` })).statusCode).toBe(401);
+        const cookie = await signedIn();
+        const base = {
+            viewer: { deviceId: '111111111', platform: 'Windows', version: '0.1.6-beta' },
+            peer: { deviceId: '222222222', platform: 'macOS', version: '0.1.6-beta' },
+            access: 'device' as const, reason: '', routes: ['direct' as const], path: 'lan' as const, connectMs: 900,
+            durationS: 30, reconnects: 0, approval: false, control: true, codec: 'HEVC', resolution: '1920 × 1080', fps: 60,
+            mbps: 5, latencyMs: 2,
+        };
+        await connections.add({ ...base, result: 'connected' });
+        await connections.add({ ...base, result: 'failed', reason: '对方不在线，或者设备 ID 不对', path: '', connectMs: -1,
+                                viewer: { ...base.viewer, deviceId: '333333333' } });
+        const all = (await app.inject({ url: `${BASE}/api/connections`, headers: { cookie } })).json();
+        expect(all.connections).toHaveLength(2);
+        const failed = (await app.inject({ url: `${BASE}/api/connections?result=failed`, headers: { cookie } })).json();
+        expect(failed.connections).toMatchObject([{ viewer: { deviceId: '333333333' } }]);
+        const one = (await app.inject({ url: `${BASE}/api/connections?deviceId=222222222`, headers: { cookie } })).json();
+        expect(one.connections).toHaveLength(2);
+        expect((await app.inject({ url: `${BASE}/api/connections?result=maybe`, headers: { cookie } })).statusCode).toBe(400);
+        const summary = (await app.inject({ url: `${BASE}/api/connections/summary?days=30`, headers: { cookie } })).json();
+        expect(summary).toMatchObject({ days: 30, attempts: 2, connected: 1, viewers: 2 });
+        expect(summary.daily).toHaveLength(30);
+        expect((await app.inject({ url: `${BASE}/api/connections/summary?days=9`, headers: { cookie } })).statusCode)
+            .toBe(400);
     });
 });

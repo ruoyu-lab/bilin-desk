@@ -5,7 +5,7 @@ import { turnCredentials } from '../src/ice.js';
 import { hashToken } from '../src/registry.js';
 import type { Access, AccountDevice, ServerMessage, Transport, WakeInterface } from '../src/protocol.js';
 import {
-    MemoryAccounts, MemoryBroker, MemoryCodes, MemoryLimiter, MemoryMailer, MemoryRegistry, MemoryStats, MemoryWakes,
+    MemoryAccounts, MemoryBroker, MemoryCodes, MemoryLimiter, MemoryMailer, MemoryRegistry, MemoryStats, MemoryWakes, MemoryConnections,
 } from './memory.js';
 
 const silent: Log = { info() {}, warn() {}, error() {} };
@@ -79,6 +79,7 @@ describe('Hub', () => {
     let mailer: MemoryMailer;
     let stats: MemoryStats;
     let wakes: MemoryWakes;
+    let connections: MemoryConnections;
     // 两个实例，共用登记表、账号和 Redis
     let first: Hub;
     let second: Hub;
@@ -92,7 +93,7 @@ describe('Hub', () => {
     };
 
     function hub(options = testOptions, mail: MemoryMailer | null = mailer): Hub {
-        const created = new Hub({ registry, accounts, bus: broker.bus(), limiter, codes, mailer: mail, stats, wakes }, silent,
+        const created = new Hub({ registry, accounts, bus: broker.bus(), limiter, codes, mailer: mail, stats, wakes, connections }, silent,
                                  options);
         hubs.push(created);
         return created;
@@ -153,6 +154,7 @@ describe('Hub', () => {
         mailer = new MemoryMailer();
         stats = new MemoryStats();
         wakes = new MemoryWakes();
+        connections = new MemoryConnections();
         first = hub();
         second = hub();
     });
@@ -336,6 +338,28 @@ describe('Hub', () => {
     });
 
     // ---- 账号 ----
+
+    it('records a connection report with both ends\' system and version', async () => {
+        const viewer = await login(first, '111111111', 1);
+        await login(second, '222222222', 2);
+        const report = {
+            type: 'connectionReport', target: '222222222', access: 'password', result: 'failed',
+            reason: '连不上对方：直连打不通，中继也连不上', routes: ['direct', 'relay', 'relayTls'], path: '', connectMs: -1,
+            durationS: 0, reconnects: 0, approval: false, control: false, codec: '', resolution: '', fps: 0, mbps: 0,
+            latencyMs: 0,
+        };
+        send(viewer, report);
+        send(viewer, { ...report, target: '', result: 'cancelled', reason: '', routes: ['direct'] });
+        await until(() => connections.records.length === 2);
+        const [byAddress, byId] = connections.records;
+        expect(byId).toMatchObject({
+            viewer: { deviceId: '111111111', platform: 'macOS', version: '0.1' },
+            peer: { deviceId: '222222222', platform: 'macOS', version: '0.1' },
+            result: 'failed', routes: ['direct', 'relay', 'relayTls'], connectMs: -1,
+        });
+        expect(byAddress?.peer).toEqual({ deviceId: '', platform: '', version: '' });
+        expect(viewer.peer.closedWith).toBeNull();
+    });
 
     it('registers an account and signs this device in', async () => {
         const device = await login(first, '111111111', 1);

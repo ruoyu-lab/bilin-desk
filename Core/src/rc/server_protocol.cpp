@@ -235,6 +235,12 @@ QJsonObject deleteAccount(const QString &password)
     };
 }
 
+QJsonObject connectionReport(QJsonObject report)
+{
+    report.insert(QStringLiteral("type"), QStringLiteral("connectionReport"));
+    return report;
+}
+
 QJsonObject wakeInfo(const QList<WakeInterface> &interfaces)
 {
     return {

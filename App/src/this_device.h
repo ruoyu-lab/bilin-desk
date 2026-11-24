@@ -28,6 +28,8 @@ class ThisDevice : public QObject
     Q_PROPERTY(bool lanDiscovery READ lanDiscovery WRITE setLanDiscovery NOTIFY changed)
     // 界面程序没开着时也接受我的设备连接（只在后台服务是装好的系统服务时有意义，见 systemService）
     Q_PROPERTY(bool unattended READ unattended WRITE setUnattended NOTIFY changed)
+    // 去连别的设备以后把怎么连的、连没连上、连了多久报给服务器（docs/connection-stats.md）
+    Q_PROPERTY(bool connectionStats READ connectionStats WRITE setConnectionStats NOTIFY changed)
     // 这个程序自己更新：装好的电脑版、Android 版（后台服务发 update 主题）；开发时编的没有
     Q_PROPERTY(bool updatable READ updatable NOTIFY updateChanged)
     // 程序的新版本（rc/protocol.h 的 UpdateState，updatable 时才有）：服务器上比本机新的版本，没有时为空
@@ -62,6 +64,8 @@ public:
     void setLanDiscovery(bool enabled);
     bool unattended() const { return state_.unattended; }
     void setUnattended(bool unattended);
+    bool connectionStats() const { return state_.connectionStats; }
+    void setConnectionStats(bool enabled);
     // 后台服务是装好的系统服务（rc/system_service.h）
     bool systemService() const;
 

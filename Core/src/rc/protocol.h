@@ -43,6 +43,8 @@ inline constexpr QLatin1StringView SetAcceptIncoming{"setAcceptIncoming"};
 inline constexpr QLatin1StringView SetLanDiscovery{"setLanDiscovery"};
 // value：装好了系统服务时，界面程序没开着也接受我的设备连接（DeviceState 的 unattended）
 inline constexpr QLatin1StringView SetUnattended{"setUnattended"};
+// value：发不发连接统计（DeviceState 的 connectionStats）
+inline constexpr QLatin1StringView SetConnectionStats{"setConnectionStats"};
 inline constexpr QLatin1StringView RegeneratePassword{"regeneratePassword"};
 // 后台服务退出（托盘里的"退出"；换成另一份程序）
 inline constexpr QLatin1StringView Quit{"quit"};
@@ -120,6 +122,9 @@ inline constexpr QLatin1StringView FeedbackLogs{"feedbackLogs"};
 // text、contact（没登录时自己填的，可以是空的）、logs（rc/feedback_logs.h 的 packLogs，可以是空的）：
 // 提交反馈（docs/feedback.md），版本和系统由后台服务带上。结果是只发给这个界面的 feedbackSent 或 feedbackFailed
 inline constexpr QLatin1StringView SendFeedback{"sendFeedback"};
+// report：界面里去连别人的一次连接的经过（rc/connection_report.h）。用户开着连接统计时后台服务交给服务器，
+// 没连上服务器时先留着，连上了再发
+inline constexpr QLatin1StringView ReportConnection{"reportConnection"};
 
 // ---- 事件 ----
 
@@ -171,6 +176,8 @@ struct DeviceState
     // 界面程序没开着时也接受我的设备连接（docs/install-and-first-run.md 的"开机时自动启动"）。开发版的后台服务
     // 跟着界面程序，装好的系统服务一直在，这个说它没人开界面时做不做事
     bool unattended = true;
+    // 去连别的设备以后，把怎么连的、连没连上、连了多久报给服务器（docs/connection-stats.md），设置里能关
+    bool connectionStats = true;
     // 设备密钥（SDK 的 P-256 密钥对，97 字节）：界面去连我的设备时用它证明自己（rc/transport.h 的 DeviceAccess）
     QByteArray deviceKey;
 

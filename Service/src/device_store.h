@@ -16,7 +16,7 @@
 //                  令牌证明"这个 ID 是我的"（rc/server_protocol.h），不给任何人看；
 //                  设备密钥（SDK 的 P-256 密钥对，97 字节的 base64：公钥 65 字节在前，私钥在后）证明"我是这台设备"：
 //                  公钥交给服务器，同一账号的设备、信任本机的设备用它认出本机；私钥不给任何人
-//   settings.json  {"deviceName": ..., "acceptIncoming": ..., "lanDiscovery": ..., "unattended": ...}
+//   settings.json  {"deviceName": ..., "acceptIncoming": ..., "lanDiscovery": ..., "unattended": ..., "connectionStats": ...}
 //                  deviceName 只在用户起过名字时有；没有时用本机默认的名字，跟着系统里的电脑名称变
 // 临时密码不存：每次启动换一个
 class DeviceStore : public QObject
@@ -40,6 +40,7 @@ public:
     void setAcceptIncoming(bool accept);
     void setLanDiscovery(bool enabled);
     void setUnattended(bool unattended);
+    void setConnectionStats(bool enabled);
     void regeneratePassword();
     // 服务器说这个 ID 已经属于别的设备：换一个新的
     void replaceDeviceId();
@@ -65,4 +66,5 @@ private:
     bool acceptIncoming_ = true;
     bool lanDiscovery_ = true;
     bool unattended_ = true;
+    bool connectionStats_ = true;
 };

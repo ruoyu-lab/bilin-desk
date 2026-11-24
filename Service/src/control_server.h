@@ -79,6 +79,8 @@ signals:
     void wakeDeviceRequested(const QString &deviceId);
     // 改昵称、改密码、注销账号
     void nicknameRequested(const QString &nickname);
+    // 界面里去连别人的一次连接的经过（rc/connection_report.h）
+    void connectionReported(const QJsonObject &report);
     void clearHistoryRequested();
     // 界面上点了"更新"（装好的程序才有新版本，Updater）
     void installUpdateRequested();

@@ -107,3 +107,32 @@ describe('parseClientMessage', () => {
         expect(parseClientMessage(raw)).toBeNull();
     });
 });
+
+describe('connectionReport', () => {
+    const report = {
+        type: 'connectionReport', target: '731204586', access: 'device', result: 'connected', reason: '对方断开了连接',
+        routes: ['direct', 'relay'], path: 'relay', connectMs: 6200, durationS: 600, reconnects: 1, approval: false,
+        control: true, codec: 'HEVC', resolution: '1920 × 1080', fps: 58.5, mbps: 6.2, latencyMs: 41,
+    };
+
+    it('accepts a report, by ID or by a LAN address, connected or not', () => {
+        expect(parseClientMessage(JSON.stringify(report))).toEqual(report);
+        const failed = { ...report, target: '', result: 'failed', path: '', connectMs: -1, durationS: 0, codec: '',
+            resolution: '', fps: 0, mbps: 0, latencyMs: 0 };
+        expect(parseClientMessage(JSON.stringify(failed))).toEqual(failed);
+    });
+
+    it.each([
+        ['a bad target', { target: '12' }],
+        ['an unknown result', { result: 'maybe' }],
+        ['an unknown route', { routes: ['carrier pigeon'] }],
+        ['too many routes', { routes: Array(9).fill('direct') }],
+        ['an unknown path', { path: 'p2p' }],
+        ['a negative time', { connectMs: -5 }],
+        ['a fractional count', { reconnects: 1.5 }],
+        ['a long reason', { reason: 'x'.repeat(201) }],
+        ['a missing field', { control: undefined }],
+    ])('rejects %s', (_, change) => {
+        expect(parseClientMessage(JSON.stringify({ ...report, ...change }))).toBeNull();
+    });
+});

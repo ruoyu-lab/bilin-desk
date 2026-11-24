@@ -82,6 +82,46 @@ export type WakeResult = 'sent' | 'online' | 'noInfo' | 'disabled' | 'noHelper' 
 // 账号下的设备叫不叫得醒：none（没告诉过网卡）| disabled（网卡都没开网络唤醒）| ready（能请别的电脑帮忙叫）
 export type WakeState = 'none' | 'disabled' | 'ready';
 
+// 一次去连别的设备的经过（连接统计，docs/connection-stats.md）：去连的一方连上以后断开、或者没连上时发一条，
+// 用户在设置里关了就不发。不含画面、输入、对话、文件、地址这些。
+// target：连的设备 ID，按局域网的 IP 地址连的是空的（地址不报）。result：connected 连上过 | failed 没连上 |
+// cancelled 还没连上用户就关了。reason：没连上、断开的原因（程序给用户看的那句话），没有时为空。
+// routes：依次试过的路（direct 直连 | relay 经 UDP 的中继 | relayTls 经中继的 TLS），path：连上时走的
+// （lan 局域网直连 | direct 跨网络直连 | relay 中继），没连上时为空。connectMs：从开始连到连上，没连上是 -1。
+// durationS：连上了多久；reconnects：路断了重连几次；approval：等过对方的人点允许；control：对方让本机控制过。
+// codec、resolution、fps、mbps、latencyMs：连着时的编码格式、分辨率（最后一次的），每秒帧数、码率、往返延迟（平均）
+export const REPORT_RESULTS = ['connected', 'failed', 'cancelled'] as const;
+export type ReportResult = (typeof REPORT_RESULTS)[number];
+export const REPORT_ROUTES = ['direct', 'relay', 'relayTls'] as const;
+export type ReportRoute = (typeof REPORT_ROUTES)[number];
+export const REPORT_PATHS = ['lan', 'direct', 'relay'] as const;
+export type ReportPath = (typeof REPORT_PATHS)[number];
+export const MAX_REPORT_REASON = 200;
+export const MAX_REPORT_ROUTES = 8;
+const MAX_REPORT_LABEL = 32;
+// 一个连接最长算一年（秒）
+const MAX_REPORT_DURATION_S = 366 * 24 * 3600;
+
+export interface ConnectionReport {
+    type: 'connectionReport';
+    target: string;
+    access: Access;
+    result: ReportResult;
+    reason: string;
+    routes: ReportRoute[];
+    path: ReportPath | '';
+    connectMs: number;
+    durationS: number;
+    reconnects: number;
+    approval: boolean;
+    control: boolean;
+    codec: string;
+    resolution: string;
+    fps: number;
+    mbps: number;
+    latencyMs: number;
+}
+
 // ---- 客户端 → 服务器 ----
 
 export interface Hello {
@@ -206,7 +246,7 @@ export interface DeleteAccount {
 
 export type ClientMessage =
     | Hello | SignalRequest | DeclineRequest | Rename | SendCode | Register | Login | ResetPassword | Logout | RemoveDevice
-    | SetNickname | ChangePassword | DeleteAccount | WebReady | WakeInfo | Wake | WakeAnswer;
+    | SetNickname | ChangePassword | DeleteAccount | WebReady | WakeInfo | Wake | WakeAnswer | ConnectionReport;
 
 // ---- 服务器 → 客户端 ----
 
@@ -336,6 +376,38 @@ function wakeInterface(value: unknown): WakeInterface | null {
     return { mac, address, prefix: prefix as number, link: link as WakeInterface['link'], wake: wake as WakeInterface['wake'] };
 }
 
+function count(value: unknown, max: number): value is number {
+    return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= max;
+}
+
+function measure(value: unknown, max: number): value is number {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= max;
+}
+
+function label(value: unknown): value is string {
+    return typeof value === 'string' && value.length <= MAX_REPORT_LABEL;
+}
+
+function connectionReport(m: Record<string, unknown>): ConnectionReport | null {
+    const { target, access, result, reason, routes, path, connectMs, durationS, reconnects, approval, control, codec,
+        resolution, fps, mbps, latencyMs } = m;
+    if ((target !== '' && !matches(target, DEVICE_ID)) || !isAccess(access)
+        || !REPORT_RESULTS.includes(result as ReportResult)
+        || typeof reason !== 'string' || reason.length > MAX_REPORT_REASON
+        || !Array.isArray(routes) || routes.length > MAX_REPORT_ROUTES
+        || !routes.every((r) => REPORT_ROUTES.includes(r as ReportRoute))
+        || (path !== '' && !REPORT_PATHS.includes(path as ReportPath))
+        || !(connectMs === -1 || count(connectMs, 24 * 3600 * 1000)) || !count(durationS, MAX_REPORT_DURATION_S)
+        || !count(reconnects, 100000) || typeof approval !== 'boolean' || typeof control !== 'boolean'
+        || !label(codec) || !label(resolution) || !measure(fps, 1000) || !measure(mbps, 10000) || !measure(latencyMs, 60000))
+        return null;
+    return {
+        type: 'connectionReport', target: target as string, access, result: result as ReportResult, reason,
+        routes: routes as ReportRoute[], path: path as ReportPath | '', connectMs: connectMs as number, durationS, reconnects,
+        approval, control, codec, resolution, fps, mbps, latencyMs,
+    };
+}
+
 // 不合格的（不是 JSON 对象、不认识的 type、缺字段、格式不对、太长）返回 null
 export function parseClientMessage(raw: string): ClientMessage | null {
     let message: unknown;
@@ -453,6 +525,8 @@ export function parseClientMessage(raw: string): ClientMessage | null {
             return null;
         return { type: 'wakeAnswer', request, result: result as WakeAnswerResult };
     }
+    case 'connectionReport':
+        return connectionReport(message);
     default:
         return null;
     }

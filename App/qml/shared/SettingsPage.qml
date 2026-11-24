@@ -191,6 +191,16 @@ Item {
                 sourceComponent: root.generalRows
             }
             SettingsRow {
+                iconName: "send"
+                label: qsTr("发送连接统计")
+                detail: qsTr("怎么连的、连上没有、用了多久，不含画面和传的内容")
+                AppSwitch {
+                    enabled: ThisDevice.serviceState === "ready"
+                    checked: ThisDevice.connectionStats
+                    onToggled: ThisDevice.connectionStats = checked
+                }
+            }
+            SettingsRow {
                 iconName: "message"
                 label: qsTr("反馈问题")
                 navigates: true

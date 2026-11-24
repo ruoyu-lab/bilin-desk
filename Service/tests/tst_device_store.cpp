@@ -26,6 +26,7 @@ private slots:
         QVERIFY(state.acceptIncoming);
         QVERIFY(state.lanDiscovery);
         QVERIFY(state.unattended);
+        QVERIFY(state.connectionStats);
     }
 
     // 设备密钥只在第一次生成，之后一直是它；公钥是前 65 字节
@@ -59,6 +60,7 @@ private slots:
             store.setAcceptIncoming(false);
             store.setLanDiscovery(false);
             store.setUnattended(false);
+            store.setConnectionStats(false);
             before = store.state();
         }
         QCOMPARE(before.deviceName, QStringLiteral("书房的电脑"));
@@ -70,6 +72,7 @@ private slots:
         QCOMPARE(after.acceptIncoming, false);
         QCOMPARE(after.lanDiscovery, false);
         QCOMPARE(after.unattended, false);
+        QCOMPARE(after.connectionStats, false);
     }
 
     void keepsTheTokenAndAddsOneWhenMissing()

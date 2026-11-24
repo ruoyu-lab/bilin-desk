@@ -28,6 +28,8 @@ qt_add_library(rccore STATIC
     src/rc/log_file.cpp
     src/rc/machine.h
     src/rc/machine.cpp
+    src/rc/connection_report.h
+    src/rc/connection_report.cpp
     src/rc/network_path.h
     src/rc/network_path.cpp
     src/rc/paths.h

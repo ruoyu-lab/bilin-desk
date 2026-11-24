@@ -5,6 +5,7 @@ import path from 'node:path';
 import { Redis } from 'ioredis';
 import { MongoClient } from 'mongodb';
 
+import { MongoConnections, type ConnectionDocument } from '../connections.js';
 import { MongoFeedback, type FeedbackDocument, type SettingsDocument } from '../feedback.js';
 import { defaultHubOptions } from '../hub.js';
 import { RedisLimiter } from '../limiter.js';
@@ -54,6 +55,7 @@ const limiter = new RedisLimiter(redisUrl);
 const stats = new RedisStats(redisUrl);
 const feedback = new MongoFeedback(mongo.db().collection<FeedbackDocument>('feedback'),
                                  mongo.db().collection<SettingsDocument>('settings'));
+const connections = new MongoConnections(mongo.db().collection<ConnectionDocument>('connections'));
 const backups = new Backups(path.join(dataDirectory, 'backups'), backupKeep, mongodump(mongoUrl));
 const releases = new Releases(path.join(dataDirectory, 'updates'),
                               releaseKey(await readFile(new URL('../../release-key.pub', import.meta.url), 'utf8')));
@@ -66,6 +68,7 @@ const app = await buildAdmin({
     backups,
     releases,
     feedback,
+    connections,
     status: systemStatus({
         db: mongo.db(), redis, dataDirectory, healthUrl, certificateHost, mailMode,
         mailLimit: defaultHubOptions.limits.mailsPerDay,

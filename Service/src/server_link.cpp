@@ -10,6 +10,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+#include <utility>
+
 namespace server = rc::server;
 
 ServerLink::ServerLink(DeviceStore &store, QUrl url, Options options, QObject *parent)
@@ -149,6 +151,17 @@ bool ServerLink::deleteAccount(const QString &password)
     return sendOnline(server::deleteAccount(password));
 }
 
+void ServerLink::reportConnection(const QJsonObject &report)
+{
+    if (state_ == State::Online) {
+        send(server::connectionReport(report));
+        return;
+    }
+    if (pendingReports_.size() == PendingReports)
+        pendingReports_.removeFirst();
+    pendingReports_.append(report);
+}
+
 void ServerLink::setWakeInterfaces(const QList<rc::server::WakeInterface> &interfaces)
 {
     wakeInterfaces_ = interfaces;
@@ -185,6 +198,8 @@ void ServerLink::received(const QString &text)
         pingTimer_.start();
         setIce(message.value(QLatin1StringView("ice")).toObject());
         setState(State::Online);
+        for (const QJsonObject &report : std::exchange(pendingReports_, {}))
+            send(server::connectionReport(report));
     } else if (type == server::Ice) {
         setIce(message.value(QLatin1StringView("ice")).toObject());
     } else if (type == server::Rejected) {

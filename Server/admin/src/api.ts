@@ -80,6 +80,59 @@ export interface Feedback {
   read: boolean
 }
 
+// 一次去连别的设备的经过（Server/src/connections.ts 的 ConnectionRecord）
+export interface ConnectionRecord {
+  id: string
+  createdAt: string
+  viewer: { deviceId: string; platform: string; version: string }
+  peer: { deviceId: string; platform: string; version: string }
+  access: 'password' | 'device'
+  result: 'connected' | 'failed' | 'cancelled'
+  reason: string
+  routes: Array<'direct' | 'relay' | 'relayTls'>
+  path: 'lan' | 'direct' | 'relay' | ''
+  connectMs: number
+  durationS: number
+  reconnects: number
+  approval: boolean
+  control: boolean
+  codec: string
+  resolution: string
+  fps: number
+  mbps: number
+  latencyMs: number
+}
+
+export interface Count {
+  key: string
+  count: number
+}
+
+// 最近几天的统计（Server/src/connections.ts 的 ConnectionSummary）
+export interface ConnectionSummary {
+  days: number
+  attempts: number
+  connected: number
+  cancelled: number
+  viewers: number
+  connectMsMedian: number | null
+  connectMsP90: number | null
+  durationSMedian: number | null
+  durationSTotal: number
+  paths: Count[]
+  routes: Count[]
+  failures: Count[]
+  endings: Count[]
+  platforms: Count[]
+  access: Count[]
+  versions: Array<{ version: string; attempts: number; connected: number }>
+  approval: number
+  control: number
+  reconnected: number
+  codecs: Count[]
+  daily: Array<{ day: string; attempts: number; connected: number }>
+}
+
 export interface Release {
   platform: string
   version: string

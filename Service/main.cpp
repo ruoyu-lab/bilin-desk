@@ -254,6 +254,7 @@ int main(int argc, char *argv[])
 
     // 账号：经服务器，结果给界面
     service_wiring::connectAccount(server, serverLink);
+    service_wiring::connectConnectionStats(server, serverLink, store);
 
     // 反馈：带上本程序的日志（这次和上次运行的）；装好时还有 Windows 系统服务的看护者、macOS 登录界面上的助手的
     QStringList logFiles{directory + QStringLiteral("/service.log"), directory + QStringLiteral("/service.log.previous")};

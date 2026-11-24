@@ -128,6 +128,8 @@ QJsonObject removeDevice(const QString &deviceId);
 QJsonObject setNickname(const QString &nickname);
 QJsonObject changePassword(const QString &oldPassword, const QString &newPassword);
 QJsonObject deleteAccount(const QString &password);
+// 一次去连别的设备的经过（rc/connection_report.h 的 finish）
+QJsonObject connectionReport(QJsonObject report);
 // 本机能唤醒它的网卡
 QJsonObject wakeInfo(const QList<WakeInterface> &interfaces);
 // 叫醒账号下的设备 deviceId

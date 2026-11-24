@@ -21,6 +21,7 @@ export interface DeviceRecord {
     id: string;
     name: string;
     platform: string;
+    version: string;
     publicKey: string;
     machine: string;
     // 它能唤醒自己的网卡（protocol.ts 的 wakeInfo）：登录着账号时它告诉的，没告诉过时是空的
@@ -78,7 +79,7 @@ export interface DeviceDocument {
 const DUPLICATE_KEY = 11000;
 
 function record(d: DeviceDocument): DeviceRecord {
-    return { id: d._id, name: d.name, platform: d.platform, publicKey: d.publicKey, machine: d.machine, wake: d.wake ?? [] };
+    return { id: d._id, name: d.name, platform: d.platform, version: d.version, publicKey: d.publicKey, machine: d.machine, wake: d.wake ?? [] };
 }
 
 export class MongoRegistry implements Registry {

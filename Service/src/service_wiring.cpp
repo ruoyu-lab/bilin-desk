@@ -1,6 +1,7 @@
 #include "service_wiring.h"
 
 #include "control_server.h"
+#include "device_store.h"
 #include "feedback_sender.h"
 #include "lan_discovery.h"
 #include "lan_signaling.h"
@@ -126,6 +127,18 @@ void connectViewerSignaling(ControlServer &server, ServerLink &link, LanSignalin
                                                                     {QStringLiteral("session"), session},
                                                                     {QStringLiteral("reason"), reason}});
                      });
+}
+
+void connectConnectionStats(ControlServer &server, ServerLink &link, const DeviceStore &store)
+{
+    QObject::connect(&server, &ControlServer::connectionReported, &link, [&link, &store](const QJsonObject &report) {
+        if (store.state().connectionStats)
+            link.reportConnection(report);
+    });
+    QObject::connect(&store, &DeviceStore::changed, &link, [&link, &store] {
+        if (!store.state().connectionStats)
+            link.dropPendingReports();
+    });
 }
 
 void connectFeedback(ControlServer &server, FeedbackSender &feedback)

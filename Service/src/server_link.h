@@ -74,6 +74,13 @@ public:
 
     rc::IceServers ice() const { return ice_; }
 
+    // 连接统计：一次去连别人的经过（rc/connection_report.h）。没登录服务器时先留着（最多 PendingReports 条，
+    // 多的丢掉最早的），登录上了再发
+    void reportConnection(const QJsonObject &report);
+    // 用户关了连接统计：留着没发的也不发了
+    void dropPendingReports() { pendingReports_.clear(); }
+    static constexpr qsizetype PendingReports = 20;
+
     // 远程唤醒（docs/devices-and-accounts.md）。interfaces：本机能唤醒它的网卡（WakeHelper 列的）
     void setWakeInterfaces(const QList<rc::server::WakeInterface> &interfaces);
     // 请服务器叫醒账号下的设备 deviceId，结果是 wakeResultReceived。没登录服务器时发不出去，返回 false
@@ -143,6 +150,7 @@ private:
     // 本机能唤醒它的网卡：还没列出来时 nullopt；这条连接上、现在的账号下告诉过服务器的
     std::optional<QList<rc::server::WakeInterface>> wakeInterfaces_;
     std::optional<QList<rc::server::WakeInterface>> wakeSent_;
+    QList<QJsonObject> pendingReports_;
     int retryMs_;
     bool reconnectNow_ = false; // 换了 ID：连接关掉后马上再连
     bool stopped_ = false;      // 被别处挤下去了：不再重连

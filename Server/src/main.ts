@@ -5,6 +5,7 @@ import { MongoClient } from 'mongodb';
 import { MongoAccounts, type AccountDocument } from './accounts.js';
 import { RedisBus } from './bus.js';
 import { RedisCodes } from './codes.js';
+import { MongoConnections, type ConnectionDocument } from './connections.js';
 import { MongoFeedback, type FeedbackDocument, type SettingsDocument } from './feedback.js';
 import { defaultHubOptions } from './hub.js';
 import { loadIceSettings } from './ice.js';
@@ -36,7 +37,8 @@ const registry = new MongoRegistry(mongo.db().collection<DeviceDocument>('device
 const accounts = new MongoAccounts(mongo.db().collection<AccountDocument>('accounts'));
 const feedback = new MongoFeedback(mongo.db().collection<FeedbackDocument>('feedback'),
                                  mongo.db().collection<SettingsDocument>('settings'));
-await Promise.all([registry.prepare(), accounts.prepare(), feedback.prepare()]);
+const connections = new MongoConnections(mongo.db().collection<ConnectionDocument>('connections'));
+await Promise.all([registry.prepare(), accounts.prepare(), feedback.prepare(), connections.prepare()]);
 const bus = new RedisBus(redisUrl);
 const limiter = new RedisLimiter(redisUrl);
 const codes = new RedisCodes(redisUrl);
@@ -51,7 +53,7 @@ const releases = new Releases(updatesDirectory, releaseKey(await readFile(releas
 const mailLog = { info: (object: object, message: string) => app.log.info(object, message) };
 const mailer = await loadMailer(process.env, mailLog);
 const { app } = await buildServer({
-    registry, accounts, bus, limiter, codes, mailer, stats, wakes, releases, logger: true, hub: { ...defaultHubOptions, ice },
+    registry, accounts, bus, limiter, codes, mailer, stats, wakes, connections, releases, logger: true, hub: { ...defaultHubOptions, ice },
     feedback: { store: feedback, adminUrl: `${adminUrl}#feedback` },
     web: { tickets, sessions: webSessions, relay: relayStatus },
 });

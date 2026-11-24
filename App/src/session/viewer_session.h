@@ -10,6 +10,7 @@
 #include "viewer_files.h"
 #include "viewer_power.h"
 
+#include <rc/connection_report.h>
 #include <rc/data_channels.h>
 #include <rc/transport.h>
 
@@ -17,6 +18,7 @@
 
 #include <QByteArray>
 #include <QDeadlineTimer>
+#include <QElapsedTimer>
 #include <QHash>
 #include <QImage>
 #include <QObject>
@@ -255,6 +257,9 @@ private:
     void stateEvent(rcs_state state);
     void admissionEvent(rcs_admission_state state, rcs_result result, const QString &message);
     void setStatus(const QString &status, const QString &reason = {});
+    // 连接统计（rc/connection_report.h）：状态变了记下来，这一次结束了交给后台服务
+    void record(const QString &status, const QString &reason);
+    void sendReport(const QString &reason);
     QString wakeNote() const;
     // 正在连的时候显示什么：对方在重启、注销时还是 restarting、signingOut
     QString connectingStatus() const;
@@ -326,6 +331,8 @@ private:
     quint64 lastFrames_ = 0;
     QTimer statsTimer_;
     QTimer answerTimer_; // 对方一直不回答就别一直等
+    rc::ConnectionReport report_;
+    QElapsedTimer clock_; // 连接统计的时间
     std::shared_ptr<FrameMailbox> frames_ = std::make_shared<FrameMailbox>();
     std::atomic<bool> frameQueued_ = false;
     Cursor cursor_;

@@ -3,11 +3,12 @@ import { randomUUID } from 'node:crypto';
 import type { Account, Accounts } from './accounts.js';
 import type { Bus, BusMessage } from './bus.js';
 import type { Codes } from './codes.js';
+import type { ConnectionRecord, ConnectionStore } from './connections.js';
 import { iceServers, type IceSettings } from './ice.js';
 import type { Limiter } from './limiter.js';
 import { codeMail, type Mailer } from './mail.js';
 import {
-    parseClientMessage, type AccountDevice, type AccountFailure, type AccountInfo, type ChangePassword,
+    parseClientMessage, type AccountDevice, type AccountFailure, type AccountInfo, type ChangePassword, type ConnectionReport,
     type DeclineRequest, type DeleteAccount, type Hello, type IceServers, type Login, type Register, type RejectReason,
     type ResetPassword, type SendCode, type ServerMessage, type SignalRequest, type WakeAnswerResult, type WakeInterface,
     type WakeResult, type WakeState,
@@ -84,6 +85,8 @@ export interface HubSources {
     tickets?: Tickets;
     // 远程唤醒时帮忙的电脑的回答（wakes.ts）
     wakes: Wakes;
+    // 连接统计（connections.ts）
+    connections: ConnectionStore;
 }
 
 export interface HubOptions {
@@ -166,6 +169,7 @@ export class Hub {
     readonly #stats: Stats;
     readonly #tickets: Tickets | undefined;
     readonly #wakes: Wakes;
+    readonly #reports: ConnectionStore;
     readonly #log: Log;
     readonly #options: HubOptions;
     readonly #devices = new Map<string, Connection>();
@@ -186,6 +190,7 @@ export class Hub {
         this.#stats = sources.stats;
         this.#tickets = sources.tickets;
         this.#wakes = sources.wakes;
+        this.#reports = sources.connections;
         this.#log = log;
         this.#options = options;
         bus.onMessage((deviceId, message) => this.#deliver(deviceId, message));
@@ -209,6 +214,15 @@ export class Hub {
         clearInterval(this.#seen);
         if (this.#connections.size > 0)
             await new Promise<void>((resolve) => (this.#drained = resolve));
+    }
+
+    // 去连别的设备的一方（viewer）报来一次连接的经过：补上被连的一方的系统、版本记下来
+    async reportConnection(viewer: ConnectionRecord['viewer'], report: ConnectionReport): Promise<void> {
+        const peer = report.target ? await this.#registry.device(report.target) : null;
+        const { type: _, target, ...rest } = report;
+        await this.#reports.add({
+            viewer, peer: { deviceId: target, platform: peer?.platform ?? '', version: peer?.version ?? '' }, ...rest,
+        });
     }
 
     // 一条连接断了：登录过的下线；下线出错（Redis、数据库连不上）记下来
@@ -707,6 +721,9 @@ export class Connection {
     #iceTimer: NodeJS.Timeout | undefined;
     #deviceId: string | null = null;
     #name = '';
+    // 登录时说的系统、程序版本（连接统计里记）
+    #platform = '';
+    #version = '';
     #loggingIn = false;
     #closed = false;
     // 最近发起过的连接（对方/session）：同一次连接的后续信令（重连）不再算一次发起
@@ -795,6 +812,8 @@ export class Connection {
             if (await this.#hub.login(this, this.#peer.address, message)) {
                 this.#deviceId = message.deviceId;
                 this.#name = message.name;
+                this.#platform = message.platform;
+                this.#version = message.version;
                 const settings = this.#options.ice;
                 this.send({ type: 'welcome', ice: settings ? this.#ice(message.deviceId, settings) : null });
                 await this.#hub.welcomed(message.deviceId);
@@ -868,6 +887,9 @@ export class Connection {
             return;
         case 'wakeAnswer':
             await this.#hub.wakeAnswered(message.request, deviceId, message.result);
+            return;
+        case 'connectionReport':
+            await this.#hub.reportConnection({ deviceId, platform: this.#platform, version: this.#version }, message);
             return;
         }
     }

@@ -6,6 +6,7 @@ import type { IconName } from './icons'
 import LoginView from './components/LoginView.vue'
 import LogoMark from '@shared/LogoMark.vue'
 import BackupsPage from './pages/BackupsPage.vue'
+import ConnectionsPage from './pages/ConnectionsPage.vue'
 import FeedbackPage from './pages/FeedbackPage.vue'
 import LogsPage from './pages/LogsPage.vue'
 import OverviewPage from './pages/OverviewPage.vue'
@@ -13,9 +14,10 @@ import ReleasesPage from './pages/ReleasesPage.vue'
 import { toasts } from './toasts'
 
 // 管理后台（docs/admin.md）：左边导航栏，右边一页（和官网一个样子）；页面跟着地址的 #（刷新以后还在同一页）
-type Page = 'overview' | 'feedback' | 'releases' | 'backups' | 'logs'
+type Page = 'overview' | 'connections' | 'feedback' | 'releases' | 'backups' | 'logs'
 const pages: Array<{ page: Page; title: string; icon: IconName }> = [
   { page: 'overview', title: '概览', icon: 'chart' },
+  { page: 'connections', title: '连接', icon: 'radar' },
   { page: 'feedback', title: '用户反馈', icon: 'message' },
   { page: 'releases', title: '版本发布', icon: 'package' },
   { page: 'backups', title: '数据备份', icon: 'database' },
@@ -73,6 +75,7 @@ async function logout() {
     </aside>
     <main class="content">
       <OverviewPage v-if="page === 'overview'" />
+      <ConnectionsPage v-else-if="page === 'connections'" />
       <FeedbackPage v-else-if="page === 'feedback'" />
       <ReleasesPage v-else-if="page === 'releases'" />
       <BackupsPage v-else-if="page === 'backups'" />

@@ -1,6 +1,7 @@
 #pragma once
 
 class ControlServer;
+class DeviceStore;
 class FeedbackSender;
 class LanDiscovery;
 class LanSignaling;
@@ -20,6 +21,9 @@ void publishNetwork(ControlServer &server, ServerLink &link, LanDiscovery &disco
 
 // 信令：界面去连别人的会话 ↔ 服务器或局域网（谁的交给谁、走哪条路见 Signaling）
 void connectViewerSignaling(ControlServer &server, ServerLink &link, LanSignaling &lan, Signaling &signaling);
+
+// 连接统计：界面报来的一次连接的经过，用户开着连接统计（DeviceStore）时交给服务器
+void connectConnectionStats(ControlServer &server, ServerLink &link, const DeviceStore &store);
 
 // 反馈：界面要后台服务的日志（给人看）、提交反馈，回答只给发命令的那个界面
 void connectFeedback(ControlServer &server, FeedbackSender &feedback);
