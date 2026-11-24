@@ -140,7 +140,7 @@ Redis 里的（谁在线、限速的计数、登录的会话）不用备份：�
 | 发布的新版本、备份 | `/srv/bilin/data/files/updates`、`data/files/backups` |
 | MongoDB、Redis 的数据 | `/srv/bilin/data/mongo`、`data/redis`（容器 `mongo`、`redis`，只在比邻的容器网络里） |
 | 中继的共享密钥、后台密码的哈希、发邮件的密钥、coturn 的配置 | `/srv/bilin/secrets` |
-| 中继 | 容器 `turn`（coturn，用宿主机的网络） |
+| 中继 | 容器 `turn`（coturn，用宿主机的网络）；UDP/TCP 3478，TLS 走 `turn.bilindesk.com` 的 443（自己的公网地址，docs/network.md） |
 | 日志 | 各个容器的标准输出：`cd /srv/bilin && sudo docker compose logs server-1` |
 | Nginx | `/srv/bilin/nginx/bilin.conf`（仓库里 `Server/deploy/production/nginx/bilin.conf`），由整台机器共用的 `/srv/gateway` 的 Nginx 读 |
 | 证书 | Let's Encrypt，一张带着 bilindesk.com、www、admin、web，在 `/srv/gateway/letsencrypt`；gateway 的 certbot 自己续期 |

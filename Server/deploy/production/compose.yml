@@ -5,6 +5,8 @@
 # edge 把 8080 原样转给它——程序看到的对端还是 127.0.0.1，和以前在宿主机上一样。程序重启不影响 edge 的网络。
 #
 # TURN 要一段 UDP 端口（49152-49407），用宿主机的网络。数据都在 data/ 下，静态文件在 www/，密钥在 secrets/。
+# 只放行 TCP 443 的网络（公司里常见）经 TURN 的 TLS 进来：它有自己的公网地址 turn.bilindesk.com，宿主机把那个地址的
+# 443 转给 TURN 的 5349（setup-production.sh），Nginx 的 443 不经手。
 name: bilin
 
 networks:
@@ -156,12 +158,23 @@ services:
   turn:
     image: coturn/coturn:4.7
     restart: unless-stopped
+    # root 才读得到证书的私钥（certbot 写的，只有 root 能读）；没有任何特权
+    user: "0:0"
     cap_drop: [ALL]
     # 镜像里的 turnserver 带着这个文件权限，少了它连启动都不行
     cap_add: [NET_BIND_SERVICE]
     security_opt: [no-new-privileges:true]
     network_mode: host
     mem_limit: 256m
-    command: [-c, /etc/coturn/turnserver.conf]
+    # 证书由 gateway 的 certbot 续期：每天让 turnserver 重读一次（SIGUSR2）
+    entrypoint: [sh, -c]
+    command:
+      - |
+        turnserver -c /etc/coturn/turnserver.conf & pid=$$!
+        trap 'kill $$pid; wait $$pid; exit' TERM INT
+        while kill -0 $$pid 2>/dev/null; do sleep 86400 & wait $$!; kill -USR2 $$pid; done
     volumes:
       - ./secrets/turnserver.conf:/etc/coturn/turnserver.conf:ro
+      # 只挂 turn.bilindesk.com 这一张（live 里是指向 archive 的链接）
+      - /srv/gateway/letsencrypt/live/turn.bilindesk.com:/etc/letsencrypt/live/turn.bilindesk.com:ro
+      - /srv/gateway/letsencrypt/archive/turn.bilindesk.com:/etc/letsencrypt/archive/turn.bilindesk.com:ro

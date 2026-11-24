@@ -77,6 +77,9 @@ bilindesk.com（甲骨文 ARM，Ubuntu 24.04，2 核 12 GB，在大阪；2026-11
   告诉设备公网地址（external-ip）；两个中继分配之间经公网地址转发是通的
 - 装：`Server/deploy/setup-production.sh`；部署：`Server/deploy/deploy-production.sh`（服务器上放了什么见 [admin.md](admin.md)）。
   比邻在 `/srv/bilin` 的容器里，coturn 用宿主机的网络；防火墙（iptables）只加这几个端口，插在最后那条 REJECT 前面
+- 中继的 TLS（给只放行 TCP 443 的网络，比如公司里）：`turn.bilindesk.com` 有自己的公网地址（甲骨文给主网卡加的辅助私有 IP
+  `10.0.0.29` 绑着预留公网 IP `129.225.173.133`），宿主机把这个地址的 TCP 443 转给 coturn 的 5349（DNAT），网站的 Nginx 不经手；
+  证书 `turn.bilindesk.com` 单独一张，由 gateway 的 certbot 续期，coturn 每天重读一次（SIGUSR2）。中继地址还是主地址的那一段
 - 甲骨文控制台里的安全列表也要放行：TCP 80、443，TCP 和 UDP 3478，UDP 49152–49407
 - 安装包连正式的服务器（`-DRC_SERVER_URL=wss://www.bilindesk.com/ws`），开发版（build 目录里直接运行的）连 Mac 上的虚拟机
 
