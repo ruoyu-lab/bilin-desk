@@ -50,8 +50,8 @@ export const REASON = /^[A-Za-z]{1,32}$/;
 // p2p：直连 | relay：经中继（TURN）
 export const TRANSPORTS = ['p2p', 'relay'] as const;
 export type Transport = (typeof TRANSPORTS)[number];
-// password：临时密码 | device：我的设备，只靠设备密钥
-export const ACCESSES = ['password', 'device'] as const;
+// password：临时密码 | device：我的设备，只靠设备密钥 | trusted：别人的设备，对方信任了它，只靠设备密钥
+export const ACCESSES = ['password', 'device', 'trusted'] as const;
 export type Access = (typeof ACCESSES)[number];
 // 验证码是干什么用的：注册 | 找回密码
 export const CODE_PURPOSES = ['register', 'resetPassword'] as const;

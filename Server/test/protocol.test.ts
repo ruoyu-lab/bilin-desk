@@ -52,8 +52,8 @@ describe('parseClientMessage', () => {
         expect(parseClientMessage(JSON.stringify(decline))).toEqual(decline);
     });
 
-    it('accepts signal over either transport, either access', () => {
-        for (const [transport, access] of [['p2p', 'password'], ['relay', 'device']]) {
+    it('accepts signal over either transport, any access', () => {
+        for (const [transport, access] of [['p2p', 'password'], ['relay', 'device'], ['p2p', 'trusted']]) {
             const signal = { type: 'signal', to: '731204586', session: 'abc-123_x', text: 'candidate data', transport, access, sdk: '0.1.0-beta' };
             expect(parseClientMessage(JSON.stringify(signal))).toEqual(signal);
         }

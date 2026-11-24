@@ -85,7 +85,7 @@ const bars = computed(() => {
 
 const pathNames: Record<string, string> = { lan: '局域网直连', direct: '跨网络直连', relay: '中继' }
 const routeNames: Record<string, string> = { direct: '直连', relay: '中继（UDP）', relayTls: '中继（TLS 443）' }
-const accessNames: Record<string, string> = { device: '我的设备', password: '临时密码', lan: '按局域网地址' }
+const accessNames: Record<string, string> = { device: '我的设备', trusted: '信任的设备', password: '临时密码', lan: '按局域网地址' }
 
 // 一组数目画成横条：名字、条、次数和占比
 function shares(counts: Count[], names: Record<string, string> = {}) {

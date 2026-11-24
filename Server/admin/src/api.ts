@@ -86,7 +86,7 @@ export interface ConnectionRecord {
   createdAt: string
   viewer: { deviceId: string; platform: string; version: string }
   peer: { deviceId: string; platform: string; version: string }
-  access: 'password' | 'device'
+  access: 'password' | 'device' | 'trusted'
   result: 'connected' | 'failed' | 'cancelled'
   reason: string
   routes: Array<'direct' | 'relay' | 'relayTls'>
