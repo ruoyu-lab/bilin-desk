@@ -193,7 +193,7 @@ function qualityText(r: ConnectionRecord): string {
         </div>
       </div>
 
-      <div class="grid two">
+      <div class="groups">
         <div v-for="g in breakdowns" :key="g.title" class="card">
           <div class="card-head">
             <h2>{{ g.title }}</h2>
@@ -218,7 +218,7 @@ function qualityText(r: ConnectionRecord): string {
       <div class="card">
         <div class="card-head"><h2>各版本连上的比例</h2><span class="hint">按去连的一方的版本</span></div>
         <p v-if="summary.versions.length === 0" class="empty">还没有</p>
-        <div v-for="v in summary.versions" :key="v.version" class="share">
+        <div v-for="v in summary.versions" :key="v.version" class="share version">
           <span class="name">{{ v.version }}</span>
           <div class="track thin"><div :style="{ width: `${v.attempts > 0 ? (v.connected / v.attempts) * 100 : 0}%` }"></div></div>
           <span class="count num">{{ v.connected }} / {{ v.attempts }} · {{ percent(v.connected, v.attempts) }}</span>
@@ -311,6 +311,20 @@ function qualityText(r: ConnectionRecord): string {
 @media (max-width: 1100px) {
   .kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 分项的卡片两列（三列时名字太挤） */
+.groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+
+@media (max-width: 760px) {
+  .groups {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -408,7 +422,7 @@ function qualityText(r: ConnectionRecord): string {
 
 .share {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 86px;
+  grid-template-columns: minmax(0, 2fr) minmax(40px, 1fr) 76px;
   align-items: center;
   gap: 14px;
   padding: 6px 0;
@@ -425,6 +439,10 @@ function qualityText(r: ConnectionRecord): string {
   text-align: right;
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.share.version {
+  grid-template-columns: minmax(0, 1fr) minmax(40px, 2fr) 120px;
 }
 
 .share .count.wide {
