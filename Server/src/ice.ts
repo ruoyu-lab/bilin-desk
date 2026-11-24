@@ -13,6 +13,9 @@ export interface IceSettings {
     host: string | null;
     port: number;
     transport: TurnTransport;
+    // 中继的 TLS（"主机:端口"，主机是证书上的域名）：经上面那个连不上时（公司网络常只放行 TCP 443）设备改走它；
+    // 同一个 coturn，凭据一样。null：没有
+    tlsServer: string | null;
     ttlS: number;
 }
 
@@ -25,13 +28,15 @@ export function turnCredentials(secret: string, deviceId: string, expiresS: numb
 export function iceServers(settings: IceSettings, deviceId: string, requestHost: string, nowMs: number): IceServers {
     const server = `${settings.host ?? requestHost}:${settings.port}`;
     const credentials = turnCredentials(settings.secret, deviceId, Math.floor(nowMs / 1000) + settings.ttlS);
-    return { stun: [server], turn: { server, transport: settings.transport, ...credentials }, ttl: settings.ttlS };
+    const turn = { server, transport: settings.transport, ...credentials };
+    return { stun: [server], turn: settings.tlsServer ? { ...turn, tlsServer: settings.tlsServer } : turn, ttl: settings.ttlS };
 }
 
 const MAX_TTL_S = 7 * 24 * 60 * 60;
 
 // 环境变量（PM2 的 ecosystem.config.cjs）：TURN_SECRET_FILE 没设时不发（设备只能直连）。
-// TURN_HOST（默认跟着 Host 头）、TURN_PORT（3478）、TURN_TRANSPORT（udp | tcp）、TURN_TTL_S（凭据的时效，默认一天，最多七天）
+// TURN_HOST（默认跟着 Host 头）、TURN_PORT（3478）、TURN_TRANSPORT（udp | tcp）、TURN_TLS_SERVER（中继的 TLS，默认没有）、
+// TURN_TTL_S（凭据的时效，默认一天，最多七天）
 export async function loadIceSettings(env: NodeJS.ProcessEnv): Promise<IceSettings | null> {
     const file = env.TURN_SECRET_FILE;
     if (!file)
@@ -46,7 +51,10 @@ export async function loadIceSettings(env: NodeJS.ProcessEnv): Promise<IceSettin
         throw new Error(`TURN_PORT 不对：${env.TURN_PORT}`);
     if (transport !== 'udp' && transport !== 'tcp')
         throw new Error(`TURN_TRANSPORT 只能是 udp 或 tcp：${transport}`);
+    const tlsServer = env.TURN_TLS_SERVER || null;
+    if (tlsServer && !/^[a-z0-9.-]+:\d+$/i.test(tlsServer))
+        throw new Error(`TURN_TLS_SERVER 要写成 域名:端口：${tlsServer}`);
     if (!Number.isInteger(ttlS) || ttlS < 60 || ttlS > MAX_TTL_S)
         throw new Error(`TURN_TTL_S 要在 60 秒到七天之间：${env.TURN_TTL_S}`);
-    return { secret, host: env.TURN_HOST || null, port, transport, ttlS };
+    return { secret, host: env.TURN_HOST || null, port, transport, tlsServer, ttlS };
 }

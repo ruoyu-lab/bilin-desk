@@ -234,12 +234,12 @@ export interface AccountDevice {
 }
 
 // P2P 和中继用的服务器（"主机:端口"）：STUN 告诉设备自己的公网地址；TURN 是中继，transport 是设备到它怎么走，
-// 凭据（coturn 的 REST 凭据）还能用 ttl 秒
+// 凭据（coturn 的 REST 凭据）还能用 ttl 秒。tlsServer：同一个中继的 TLS（"域名:端口"），经 server 连不上时改走它
 export type TurnTransport = 'udp' | 'tcp';
 
 export interface IceServers {
     stun: string[];
-    turn: { server: string; transport: TurnTransport; username: string; password: string };
+    turn: { server: string; transport: TurnTransport; username: string; password: string; tlsServer?: string };
     ttl: number;
 }
 

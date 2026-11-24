@@ -51,6 +51,7 @@ x-server: &server
   environment:
     <<: *env
     TURN_SECRET_FILE: /etc/bilin/turn-secret
+    TURN_TLS_SERVER: turn.bilindesk.com:443
     UPDATES_DIR: /var/lib/bilin/updates
     MAIL_KEY_FILE: /etc/bilin/mail-key
     MAIL_FROM: 比邻 <noreply@bilindesk.com>

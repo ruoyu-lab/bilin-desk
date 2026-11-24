@@ -63,7 +63,8 @@ netplan generate
 ip -4 -o addr show dev "$device" | grep -q " $turn_private_ip/" || ip addr add "$turn_private_ip/24" dev "$device"
 
 # coturn 用宿主机的网络。中继地址：本机的内网地址，告诉设备的是公网地址（external-ip）。只在中继地址之间转发：
-# 两端都经这台中继，不能被拿来当跳板去连别的机器。TLS 在 5349（turn.bilindesk.com 的 443 转来），中继地址照旧
+# 两端都经这台中继，不能被拿来当跳板去连别的机器。TLS 在 5349（turn.bilindesk.com 的 443 转来），中继地址照旧。
+# mobility：SDK 申请中继时都要换网不断的票（RFC 8016），coturn 4.7 没开它就回 405 拒绝申请，中继整个用不了
 cat > turnserver.conf <<CONF
 # 由 Server/deploy/setup-production.sh 生成，要改就改它再跑一遍
 listening-ip=$private_ip
@@ -78,6 +79,7 @@ max-port=49407
 cert=/etc/letsencrypt/live/turn.bilindesk.com/fullchain.pem
 pkey=/etc/letsencrypt/live/turn.bilindesk.com/privkey.pem
 no-dtls
+mobility
 use-auth-secret
 static-auth-secret=$(cat turn-secret)
 realm=bilin

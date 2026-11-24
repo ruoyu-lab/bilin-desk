@@ -244,6 +244,10 @@ private:
     std::optional<QList<QByteArray>> trustedKeys_;
     ShareTransport transport_;
     rc::IceServers ice_;
+    // 经 UDP 连不上中继（公司网络常只放行 TCP 443）：之后经中继都走它的 TLS。relayTls_：这次运行走着 TLS
+    // （SDK 要求一次运行里不变）
+    bool udpRelayFailed_ = false;
+    bool relayTls_ = false;
     ShareClipboard clipboard_;
     ShareThumbnails thumbnails_;
     bool lowLatency_ = false; // 分享会话现在用着低延迟预设

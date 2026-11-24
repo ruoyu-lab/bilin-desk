@@ -47,12 +47,15 @@ QJsonObject IceServers::toJson() const
 {
     QJsonValue relay;
     if (turn) {
-        relay = QJsonObject{
+        QJsonObject server{
             {QStringLiteral("server"), turn->server},
             {QStringLiteral("transport"), turn->tcp ? QStringLiteral("tcp") : QStringLiteral("udp")},
             {QStringLiteral("username"), turn->username},
             {QStringLiteral("password"), turn->password},
         };
+        if (!turn->tlsServer.isEmpty())
+            server.insert(QStringLiteral("tlsServer"), turn->tlsServer);
+        relay = server;
     }
     return {
         {QStringLiteral("stun"), QJsonArray::fromStringList(stun)},
@@ -70,7 +73,8 @@ IceServers IceServers::fromJson(const QJsonObject &json)
         ice.turn = TurnServer{relay.value(QLatin1StringView("server")).toString(),
                               relay.value(QLatin1StringView("transport")).toString() == u"tcp",
                               relay.value(QLatin1StringView("username")).toString(),
-                              relay.value(QLatin1StringView("password")).toString()};
+                              relay.value(QLatin1StringView("password")).toString(),
+                              relay.value(QLatin1StringView("tlsServer")).toString()};
     }
     return ice;
 }

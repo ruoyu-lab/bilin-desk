@@ -310,7 +310,7 @@ describe('Hub', () => {
     // ---- P2P 和中继用的服务器 ----
 
     it('welcomes with the relay at the host the device used, and renews its credentials', async () => {
-        const ice = { secret: 'dev-secret', host: null, port: 3478, transport: 'tcp' as const, ttlS: 2 };
+        const ice = { secret: 'dev-secret', host: null, port: 3478, transport: 'tcp' as const, tlsServer: null, ttlS: 2 };
         const relayed = hub({ ...defaultHubOptions, ice });
         const before = Math.floor(Date.now() / 1000);
         const windows = await login(relayed, '482915307', 1, '192.168.55.173');

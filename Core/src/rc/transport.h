@@ -58,6 +58,8 @@ struct TurnServer
     bool tcp = false; // 到中继走 TCP（只放行 TCP 的网络）；否则 UDP
     QString username;
     QString password;
+    // 同一个中继的 TLS（"域名:端口"，证书按域名核对）：经 server 连不上时改走它（公司网络常只放行 TCP 443）。空：没有
+    QString tlsServer;
 
     friend bool operator==(const TurnServer &, const TurnServer &) = default;
 };
@@ -72,7 +74,7 @@ struct IceServers
     // SDK 要的写法
     std::vector<std::string> stunServers() const;
 
-    // {"stun": [...], "turn": {"server", "transport": "udp" | "tcp", "username", "password"} 或 null}
+    // {"stun": [...], "turn": {"server", "transport": "udp" | "tcp", "tlsServer"（可没有）, "username", "password"} 或 null}
     QJsonObject toJson() const;
     static IceServers fromJson(const QJsonObject &json);
 

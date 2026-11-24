@@ -50,6 +50,8 @@ listening-ip=::
 listening-port=3478
 no-tls
 no-dtls
+# SDK 申请中继时都要换网不断的票（RFC 8016）：新的 coturn 没开它就拒绝申请
+mobility
 relay-ip=$relay_ip
 min-port=49152
 max-port=49407

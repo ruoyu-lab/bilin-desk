@@ -118,7 +118,7 @@ describe('server', () => {
 
     // 中继的地址跟着设备连服务器用的主机名（Host 头，不带端口）
     it('gives the relay at the host the device connected to', async () => {
-        const ice = { secret: 'dev-secret', host: null, port: 3478, transport: 'udp' as const, ttlS: 3600 };
+        const ice = { secret: 'dev-secret', host: null, port: 3478, transport: 'udp' as const, tlsServer: null, ttlS: 3600 };
         const { app } = await buildServer({
             registry: new MemoryRegistry(), accounts: new MemoryAccounts(), bus: new MemoryBroker().bus(),
             limiter: new MemoryLimiter(), codes: new MemoryCodes(), mailer: null, stats: new MemoryStats(), logger: false,

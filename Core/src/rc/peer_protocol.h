@@ -32,6 +32,8 @@ inline constexpr char Unavailable[] = "unavailable";
 inline constexpr char TransportBusy[] = "transportBusy";
 // 对方要走中继，本机没有中继（没连上服务器）
 inline constexpr char NoRelay[] = "noRelay";
+// 对方要走中继，本机经 UDP 连不上中继、刚改走它的 TLS 重开了：刚才的信令没了，再连一次
+inline constexpr char RelayRetry[] = "relayRetry";
 // 对方按我的设备来连（只靠设备密钥，rc/transport.h 的 DeviceAccess），本机不认它：本机没登录同一个账号
 inline constexpr char NotMine[] = "notMine";
 // 对方按我的设备来连，本机还不知道账号下有哪些设备：后台服务刚启动（开机、注销以后），服务器还没告诉它

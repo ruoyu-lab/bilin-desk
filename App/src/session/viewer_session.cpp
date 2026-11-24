@@ -68,8 +68,12 @@ ViewerSession::CursorShape outlinedIfBlack(const QImage &image, QPoint hotspot)
     return {outlined, hotspot + QPoint(1, 1)};
 }
 
-// 对方不接受连接时会回绝；一直不回答多半是路上丢了
+// 对方不接受连接时会回绝；一直不回答多半是路上丢了。经中继时对方先向中继要地址再回答（SDK 默认最多等 15 秒），
+// 多等这么久：它经 UDP 连不上中继、改走 TLS 时会回绝 relayRetry，别在那之前就当它没回应
 constexpr int AnswerMs = 15000;
+constexpr int RelayAnswerMs = AnswerMs + 15000;
+// 本机经 UDP 连不上中继（公司网络常只放行 TCP 443）：程序这次运行里经中继都走它的 TLS
+bool udpRelayFailed = false;
 // 有中继可以改走时，直连的连通检查等多久：通的路一两秒就找到，不用等 SDK 默认的 15 秒才知道不通
 constexpr uint32_t DirectCheckMs = 5000;
 // 对方重启、注销以后等它回来多久；它在线却连不上时隔多久再连（服务器限着连不上的次数，不在线时不试）
@@ -421,6 +425,7 @@ void ViewerSession::open(bool relay)
     config.setCodecs({RCS_CODEC_H264, RCS_CODEC_HEVC, RCS_CODEC_AV1, RCS_CODEC_VP9});
     config.setPictureFormats({RCS_PICTURE_420_8, RCS_PICTURE_444_8});
     const rc::IceServers ice = iceServers();
+    relayTls_ = relay_ && udpRelayFailed && !ice.turn->tlsServer.isEmpty();
     useTransport(config, ice);
     if (!relay_ && ice.turn)
         config.extension<rcs_network_tuning_config>().ice_connect_ms = DirectCheckMs;
@@ -595,7 +600,7 @@ void ViewerSession::open(bool relay)
         setStatus(QStringLiteral("failed"), message);
         return;
     }
-    answerTimer_.start();
+    answerTimer_.start(relay_ ? RelayAnswerMs : AnswerMs);
 }
 
 rc::IceServers ViewerSession::iceServers() const
@@ -605,7 +610,11 @@ rc::IceServers ViewerSession::iceServers() const
 
 void ViewerSession::useTransport(rcsdk::SessionConfig &config, const rc::IceServers &ice) const
 {
-    if (relay_) {
+    if (relay_ && relayTls_) {
+        // 证书按 tlsServer 里的域名、用系统的信任库核对
+        const rc::TurnServer &turn = *ice.turn;
+        config.setRelay(turn.tlsServer.toStdString(), turn.username.toStdString(), turn.password.toStdString(), RCS_TURN_TLS);
+    } else if (relay_) {
         const rc::TurnServer &turn = *ice.turn;
         config.setRelay(turn.server.toStdString(), turn.username.toStdString(), turn.password.toStdString(),
                         turn.tcp ? RCS_TURN_TCP : RCS_TURN_UDP);
@@ -617,7 +626,7 @@ void ViewerSession::useTransport(rcsdk::SessionConfig &config, const rc::IceServ
 void ViewerSession::updateIceServers()
 {
     const rc::IceServers ice = iceServers();
-    if (!session_ || (relay_ && !ice.turn))
+    if (!session_ || (relay_ && (!ice.turn || (relayTls_ && ice.turn->tlsServer.isEmpty()))))
         return;
     rcsdk::SessionConfig config(RCS_ROLE_VIEW);
     useTransport(config, ice);
@@ -717,6 +726,11 @@ void ViewerSession::declined(const QString &reason)
         open(true);
         return;
     }
+    // 对方经 UDP 连不上中继，改走 TLS 重开了：再连一次（本机怎么连中继照旧）
+    if (reason == QLatin1StringView(rc::peer::RelayRetry) && relay_) {
+        open(true);
+        return;
+    }
     if (handledByPower())
         return;
     stop();
@@ -780,6 +794,14 @@ void ViewerSession::stateEvent(rcs_state state)
         // 直连打不通（连通检查没找到路）：有中继就经中继再连一次
         if (failure.result == RCS_ERROR_NETWORK && !relay_ && status_ == u"connecting" && iceServers().turn) {
             qInfo("直连 %s 打不通，改走中继", qUtf8Printable(target_));
+            open(true);
+            break;
+        }
+        // 经 UDP 的中继也不通（公司网络常只放行 TCP 443）、中继有 TLS：走 TLS 再连一次，之后经中继都走它
+        if (failure.result == RCS_ERROR_NETWORK && relay_ && !relayTls_ && status_ == u"connecting" && iceServers().turn
+            && !iceServers().turn->tlsServer.isEmpty()) {
+            qInfo("经 UDP 的中继连不上 %s，改走中继的 TLS", qUtf8Printable(target_));
+            udpRelayFailed = true;
             open(true);
             break;
         }

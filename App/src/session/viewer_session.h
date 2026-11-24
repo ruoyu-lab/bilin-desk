@@ -294,6 +294,7 @@ private:
     QString access_{rc::PasswordAccess}; // 这一次连接怎么证明自己（rc/transport.h）
     QString connection_;
     bool relay_ = false; // 这一次连接经中继
+    bool relayTls_ = false; // 经中继时走它的 TLS（SDK 要求一次运行里不变）
     QString status_ = QStringLiteral("needPin");
     QString reason_;
     bool controlGranted_ = false;

@@ -36,6 +36,10 @@ private slots:
                                  rc::TurnServer{QStringLiteral("localhost:3478"), true, QStringLiteral("1760000000:482915307"),
                                                 QStringLiteral("secret")}};
         QCOMPARE(rc::IceServers::fromJson(ice.toJson()), ice);
+        QVERIFY(!ice.toJson().value(QLatin1StringView("turn")).toObject().contains(QLatin1StringView("tlsServer")));
+        rc::IceServers tls = ice;
+        tls.turn->tlsServer = QStringLiteral("turn.example.com:443");
+        QCOMPARE(rc::IceServers::fromJson(tls.toJson()), tls);
         const rc::IceServers stunOnly{{QStringLiteral("a:3478"), QStringLiteral("b:3478")}, std::nullopt};
         QCOMPARE(rc::IceServers::fromJson(stunOnly.toJson()), stunOnly);
         QCOMPARE(stunOnly.stunServers(), (std::vector<std::string>{"a:3478", "b:3478"}));

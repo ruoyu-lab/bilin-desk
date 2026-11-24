@@ -226,6 +226,7 @@ void ShareHost::start()
         connect(relay_.get(), &RelayChannel::opened, this, [this] { answerWeb({}); });
         connect(relay_.get(), &RelayChannel::lost, this, [this] { answerWeb(QLatin1StringView(rc::peer::Unavailable)); });
     }
+    relayTls_ = transport_.current() == rc::RelayTransport && udpRelayFailed_ && ice_.turn && !ice_.turn->tlsServer.isEmpty();
     useTransport(config);
     useCapture(config);
     // 电源模块：有人连着时电脑不睡（模块默认就是这样）；我的设备还能让本机重启、关机、睡眠、注销，正在控制本机的
@@ -513,6 +514,10 @@ void ShareHost::useTransport(rcsdk::SessionConfig &config) const
     if (transport_.current() == rc::WebTransport) {
         config.setTransport(RCS_TRANSPORT_HOST)
             .use(rcsdk::hostTransport(*relay_, RCS_HOST_CHANNEL_DATAGRAM, RelayChannel::MaxDatagram));
+    } else if (transport_.current() == rc::RelayTransport && relayTls_) {
+        // 证书按 tlsServer 里的域名、用系统的信任库核对
+        const rc::TurnServer &turn = *ice_.turn;
+        config.setRelay(turn.tlsServer.toStdString(), turn.username.toStdString(), turn.password.toStdString(), RCS_TURN_TLS);
     } else if (transport_.current() == rc::RelayTransport) {
         const rc::TurnServer &turn = *ice_.turn;
         config.setRelay(turn.server.toStdString(), turn.username.toStdString(), turn.password.toStdString(),
@@ -526,8 +531,9 @@ void ShareHost::setIceServers(const rc::IceServers &ice)
 {
     ice_ = ice;
     // 用着中继、中继却没了（凭据过期了又连不上服务器）：连着的人照旧，新来要中继的回绝，人走了换回直连。
-    // 网页版的转发不用这些服务器
-    if (!session_ || transport_.current() == rc::WebTransport || (transport_.current() == rc::RelayTransport && !ice_.turn))
+    // 走着中继的 TLS、新发来的没有 TLS 了：这次运行照旧用原来的凭据。网页版的转发不用这些服务器
+    if (!session_ || transport_.current() == rc::WebTransport
+        || (transport_.current() == rc::RelayTransport && (!ice_.turn || (relayTls_ && ice_.turn->tlsServer.isEmpty()))))
         return;
     rcsdk::SessionConfig config(RCS_ROLE_SHARE);
     useTransport(config);
@@ -560,11 +566,28 @@ void ShareHost::runFailed()
 {
     const rcsdk::SessionFailure failure = session_->failure();
     qCritical("分享会话停了：%s", failure.message.c_str());
+    // 来连本机、还没连上的人（网页版的没有设备）
+    QList<Route> attempts;
+    for (const Route &route : std::as_const(routes_)) {
+        if (!route.device.isEmpty() && !inUse(route))
+            attempts.append(route);
+    }
     end();
     // 网页版的我的设备：不用再开（浏览器那边连不上，再来时重新开）
     if (webMine()) {
         webKey_.reset();
         stop();
+        return;
+    }
+    // 经 UDP 连不上中继（还没人连上过，SDK 说是本机这一端的）、中继有 TLS：改走 TLS 重开，
+    // 请刚才来连的人再连一次（它的信令跟着这次运行没了）
+    if (transport_.current() == rc::RelayTransport && !relayTls_ && failure.result == RCS_ERROR_NETWORK && ice_.turn
+        && !ice_.turn->tlsServer.isEmpty()) {
+        qInfo("经 UDP 连不上中继，改走 TLS（%s）", qUtf8Printable(ice_.turn->tlsServer));
+        udpRelayFailed_ = true;
+        start();
+        for (const Route &route : std::as_const(attempts))
+            emit declined(route.device, route.session, QLatin1StringView(rc::peer::RelayRetry));
         return;
     }
     // 经中继、网页版的转发时停了（中继连不上、凭据被拒……）：换回直连接着接受连接

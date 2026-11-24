@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { iceServers, loadIceSettings, turnCredentials, type IceSettings } from '../src/ice.js';
 
-const settings: IceSettings = { secret: 'dev-secret', host: null, port: 3478, transport: 'udp', ttlS: 86400 };
+const settings: IceSettings = { secret: 'dev-secret', host: null, port: 3478, transport: 'udp', tlsServer: null, ttlS: 86400 };
 
 describe('turnCredentials', () => {
     // 和 coturn 的算法一样：printf '1760086400:482915307' | openssl dgst -sha1 -hmac dev-secret -binary | base64
@@ -36,6 +36,12 @@ describe('iceServers', () => {
         expect(ice.turn.server).toBe('turn.example.com:3478');
         expect(ice.turn.transport).toBe('tcp');
     });
+
+    it('adds the TLS server when there is one', () => {
+        const ice = iceServers({ ...settings, tlsServer: 'turn.example.com:443' }, '482915307', 'localhost', 0);
+        expect(ice.turn.server).toBe('localhost:3478');
+        expect(ice.turn.tlsServer).toBe('turn.example.com:443');
+    });
 });
 
 describe('loadIceSettings', () => {
@@ -59,14 +65,16 @@ describe('loadIceSettings', () => {
     it('reads the secret and the defaults', async () => {
         expect(await loadIceSettings({ TURN_SECRET_FILE: secretFile })).toEqual(settings);
         expect(await loadIceSettings({ TURN_SECRET_FILE: secretFile, TURN_HOST: 'turn.example.com', TURN_PORT: '443',
-            TURN_TRANSPORT: 'tcp', TURN_TTL_S: '3600' }))
-            .toEqual({ secret: 'dev-secret', host: 'turn.example.com', port: 443, transport: 'tcp', ttlS: 3600 });
+            TURN_TRANSPORT: 'tcp', TURN_TLS_SERVER: 'turns.example.com:443', TURN_TTL_S: '3600' }))
+            .toEqual({ secret: 'dev-secret', host: 'turn.example.com', port: 443, transport: 'tcp',
+                tlsServer: 'turns.example.com:443', ttlS: 3600 });
     });
 
     it.each([
         ['an empty secret', {}, ' \n'],
         ['a bad port', { TURN_PORT: 'x' }, 'dev-secret'],
         ['an unknown transport', { TURN_TRANSPORT: 'tls' }, 'dev-secret'],
+        ['a TLS server without a port', { TURN_TLS_SERVER: 'turn.example.com' }, 'dev-secret'],
         ['a short ttl', { TURN_TTL_S: '10' }, 'dev-secret'],
         ['a ttl over a week', { TURN_TTL_S: String(8 * 24 * 3600) }, 'dev-secret'],
     ])('refuses %s', async (_, env, secret) => {
